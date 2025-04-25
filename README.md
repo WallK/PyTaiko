@@ -11,20 +11,15 @@ Download for OS of choice on releases page
 How to run:
 Windows:
 ```bash
-  PyTaiko.exe {"Song Name"} {difficulty number 0-4}
+  PyTaiko.exe
 ```
 MacOS/Linux:
 ```bash
-  PyTaiko.bin {"Song Name"} {difficulty number 0-4}
-```
-    
+  PyTaiko.bin
+
 ## Roadmap
 
-- Add Kusudama notes
-
-- add basic song select
-
-- add basic results screen
+https://linear.app/pytaiko
 
 
 ## Known Issues
@@ -64,7 +59,7 @@ Start the game
 
 #### Keybinds?
 
-EFJI
+see config.toml
 
 #### Why does it look like Gen 3?
 
@@ -74,4 +69,3 @@ I like it
 ## Contributing
 
 I would highly suggest not contributing to this until sizeable progress has been made. The fabric of this code is ever changing and anything you write could disappear at any time
-

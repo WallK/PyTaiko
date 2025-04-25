@@ -24,7 +24,12 @@ class GameScreen:
         self.height = height
         self.judge_x = 414
         self.current_ms = 0
-        self.song_is_started = False
+
+        self.result_transition = None
+
+        self.song_info = None
+
+        self.screen_init = False
 
     def load_textures(self):
         self.textures = load_all_textures_from_zip('Graphics\\lumendata\\enso_system\\common.zip')
@@ -130,10 +135,15 @@ class GameScreen:
         self.textures.update(load_all_textures_from_zip('Graphics\\lumendata\\enso_system\\base1p.zip'))
         self.textures.update(load_all_textures_from_zip('Graphics\\lumendata\\enso_system\\don1p.zip'))
 
+        self.result_transition_1 = load_texture_from_zip('Graphics\\lumendata\\enso_result.zip', 'retry_game_img00125.png')
+        self.result_transition_2 = load_texture_from_zip('Graphics\\lumendata\\enso_result.zip', 'retry_game_img00126.png')
+
     def load_sounds(self):
         self.sound_don = audio.load_sound('Sounds\\inst_00_don.wav')
         self.sound_kat = audio.load_sound('Sounds\\inst_00_katsu.wav')
         self.sound_balloon_pop = audio.load_sound('Sounds\\balloon_pop.wav')
+
+        self.sound_result_transition = audio.load_sound('Sounds\\result\\VO_RESULT [1].ogg')
 
     def init_tja(self, song: str, difficulty: int):
         self.load_textures()
@@ -165,24 +175,46 @@ class GameScreen:
 
         audio.play_sound(self.song_music)
 
+    def on_screen_start(self):
+        if not self.screen_init:
+            self.screen_init = True
+            self.init_tja(global_data.selected_song, global_data.selected_difficulty)
+            self.current_ms = get_current_ms() - self.start_ms
+            self.song_info = SongInfo(self.current_ms, self.tja.title, 'TEST')
+            self.result_transition = None
+
+    def on_screen_end(self):
+        self.screen_init = False
+        for zip in self.textures:
+            for texture in self.textures[zip]:
+                ray.unload_texture(texture)
+        return 'RESULT'
 
     def update(self):
-        if global_data.start_song and not self.song_is_started:
-            self.init_tja(global_data.selected_song, global_data.selected_difficulty)
-            self.song_is_started = True
-
+        self.on_screen_start()
 
         self.current_ms = get_current_ms() - self.start_ms
-        self.player_1.update(self)
 
-        if len(self.player_1.play_note_list) == 0 and not audio.is_sound_playing(self.song_music):
+        self.player_1.update(self)
+        if self.song_info is not None:
+            self.song_info.update(self.current_ms)
+
+        if self.result_transition is not None:
+            self.result_transition.update(self.current_ms)
+            if self.result_transition.is_finished:
+                return self.on_screen_end()
+        elif len(self.player_1.play_note_list) == 0 and (len(self.player_1.current_notes) == 0) and not audio.is_sound_playing(self.song_music):
             global_data.result_good, global_data.result_ok, global_data.result_bad, global_data.result_score = self.player_1.get_result_score()
-            global_data.start_song = False
-            self.song_is_started = False
-            return 'RESULT'
+            self.result_transition = ResultTransition(self.current_ms, self.height)
+            audio.play_sound(self.sound_result_transition)
 
     def draw(self):
         self.player_1.draw(self)
+        if self.song_info is not None:
+            self.song_info.draw(self)
+        if self.result_transition is not None:
+            self.result_transition.draw(self.width, self.height, self.result_transition_1, self.result_transition_2)
+
 
 class Player:
     def __init__(self, game_screen: GameScreen, player_number: int, difficulty: int, judge_offset: int):
@@ -218,6 +250,7 @@ class Player:
         self.combo = 0
         self.score = 0
         self.max_combo = 0
+        self.total_drumroll = 0
 
         self.arc_points = 25
 
@@ -225,12 +258,11 @@ class Player:
         self.draw_effect_list: list[LaneHitEffect] = []
         self.draw_arc_list: list[NoteArc] = []
         self.draw_drum_hit_list: list[DrumHitEffect] = []
-        self.drumroll_counter: list[DrumrollCounter] = []
+        self.drumroll_counter: DrumrollCounter | None = None
         self.balloon_list: list[BalloonAnimation] = []
         self.base_score_list: list[ScoreCounterAnimation] = []
         self.combo_display = Combo(self.combo, game_screen.current_ms)
         self.score_counter = ScoreCounter(self.score, game_screen.current_ms)
-        self.song_info = SongInfo(game_screen.current_ms, game_screen.tja.title, 'TEST')
 
         self.input_log: dict[float, str] = dict()
 
@@ -304,7 +336,6 @@ class Player:
             else:
                 bisect.insort_left(self.current_notes_draw, self.draw_note_list.popleft(), key=lambda x: x['index'])
 
-        #If a note is off screen, remove it
         if len(self.current_notes_draw) == 0:
             return
 
@@ -316,8 +347,6 @@ class Player:
             note = self.current_notes_draw[1]
         position = self.get_position(game_screen, note['ms'], note['ppf'])
         if position < game_screen.judge_x + 650:
-            if note['note'] == '8':
-                self.current_notes_draw.pop(0)
             self.current_notes_draw.pop(0)
 
     def note_manager(self, game_screen: GameScreen):
@@ -347,6 +376,7 @@ class Player:
         note_type = game_screen.note_type_dict[str(int(drum_type)+self.drumroll_big)]
         self.draw_arc_list.append(NoteArc(note_type, game_screen.current_ms, self.player_number))
         self.curr_drumroll_count += 1
+        self.total_drumroll += 1
         self.score += 100
         self.base_score_list.append(ScoreCounterAnimation(game_screen.current_ms, 100))
         color = max(0, 255 - (self.curr_drumroll_count * 10))
@@ -359,6 +389,7 @@ class Player:
         if len(self.balloon_list) < 1:
             self.balloon_list.append(BalloonAnimation(game_screen.current_ms, current_note['balloon']))
         self.curr_balloon_count += 1
+        self.total_drumroll += 1
         self.score += 100
         self.base_score_list.append(ScoreCounterAnimation(game_screen.current_ms, 100))
         self.current_notes_draw[0]['popped'] = False
@@ -367,8 +398,6 @@ class Player:
             self.current_notes_draw[0]['popped'] = True
             audio.play_sound(game_screen.sound_balloon_pop)
             self.note_correct(game_screen, self.current_notes[0])
-            if len(self.current_notes) > 1 and self.current_notes[0]['note'] == '8':
-                self.note_correct(game_screen, self.current_notes[0])
 
     def check_note(self, game_screen: GameScreen, drum_type: str):
         if self.is_drumroll:
@@ -421,17 +450,14 @@ class Player:
                 self.current_notes.popleft()
 
     def drumroll_counter_manager(self, game_screen: GameScreen):
-        if self.is_drumroll and self.curr_drumroll_count > 0:
-            if len(self.drumroll_counter) == 0 or self.drumroll_counter[-1].is_finished:
-                self.drumroll_counter.append(DrumrollCounter(game_screen.current_ms))
+        if self.is_drumroll and self.curr_drumroll_count > 0 and self.drumroll_counter is None:
+            self.drumroll_counter = DrumrollCounter(game_screen.current_ms)
 
-        if len(self.drumroll_counter) <= 0:
-            return
-
-        if self.drumroll_counter[0].is_finished and not self.is_drumroll:
-            self.drumroll_counter.pop(0)
-        else:
-            self.drumroll_counter[0].update(game_screen, game_screen.current_ms, self.curr_drumroll_count)
+        if self.drumroll_counter is not None:
+            if self.drumroll_counter.is_finished and not self.is_drumroll:
+                self.drumroll_counter = None
+            else:
+                self.drumroll_counter.update(game_screen, game_screen.current_ms, self.curr_drumroll_count)
 
     def balloon_animation_manager(self, game_screen: GameScreen):
         if len(self.balloon_list) <= 0:
@@ -489,7 +515,6 @@ class Player:
         self.animation_manager(game_screen, self.draw_drum_hit_list)
         self.animation_manager(game_screen, self.draw_arc_list)
         self.animation_manager(game_screen, self.base_score_list)
-        self.song_info.update(game_screen.current_ms)
         self.score_counter.update(game_screen.current_ms, self.score)
         self.key_manager(game_screen)
 
@@ -499,10 +524,9 @@ class Player:
 
     def draw_drumroll(self, game_screen: GameScreen, big: bool, position: int, index: int, color: int):
         drumroll_start_position = position
-        i = 1
-        while self.current_notes_draw[index+i]['note'] != '8':
-            i += 1
-        tail = self.current_notes_draw[index+i]
+        tail = next((note for note in self.current_notes_draw[index+1:] if note['note'] == '8'), None)
+        if tail is None:
+            return
         if big:
             drumroll_body = 'dai_drumroll_body'
             drumroll_tail = 'dai_drumroll_tail'
@@ -515,17 +539,16 @@ class Player:
         self.draw_note(game_screen, drumroll_tail, drumroll_end_position, color, 10, drumroll_length=None)
 
     def draw_balloon(self, game_screen: GameScreen, note: dict, position: int, index: int):
-        if self.current_notes_draw[0].get('popped', None):
+        tail = next((note for note in self.current_notes_draw[index+1:] if note['note'] == '8'), None)
+        if tail is None:
             return
-        i = 1
-        while self.current_notes_draw[index+i]['note'] != '8':
-            i += 1
-        end_time = self.current_notes_draw[index+i]
-        end_time_position = self.get_position(game_screen, end_time['load_ms'], end_time['ppf'])
-        if game_screen.current_ms >= end_time['ms']:
-            position = end_time_position
+        tail_position = self.get_position(game_screen, tail['load_ms'], tail['ppf'])
+        if game_screen.current_ms >= tail['ms']:
+            position = tail_position
         elif game_screen.current_ms >= note['ms']:
             position = 349
+        if note.get('popped', None):
+            return
         self.draw_note(game_screen, '7', position, 255, 9)
 
     def draw_note(self, game_screen: GameScreen, note: str, position: int, color: int, se_note: int | None, drumroll_length: int | None=None):
@@ -587,8 +610,6 @@ class Player:
             note = self.current_notes_draw[i]
             note_type, load_ms, pixels_per_frame = note['note'], note['load_ms'], note['ppf']
             position = self.get_position(game_screen, load_ms, pixels_per_frame)
-            if 'popped' in note:
-                continue
             if note_type == '5':
                 self.draw_drumroll(game_screen, False, position, i, note['color'])
             elif note_type == '6':
@@ -597,7 +618,7 @@ class Player:
                 self.draw_balloon(game_screen, note, position, i)
             else:
                 self.draw_note(game_screen, note_type, position, 255, note['se_note'])
-                #ray.draw_text(str(i), position+64, 192, 25, ray.GREEN)
+                ray.draw_text(str(i), position+64, 192, 25, ray.GREEN)
 
     def draw_gauge(self, game_screen: GameScreen):
         ray.draw_texture(game_screen.textures['gage_don_1p_hard'][0], 327, 128, ray.WHITE)
@@ -621,8 +642,8 @@ class Player:
         ray.draw_texture(game_screen.textures['lane_obi'][3], 0, 184, ray.WHITE)
         ray.draw_texture(game_screen.textures['lane_obi'][19], 0, 225, ray.WHITE)
         ray.draw_texture(game_screen.texture_difficulty[self.difficulty], 50, 222, ray.WHITE)
-        self.song_info.draw(game_screen)
-        self.draw_animation_list(game_screen, self.drumroll_counter)
+        if self.drumroll_counter is not None:
+            self.drumroll_counter.draw(game_screen)
         self.draw_animation_list(game_screen, self.draw_arc_list)
         self.draw_animation_list(game_screen, self.balloon_list)
         self.score_counter.draw(game_screen)
@@ -787,6 +808,7 @@ class DrumrollCounter:
 
     def update_count(self, current_ms: float, count: int, elapsed_time: float):
         self.total_duration = elapsed_time + 1349
+        self.fade_animation.params['delay'] = self.total_duration - 166
         if self.drumroll_count != count:
             self.drumroll_count = count
             self.stretch_animation = Animation(current_ms, 50, 'text_stretch')
@@ -1028,40 +1050,93 @@ class ScoreCounterAnimation:
             ray.draw_texture_pro(game_screen.textures['score_add_1p'][int(counter[i])], source_rect, dest_rect, ray.Vector2(0,0), 0, self.color)
 
 class SongInfo:
+    FADE_DURATION = 366
+    DISPLAY_DURATION = 1666
+
     def __init__(self, current_ms: float, song_name: str, genre: str):
-        self.fade_in = Animation(current_ms, 366, 'fade')
-        self.fade_in.params['initial_opacity'] = 0.0
-        self.fade_in.params['final_opacity'] = 1.0
+        self.fade_in = self._create_fade_in_animation(current_ms)
+        self.fade_out = self._create_fade_out_animation(current_ms)
 
-        self.fade_out = Animation(current_ms, 366, 'fade')
-        self.fade_out.params['initial_opacity'] = 1.0
-        self.fade_out.params['final_opacity'] = 0.0
-        self.fade_out.params['delay'] = 1666 + self.fade_in.duration
+        self.song_name = song_name
+        self.genre = genre
 
-        self.is_finished = False
-        self.song_num_fade = ray.WHITE
-        self.song_name_fade = ray.WHITE
+        self.font = self._load_font_for_text(song_name)
+        self.song_title = OutlinedText(
+            self.font, song_name, 40, ray.WHITE, ray.BLACK, outline_thickness=5
+        )
+
+    def _create_fade_in_animation(self, start_ms: float) -> Animation:
+        fade_in = Animation(start_ms, self.FADE_DURATION, 'fade')
+        fade_in.params['initial_opacity'] = 0.0
+        fade_in.params['final_opacity'] = 1.0
+        return fade_in
+
+    def _create_fade_out_animation(self, start_ms: float) -> Animation:
+        fade_out = Animation(start_ms, self.FADE_DURATION, 'fade')
+        fade_out.params['initial_opacity'] = 1.0
+        fade_out.params['final_opacity'] = 0.0
+        fade_out.params['delay'] = self.DISPLAY_DURATION + self.FADE_DURATION
+        return fade_out
+
+    def _load_font_for_text(self, text: str) -> ray.Font:
         codepoint_count = ray.ffi.new('int *', 0)
-        codepoints_no_dup = set()
-        codepoints_no_dup.update(song_name)
-        codepoints = ray.load_codepoints(''.join(codepoints_no_dup), codepoint_count)
-        self.font = ray.load_font_ex('Graphics\\Modified-DFPKanteiryu-XB.ttf', 32, codepoints, 0)
-        self.song_title = OutlinedText(self.font, song_name, 40, ray.WHITE, ray.BLACK, outline_thickness=5)
+        unique_codepoints = set(text)
+        codepoints = ray.load_codepoints(''.join(unique_codepoints), codepoint_count)
+        return ray.load_font_ex('Graphics\\Modified-DFPKanteiryu-XB.ttf', 32, codepoints, 0)
 
     def update(self, current_ms: float):
         self.fade_in.update(current_ms)
         self.fade_out.update(current_ms)
-        self.song_num_fade = ray.fade(ray.WHITE, self.fade_in.attribute)
-        self.song_name_fade = ray.fade(ray.WHITE, 1 - self.fade_in.attribute)
-        if self.fade_in.is_finished:
+
+        if not self.fade_in.is_finished:
+            self.song_num_fade = ray.fade(ray.WHITE, self.fade_in.attribute)
+            self.song_name_fade = ray.fade(ray.WHITE, 1 - self.fade_in.attribute)
+        else:
             self.song_num_fade = ray.fade(ray.WHITE, self.fade_out.attribute)
             self.song_name_fade = ray.fade(ray.WHITE, 1 - self.fade_out.attribute)
+
         if self.fade_out.is_finished:
-            self.fade_in.start_ms = current_ms + 1666
-            self.fade_out.start_ms = current_ms + 1666
-            self.fade_in.is_finished = False
-            self.fade_out.is_finished = False
+            self._reset_animations(current_ms)
+
+    def _reset_animations(self, current_ms: float):
+        next_cycle_start = current_ms + self.DISPLAY_DURATION
+        self.fade_in = self._create_fade_in_animation(next_cycle_start)
+        self.fade_out = self._create_fade_out_animation(next_cycle_start)
 
     def draw(self, game_screen: GameScreen):
-        ray.draw_texture(game_screen.textures['song_info'][(global_data.songs_played % 4) + 8], 1132, 25, self.song_num_fade)
-        self.song_title.draw(1252 - self.song_title.texture.width, int(50 - self.song_title.texture.height / 2), self.song_name_fade)
+        song_texture_index = (global_data.songs_played % 4) + 8
+        ray.draw_texture(
+            game_screen.textures['song_info'][song_texture_index],
+            1132, 25,
+            self.song_num_fade
+        )
+
+        text_x = 1252 - self.song_title.texture.width
+        text_y = int(50 - self.song_title.texture.height / 2)
+        self.song_title.draw(text_x, text_y, self.song_name_fade)
+
+class ResultTransition:
+    def __init__(self, current_ms: float, screen_height: int):
+        self.move = Animation(current_ms, 983.33, 'move')
+        self.move.params['start_position'] = 0.0
+        self.move.params['total_distance'] = screen_height//2
+
+        self.is_finished = False
+
+    def update(self, current_ms: float):
+        self.move.update(current_ms)
+
+        if self.move.is_finished:
+            self.is_finished = True
+
+    def draw(self, screen_width: int, screen_height: int, texture_1: ray.Texture, texture_2: ray.Texture):
+        x = 0
+        while x < screen_width:
+            ray.draw_texture(texture_1, x, (0 - texture_1.height) + int(self.move.attribute), ray.WHITE)
+            ray.draw_texture(texture_1, x, (screen_height) - int(self.move.attribute), ray.WHITE)
+            x += texture_1.width
+        x = 0
+        while x < screen_width:
+            ray.draw_texture(texture_2, x, (0 - texture_2.height) + int(self.move.attribute / ((screen_height//2) / (texture_2.height//2))), ray.WHITE)
+            ray.draw_texture(texture_2, x, (screen_height) - int(self.move.attribute / ((screen_height//2) / (texture_2.height//2))), ray.WHITE)
+            x += texture_2.width

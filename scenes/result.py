@@ -1,11 +1,12 @@
 import pyray as ray
 
+from libs.animation import Animation
 from libs.audio import audio
 from libs.utils import (
     OutlinedText,
+    get_current_ms,
     global_data,
     load_all_textures_from_zip,
-    load_image_from_zip,
 )
 
 
@@ -17,31 +18,61 @@ def draw_scaled_texture(texture, x: int, y: int, scale: float, color: ray.Color)
     ray.draw_texture_pro(texture, src_rect, dst_rect, ray.Vector2(0, 0), 0, color)
 
 class ResultScreen:
-    def __init__(self, width, height):
+    def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
         self.sound_don = audio.load_sound('Sounds\\inst_00_don.wav')
+        self.bgm = audio.load_sound('Sounds\\result\\JINGLE_SEISEKI [1].ogg')
 
         zip_file = 'Graphics\\lumendata\\enso_result.zip'
         self.textures = load_all_textures_from_zip(zip_file)
 
-        ray.unload_texture(self.textures['result'][327])
-        image = load_image_from_zip(zip_file, 'result_img00327.png')
-        ray.image_resize(image, 1280, 144)
-        self.textures['result'][327] = ray.load_texture_from_image(image)
-
-        self.text_generated = False
         self.song_info = FontText(global_data.song_title, 40).texture
+        self.screen_init = False
+
+        self.fade_in = None
+
+        self.bgm_volume = 1.0
+
+    def on_screen_start(self):
+        if not self.screen_init:
+            self.textures = load_all_textures_from_zip('Graphics\\lumendata\\enso_result.zip')
+            self.screen_init = True
+            self.song_info = FontText(global_data.song_title, 40).texture
+            self.bgm_volume = 1.0
+            audio.play_sound(self.bgm)
+            self.fade_in = FadeIn(get_current_ms())
+
+    def on_screen_end(self):
+        self.screen_init = False
+        global_data.songs_played += 1
+        audio.play_sound(self.sound_don)
+        for zip in self.textures:
+            for texture in self.textures[zip]:
+                ray.unload_texture(texture)
+        audio.stop_sound(self.bgm)
+        return "SONG_SELECT"
 
     def update(self):
+        self.on_screen_start()
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
-            global_data.songs_played += 1
-            audio.play_sound(self.sound_don)
-            return "SONG_SELECT"
+            return self.on_screen_end()
 
-        if not self.text_generated and global_data.song_title != '':
-            self.song_info = FontText(global_data.song_title, 40).texture
-            self.text_generated = True
+        if self.fade_in is not None:
+            self.fade_in.update(get_current_ms())
+
+    def draw_score_info(self):
+        for i in range(len(str(global_data.result_good))):
+            ray.draw_texture(self.textures['result'][int(str(global_data.result_good)[::-1][i]) + 136], 943-(i*24), 186, ray.WHITE)
+        for i in range(len(str(global_data.result_ok))):
+            ray.draw_texture(self.textures['result'][int(str(global_data.result_ok)[::-1][i]) + 136], 943-(i*24), 227, ray.WHITE)
+        for i in range(len(str(global_data.result_bad))):
+            ray.draw_texture(self.textures['result'][int(str(global_data.result_bad)[::-1][i]) + 136], 943-(i*24), 267, ray.WHITE)
+
+    def draw_total_score(self):
+        ray.draw_texture(self.textures['result'][167], 554, 236, ray.WHITE)
+        for i in range(len(str(global_data.result_score))):
+            ray.draw_texture(self.textures['result'][int(str(global_data.result_score)[::-1][i]) + 156], 723-(i*21), 252, ray.WHITE)
 
     def draw(self):
         x = 0
@@ -49,15 +80,11 @@ class ResultScreen:
             ray.draw_texture(self.textures['result'][326], x, 0 - self.textures['result'][326].height//2, ray.WHITE)
             ray.draw_texture(self.textures['result'][326], x, self.height - self.textures['result'][326].height//2, ray.WHITE)
             x += self.textures['result'][326].width
-        ray.draw_texture(self.textures['result'][327], 0, 0 - self.textures['result'][327].height//2, ray.WHITE)
-        ray.draw_texture(self.textures['result'][327], 0, self.height - self.textures['result'][327].height + self.textures['result'][327].height//2, ray.WHITE)
-
-
-        ray.draw_text(f"{global_data.selected_song}", 100, 60, 20, ray.BLACK)
-        ray.draw_text(f"SCORE: {global_data.result_score}", 100, 80, 20, ray.BLACK)
-        ray.draw_text(f"GOOD: {global_data.result_good}", 100, 100, 20, ray.BLACK)
-        ray.draw_text(f"OK: {global_data.result_ok}", 100, 120, 20, ray.BLACK)
-        ray.draw_text(f"BAD: {global_data.result_bad}", 100, 140, 20, ray.BLACK)
+        x = 0
+        while x < self.width:
+            ray.draw_texture(self.textures['result'][327], x, 0 - self.textures['result'][327].height//2, ray.WHITE)
+            ray.draw_texture(self.textures['result'][327], x, self.height - self.textures['result'][327].height + self.textures['result'][327].height//2, ray.WHITE)
+            x += self.textures['result'][327].width
 
         ray.draw_texture(self.textures['result'][330], -5, 3, ray.WHITE)
         ray.draw_texture(self.textures['result'][(global_data.songs_played % 4) + 331], 232, 4, ray.WHITE)
@@ -70,6 +97,43 @@ class ResultScreen:
         draw_scaled_texture(self.textures['result'][176], 1185, 116, (10/11), ray.WHITE)
         draw_scaled_texture(self.textures['result'][187], 1058, 124, (10/11), ray.WHITE)
         draw_scaled_texture(self.textures['result'][188], 1182, 115, (10/11), ray.WHITE)
+
+        ray.draw_texture(self.textures['result'][170], 817, 186, ray.WHITE)
+        ray.draw_texture(self.textures['result'][171], 817, 227, ray.WHITE)
+        ray.draw_texture(self.textures['result'][172], 817, 267, ray.WHITE)
+        ray.draw_texture(self.textures['result'][173], 987, 186, ray.WHITE)
+        ray.draw_texture(self.textures['result'][174], 981, 227, ray.WHITE)
+
+        self.draw_score_info()
+        self.draw_total_score()
+
+        if self.fade_in is not None:
+            self.fade_in.draw(self.width, self.height, self.textures['result'][326], self.textures['result'][327])
+
+
+class FadeIn:
+    def __init__(self, current_ms: float):
+        self.fadein = Animation(current_ms, 450, 'fade')
+        self.fadein.params['initial_opacity'] = 1.0
+        self.fadein.params['final_opacity'] = 0.0
+        self.fadein.params['delay'] = 100
+        self.fade = ray.fade(ray.WHITE, self.fadein.attribute)
+
+    def update(self, current_ms: float):
+        self.fadein.update(current_ms)
+        self.fade = ray.fade(ray.WHITE, self.fadein.attribute)
+
+    def draw(self, screen_width: int, screen_height: int, texture_1: ray.Texture, texture_2: ray.Texture):
+        x = 0
+        while x < screen_width:
+            ray.draw_texture(texture_1, x, 0 - texture_1.height//2, self.fade)
+            ray.draw_texture(texture_1, x, screen_height - texture_1.height//2, self.fade)
+            x += texture_1.width
+        x = 0
+        while x < screen_width:
+            ray.draw_texture(texture_2, x, 0 - texture_2.height//2, self.fade)
+            ray.draw_texture(texture_2, x, screen_height - texture_2.height + texture_2.height//2, self.fade)
+            x += texture_2.width
 
 class FontText:
     def __init__(self, text, font_size):

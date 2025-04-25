@@ -97,7 +97,6 @@ def get_config() -> dict[str, Any]:
 @dataclass
 class GlobalData:
     videos_cleared = False
-    start_song: bool = False
     selected_song: str = '' #Path
     selected_difficulty: int = -1
     song_title: str = ''

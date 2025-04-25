@@ -3,6 +3,7 @@ import os
 import pyray as ray
 
 from libs.audio import audio
+from libs.tja import TJAParser
 from libs.utils import get_config, global_data
 
 
@@ -12,7 +13,7 @@ class SongSelectScreen:
         self.height = height
         self.is_song_select = True
         self.is_difficulty_select = False
-        self.song_list: list[str] = []
+        self.song_list: dict[str, list] = dict()
         self.selected_song = 0
         self.selected_difficulty = 0
         self.selected_index = 0
@@ -21,7 +22,23 @@ class SongSelectScreen:
         for dirpath, dirnames, filenames in os.walk(f'{get_config()["paths"]["tja_path"]}'):
             for filename in filenames:
                 if filename.endswith(".tja"):
-                    self.song_list.append(dirpath)
+                    self.song_list[dirpath] = TJAParser(dirpath).get_metadata()
+
+        self.screen_init = False
+
+    def on_screen_start(self):
+        if not self.screen_init:
+            self.screen_init = True
+
+            self.is_song_select = True
+            self.is_difficulty_select = False
+
+    def on_screen_end(self):
+        self.screen_init = False
+        audio.play_sound(self.sound_don)
+        global_data.selected_song = list(self.song_list.keys())[self.selected_song]
+        global_data.selected_difficulty = self.selected_difficulty
+        return "GAME"
 
     def update_song_select(self):
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
@@ -37,13 +54,7 @@ class SongSelectScreen:
 
     def update_difficulty_select(self):
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
-            audio.play_sound(self.sound_don)
-            global_data.selected_song = self.song_list[self.selected_song]
-            global_data.selected_difficulty = self.selected_difficulty
-            global_data.start_song = True
-            self.is_song_select = True
-            self.is_difficulty_select = False
-            return "GAME"
+            return self.on_screen_end()
         elif ray.is_key_pressed(ray.KeyboardKey.KEY_BACKSPACE):
             self.is_song_select = True
             self.is_difficulty_select = False
@@ -55,6 +66,7 @@ class SongSelectScreen:
             self.selected_difficulty = (self.selected_difficulty + 1) % 5
 
     def update(self):
+        self.on_screen_start()
         if self.is_song_select:
             self.update_song_select()
         elif self.is_difficulty_select:
@@ -62,21 +74,23 @@ class SongSelectScreen:
 
     def draw_song_select(self):
         visible_songs = 36
-        total_songs = len(self.song_list)
+        song_paths = list(self.song_list.keys())  # Get all paths as a list
+        total_songs = len(song_paths)
         start_index = max(0, self.selected_song - visible_songs // 2)
-
         if start_index + visible_songs > total_songs:
             start_index = max(0, total_songs - visible_songs)
-
         for i in range(visible_songs):
-            song_index = (start_index + i) % total_songs
+            if start_index + i < total_songs:  # Ensure we don't go out of bounds
+                song_index = start_index + i
+                current_path = song_paths[song_index]
+                # Get display text from metadata, or use the path as fallback
+                display_text = self.song_list[current_path][0]
 
-            if song_index == self.selected_song:
-                color = ray.GREEN
-            else:
-                color = ray.BLACK
-
-            ray.draw_text(self.song_list[song_index], 20, (20*i), 20, color)
+                if song_index == self.selected_song:
+                    color = ray.GREEN
+                else:
+                    color = ray.BLACK
+                ray.draw_text(display_text, 20, (20*i), 20, color)
 
     def draw_difficulty_select(self):
         difficulties = ["Easy", "Normal", "Hard", "Oni", "Ura"]

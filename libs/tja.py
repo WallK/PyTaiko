@@ -65,8 +65,8 @@ class TJAParser:
 
     def get_metadata(self):
         self._file_to_data()
-        diff_index = 1
-        highest_diff = -1
+        current_diff = None  # Track which difficulty we're currently processing
+
         for item in self.data:
             if item[0] == '#':
                 continue
@@ -87,58 +87,88 @@ class TJAParser:
             elif 'DEMOSTART' in item:
                 self.demo_start = float(item.split(':')[1])
             elif 'COURSE' in item:
-                course = str(item.split(':')[1]).lower()
+                # Determine which difficulty we're now processing
+                course = str(item.split(':')[1]).lower().strip()
+
+                # Map the course string to its corresponding index
                 if course == 'dan' or course == '6':
+                    current_diff = 6
                     self.course_data[6] = []
-                if course == 'tower' or course == '5':
+                elif course == 'tower' or course == '5':
+                    current_diff = 5
                     self.course_data[5] = []
                 elif course == 'edit' or course == '4':
+                    current_diff = 4
                     self.course_data[4] = []
                 elif course == 'oni' or course == '3':
+                    current_diff = 3
                     self.course_data[3] = []
                 elif course == 'hard' or course == '2':
+                    current_diff = 2
                     self.course_data[2] = []
                 elif course == 'normal' or course == '1':
+                    current_diff = 1
                     self.course_data[1] = []
                 elif course == 'easy' or course == '0':
+                    current_diff = 0
                     self.course_data[0] = []
-                highest_diff = max(self.course_data)
-                diff_index -= 1
-            elif 'LEVEL' in item:
-                item = int(item.split(':')[1])
-                self.course_data[diff_index+highest_diff].append(item)
-            elif 'BALLOON' in item:
-                item = item.split(':')[1]
-                if item == '':
-                    continue
-                self.course_data[diff_index+highest_diff].append([int(x) for x in item.split(',')])
-            elif 'SCOREINIT' in item:
-                if item.split(':')[1] == '':
-                    continue
-                item = item.split(':')[1]
-                self.course_data[diff_index+highest_diff].append([int(x) for x in item.split(',')])
-            elif 'SCOREDIFF' in item:
-                if item.split(':')[1] == '':
-                    continue
-                item = int(item.split(':')[1])
-                self.course_data[diff_index+highest_diff].append(item)
+
+            # Only process these items if we have a current difficulty
+            elif current_diff is not None:
+                if 'LEVEL' in item:
+                    level = int(item.split(':')[1])
+                    self.course_data[current_diff].append(level)
+                elif 'BALLOON' in item:
+                    balloon_data = item.split(':')[1]
+                    if balloon_data == '':
+                        continue
+                    self.course_data[current_diff].append([int(x) for x in balloon_data.split(',')])
+                elif 'SCOREINIT' in item:
+                    score_init = item.split(':')[1]
+                    if score_init == '':
+                        continue
+                    self.course_data[current_diff].append([int(x) for x in score_init.split(',')])
+                elif 'SCOREDIFF' in item:
+                    score_diff = item.split(':')[1]
+                    if score_diff == '':
+                        continue
+                    self.course_data[current_diff].append(int(score_diff))
+
         return [self.title, self.title_ja, self.subtitle, self.subtitle_ja,
-            self.bpm, self.wave, self.offset, self.demo_start, self.course_data]
+                self.bpm, self.wave, self.offset, self.demo_start, self.course_data]
 
     def data_to_notes(self, diff):
         self._file_to_data()
-        #Get notes start and end
         note_start = -1
         note_end = -1
-        diff_count = 0
-        for i in range(len(self.data)):
-            if self.data[i] == '#START':
-                note_start = i+1
-            elif self.data[i] == '#END':
-                note_end = i
-                diff_count += 1
-            if diff_count == len(self.course_data) - diff:
-                break
+        target_found = False
+        diffs = {0: "easy", 1: "normal", 2: "hard", 3: "oni", 4: "edit", 5: "tower", 6: "dan"}
+        # Get the name corresponding to this difficulty number
+        diff_name = diffs.get(diff, "").lower()
+
+        i = 0
+        while i < len(self.data):
+            line = self.data[i]
+
+            # Check if this is the start of a difficulty section
+            if line.startswith("COURSE:"):
+                course_value = line[7:].strip().lower()
+
+                # Match either the exact number or the name
+                if (course_value.isdigit() and int(course_value) == diff) or course_value == diff_name:
+                    target_found = True
+                else:
+                    target_found = False
+
+            # If we found our target section, look for START and END markers
+            if target_found:
+                if line == "#START":
+                    note_start = i + 1
+                elif line == "#END" and note_start != -1:
+                    note_end = i
+                    break  # We found our complete section
+
+            i += 1
 
         notes = []
         bar = []
@@ -148,19 +178,18 @@ class TJAParser:
             if line.startswith("#"):
                 bar.append(line)
             else:
-                item = line.strip(',')
-                if item == '':
-                    if bar == []:
-                        bar.append(item)
-                    else:
-                        notes.append(bar)
-                        bar = []
-                        continue
+                if line == ',':
+                    if len(bar) == 0 or all(item.startswith('#') for item in bar):
+                        bar.append('')
+                    notes.append(bar)
+                    bar = []
                 else:
+                    item = line.strip(',')
                     bar.append(item)
                     if item != line:
                         notes.append(bar)
                         bar = []
+        print(self.course_data)
         if len(self.course_data[diff]) < 2:
             return notes, None
         return notes, self.course_data[diff][1]

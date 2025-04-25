@@ -28,6 +28,8 @@ class TitleScreen:
         self.load_textures()
         self.warning_board = WarningScreen(get_current_ms(), self)
 
+        self.screen_init = False
+
     def get_videos(self):
         return self.op_video, self.attract_video
 
@@ -40,6 +42,17 @@ class TitleScreen:
         self.sound_warning_error = audio.load_sound('Sounds\\title\\SE_ATTRACT_1.ogg')
 
         self.texture_black = load_texture_from_zip('Graphics\\lumendata\\attract\\movie.zip', 'movie_img00000.png')
+
+    def on_screen_start(self):
+        if not self.screen_init:
+            self.screen_init = True
+
+    def on_screen_end(self) -> str:
+        for zip in self.textures:
+            for texture in self.textures[zip]:
+                ray.unload_texture(texture)
+        self.screen_init = False
+        return "ENTRY"
 
     def scene_manager(self):
         if self.scene == 'Opening Video':
@@ -59,9 +72,11 @@ class TitleScreen:
                 self.op_video = VideoPlayer(random.choice(self.op_video_list))
 
     def update(self):
+        self.on_screen_start()
+
         self.scene_manager()
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
-            return "ENTRY"
+            return self.on_screen_end()
 
     def draw(self):
         if self.scene == 'Opening Video':

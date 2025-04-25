@@ -39,7 +39,7 @@ jobs:
               with:
                   nuitka-version: main
                   script-name: main.py
-                  standalone: true
+                  mode: app
                   include-module: raylib,cv2,numpy,scipy,sounddevice
 
             - name: Upload Artifacts

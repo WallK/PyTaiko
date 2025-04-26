@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pyray as ray
 
 from libs.animation import Animation
@@ -21,8 +23,10 @@ class ResultScreen:
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
-        self.sound_don = audio.load_sound('Sounds\\inst_00_don.wav')
-        self.bgm = audio.load_sound('Sounds\\result\\JINGLE_SEISEKI [1].ogg')
+        sounds_dir = Path("Sounds")
+        self.sound_don = audio.load_sound(str(sounds_dir / "inst_00_don.wav"))
+        self.sound_kat = audio.load_sound(str(sounds_dir / "inst_00_katsu.wav"))
+        self.bgm = audio.load_sound(str(sounds_dir / "result" / "JINGLE_SEISEKI [1].ogg"))
 
         zip_file = 'Graphics\\lumendata\\enso_result.zip'
         self.textures = load_all_textures_from_zip(zip_file)

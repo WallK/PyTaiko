@@ -36,10 +36,13 @@ class TitleScreen:
     def load_textures(self):
         self.textures = load_all_textures_from_zip('Graphics\\lumendata\\attract\\keikoku.zip')
 
-        self.sound_bachi_swipe = audio.load_sound('Sounds\\title\\SE_ATTRACT_2.ogg')
-        self.sound_bachi_hit = audio.load_sound('Sounds\\title\\SE_ATTRACT_3.ogg')
-        self.sound_warning_message = audio.load_sound('Sounds\\title\\VO_ATTRACT_3.ogg')
-        self.sound_warning_error = audio.load_sound('Sounds\\title\\SE_ATTRACT_1.ogg')
+        sounds_dir = Path("Sounds")
+        title_dir = sounds_dir / "title"
+
+        self.sound_bachi_swipe = audio.load_sound(str(title_dir / "SE_ATTRACT_2.ogg"))
+        self.sound_bachi_hit = audio.load_sound(str(title_dir / "SE_ATTRACT_3.ogg"))
+        self.sound_warning_message = audio.load_sound(str(title_dir / "VO_ATTRACT_3.ogg"))
+        self.sound_warning_error = audio.load_sound(str(title_dir / "SE_ATTRACT_1.ogg"))
 
         self.texture_black = load_texture_from_zip('Graphics\\lumendata\\attract\\movie.zip', 'movie_img00000.png')
 

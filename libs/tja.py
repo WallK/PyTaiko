@@ -1,5 +1,6 @@
 import math
 from collections import deque
+from pathlib import Path
 
 from libs.utils import get_pixels_per_frame, strip_comments
 
@@ -28,9 +29,9 @@ def calculate_base_score(play_note_list: deque[dict]) -> int:
 class TJAParser:
     def __init__(self, path: str):
         #Defined on startup
-        self.folder_path = path
-        self.folder_name = self.folder_path.split('\\')[-1]
-        self.file_path = f'{self.folder_path}\\{self.folder_name}.tja'
+        self.folder_path = Path(path)
+        self.folder_name = self.folder_path.name
+        self.file_path = self.folder_path / f"{self.folder_name}.tja"
 
         #Defined on file_to_data()
         self.data = []
@@ -40,7 +41,7 @@ class TJAParser:
         self.title_ja = ''
         self.subtitle = ''
         self.subtitle_ja = ''
-        self.wave = f'{self.folder_path}\\'
+        self.wave = self.folder_path / ""
         self.offset = 0
         self.demo_start = 0
         self.course_data = dict()
@@ -81,7 +82,8 @@ class TJAParser:
             elif 'BPM' in item:
                 self.bpm = float(item.split(':')[1])
             elif 'WAVE' in item:
-                self.wave += str(item.split(':')[1])
+                filename = item.split(':')[1].strip()
+                self.wave = self.folder_path / filename
             elif 'OFFSET' in item:
                 self.offset = float(item.split(':')[1])
             elif 'DEMOSTART' in item:

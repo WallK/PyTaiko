@@ -3,6 +3,7 @@ import tempfile
 import time
 import zipfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pyray as ray
@@ -12,14 +13,16 @@ import tomllib
 
 def get_zip_filenames(zip_path: str) -> list[str]:
     result = []
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    new_path = Path(zip_path)
+    with zipfile.ZipFile(new_path, 'r') as zip_ref:
         file_list = zip_ref.namelist()
         for file_name in file_list:
             result.append(file_name)
     return result
 
 def load_image_from_zip(zip_path: str, filename: str) -> ray.Image:
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    new_path = Path(zip_path)
+    with zipfile.ZipFile(new_path, 'r') as zip_ref:
         with zip_ref.open(filename) as image_file:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
                 temp_file.write(image_file.read())
@@ -29,7 +32,8 @@ def load_image_from_zip(zip_path: str, filename: str) -> ray.Image:
         return image
 
 def load_texture_from_zip(zip_path: str, filename: str) -> ray.Texture:
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    new_path = Path(zip_path)
+    with zipfile.ZipFile(new_path, 'r') as zip_ref:
         with zip_ref.open(filename) as image_file:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
                 temp_file.write(image_file.read())
@@ -40,7 +44,8 @@ def load_texture_from_zip(zip_path: str, filename: str) -> ray.Texture:
 
 def load_all_textures_from_zip(zip_path: str) -> dict[str, list[ray.Texture]]:
     result_dict = dict()
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    new_path = Path(zip_path)
+    with zipfile.ZipFile(new_path, 'r') as zip_ref:
         files = zip_ref.namelist()
         for file in files:
             with zip_ref.open(file) as image_file:

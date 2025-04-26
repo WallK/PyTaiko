@@ -1,6 +1,7 @@
 import bisect
 import math
 from collections import deque
+from pathlib import Path
 
 import pyray as ray
 
@@ -139,11 +140,11 @@ class GameScreen:
         self.result_transition_2 = load_texture_from_zip('Graphics\\lumendata\\enso_result.zip', 'retry_game_img00126.png')
 
     def load_sounds(self):
-        self.sound_don = audio.load_sound('Sounds\\inst_00_don.wav')
-        self.sound_kat = audio.load_sound('Sounds\\inst_00_katsu.wav')
-        self.sound_balloon_pop = audio.load_sound('Sounds\\balloon_pop.wav')
-
-        self.sound_result_transition = audio.load_sound('Sounds\\result\\VO_RESULT [1].ogg')
+        sounds_dir = Path("Sounds")
+        self.sound_don = audio.load_sound(str(sounds_dir / "inst_00_don.wav"))
+        self.sound_kat = audio.load_sound(str(sounds_dir / "inst_00_katsu.wav"))
+        self.sound_balloon_pop = audio.load_sound(str(sounds_dir / "balloon_pop.wav"))
+        self.sound_result_transition = audio.load_sound(str(sounds_dir / "result" / "VO_RESULT [1].ogg"))
 
     def init_tja(self, song: str, difficulty: int):
         self.load_textures()
@@ -170,7 +171,7 @@ class GameScreen:
         global_data.song_title = self.tja.title
 
         self.player_1 = Player(self, 1, difficulty, get_config()["general"]["judge_offset"])
-        self.song_music = audio.load_sound(self.tja.wave)
+        self.song_music = audio.load_sound(str(Path(self.tja.wave)))
         self.start_ms = (get_current_ms() - self.tja.offset*1000) + self.start_delay
 
         audio.play_sound(self.song_music)
@@ -618,7 +619,7 @@ class Player:
                 self.draw_balloon(game_screen, note, position, i)
             else:
                 self.draw_note(game_screen, note_type, position, 255, note['se_note'])
-                ray.draw_text(str(i), position+64, 192, 25, ray.GREEN)
+                #ray.draw_text(str(i), position+64, 192, 25, ray.GREEN)
 
     def draw_gauge(self, game_screen: GameScreen):
         ray.draw_texture(game_screen.textures['gage_don_1p_hard'][0], 327, 128, ray.WHITE)

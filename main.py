@@ -17,10 +17,15 @@ class Screens:
     RESULT = "RESULT"
 
 def main():
-    render_width, render_height = ray.get_render_width(), ray.get_render_height()
-    dpi_scale = ray.get_window_scale_dpi()
     screen_width: int = get_config()["video"]["screen_width"]
     screen_height: int = get_config()["video"]["screen_height"]
+    render_width, render_height = ray.get_render_width(), ray.get_render_height()
+    dpi_scale = ray.get_window_scale_dpi()
+    if dpi_scale.x == 0:
+        dpi_scale = (ray.get_render_width(), ray.get_render_height())
+        dpi_scale = screen_width, screen_height
+    else:
+        dpi_scale = int(render_width/dpi_scale.x), int(render_height/dpi_scale.y)
 
     if get_config()["video"]["vsync"]:
         ray.set_config_flags(ray.ConfigFlags.FLAG_VSYNC_HINT)
@@ -92,7 +97,7 @@ def main():
         ray.draw_texture_pro(
              target.texture,
              ray.Rectangle(0, 0, target.texture.width, -target.texture.height),
-             ray.Rectangle(0, 0, int(render_width/dpi_scale.x), int(render_height)/dpi_scale.y),
+             ray.Rectangle(0, 0, dpi_scale[0], dpi_scale[1]),
              ray.Vector2(0,0),
              0,
              ray.WHITE

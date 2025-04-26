@@ -145,7 +145,7 @@ class FontText:
         codepoints_no_dup = set()
         codepoints_no_dup.update(global_data.song_title)
         codepoints = ray.load_codepoints(''.join(codepoints_no_dup), codepoint_count)
-        self.font = ray.load_font_ex('Graphics\\Modified-DFPKanteiryu-XB.ttf', 32, codepoints, 0)
+        self.font = ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 32, codepoints, 0)
         self.text = OutlinedText(self.font, str(text), font_size, ray.WHITE, ray.BLACK, outline_thickness=5)
 
         self.texture = self.text.texture

@@ -1083,7 +1083,7 @@ class SongInfo:
         codepoint_count = ray.ffi.new('int *', 0)
         unique_codepoints = set(text)
         codepoints = ray.load_codepoints(''.join(unique_codepoints), codepoint_count)
-        return ray.load_font_ex('Graphics\\Modified-DFPKanteiryu-XB.ttf', 32, codepoints, 0)
+        return ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 32, codepoints, 0)
 
     def update(self, current_ms: float):
         self.fade_in.update(current_ms)

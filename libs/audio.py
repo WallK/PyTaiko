@@ -7,7 +7,9 @@ from threading import Lock, Thread
 
 import pyray as ray
 from numpy import (
-    abs,
+    abs as np_abs,
+)
+from numpy import (
     column_stack,
     float32,
     frombuffer,
@@ -16,6 +18,9 @@ from numpy import (
     mean,
     uint8,
     zeros,
+)
+from numpy import (
+    max as np_max,
 )
 
 os.environ["SD_ENABLE_ASIO"] = "1"
@@ -550,7 +555,7 @@ class ASIOEngine:
         output *= self.master_volume
 
         # Apply simple limiter to prevent clipping
-        max_val = max(abs(output))
+        max_val = np_max(np_abs(output))
         if max_val > 1.0:
             output = output / max_val
 

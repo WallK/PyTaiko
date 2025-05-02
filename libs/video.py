@@ -1,5 +1,5 @@
-import cv2
 import pyray as ray
+from cv2 import CAP_PROP_FPS, COLOR_BGR2RGB, VideoCapture, cvtColor
 
 from libs.audio import audio
 from libs.utils import get_current_ms
@@ -13,8 +13,8 @@ class VideoPlayer:
         self.last_frame = self.current_frame
         self.frame_index = 0
         self.frames = []
-        self.cap = cv2.VideoCapture(self.video_path)
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.cap = VideoCapture(self.video_path)
+        self.fps = self.cap.get(CAP_PROP_FPS)
         self.is_finished_list = [False, False, False]  # Added third flag for frame conversion
         self.all_frames_converted = False
         audio_path = path[:-4] + '.ogg'
@@ -32,7 +32,7 @@ class VideoPlayer:
         success, frame = self.cap.read()
         while success:
             timestamp = (frame_count / self.fps * 1000)
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cvtColor(frame, COLOR_BGR2RGB)
             new_frame = ray.Image(frame_rgb.tobytes(), frame_rgb.shape[1], frame_rgb.shape[0], 1, ray.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8)
             self.frames.append((timestamp, new_frame))
             success, frame = self.cap.read()
@@ -50,7 +50,7 @@ class VideoPlayer:
             return
 
         if not self.cap.isOpened():
-            self.cap = cv2.VideoCapture(self.video_path)
+            self.cap = VideoCapture(self.video_path)
             if not self.cap.isOpened():
                 raise ValueError("Error: Could not open video file.")
 
@@ -58,7 +58,7 @@ class VideoPlayer:
         success, frame = self.cap.read()
         if success:
             timestamp = (len(self.frames) / self.fps * 1000)
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cvtColor(frame, COLOR_BGR2RGB)
             new_frame = ray.Image(frame_rgb.tobytes(), frame_rgb.shape[1], frame_rgb.shape[0], 1, ray.PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8)
             self.frames.append((timestamp, new_frame))
         else:

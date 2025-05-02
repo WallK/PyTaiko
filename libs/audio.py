@@ -5,8 +5,18 @@ import time
 import wave
 from threading import Lock, Thread
 
-import numpy as np
 import pyray as ray
+from numpy import (
+    abs,
+    column_stack,
+    float32,
+    frombuffer,
+    int16,
+    int32,
+    mean,
+    uint8,
+    zeros,
+)
 
 os.environ["SD_ENABLE_ASIO"] = "1"
 import sounddevice as sd
@@ -32,28 +42,28 @@ def resample(data, orig_sr, target_sr):
             channel_data = data[:, ch]
             resampled_channel = signal.resample_poly(channel_data, target_sr, orig_sr)
             resampled_channels.append(resampled_channel)
-        resampled_data = np.column_stack(resampled_channels)
+        resampled_data = column_stack(resampled_channels)
     return resampled_data
 
 def get_np_array(sample_width, raw_data):
     if sample_width == 1:
         # 8-bit samples are unsigned
-        data = np.frombuffer(raw_data, dtype=np.uint8)
-        return (data.astype(np.float32) - 128) / 128.0
+        data = frombuffer(raw_data, dtype=uint8)
+        return (data.astype(float32) - 128) / 128.0
     elif sample_width == 2:
         # 16-bit samples are signed
-        data = np.frombuffer(raw_data, dtype=np.int16)
-        return data.astype(np.float32) / 32768.0
+        data = frombuffer(raw_data, dtype=int16)
+        return data.astype(float32) / 32768.0
     elif sample_width == 3:
         # 24-bit samples handling
-        data = np.zeros(len(raw_data) // 3, dtype=np.int32)
+        data = zeros(len(raw_data) // 3, dtype=int32)
         for i in range(len(data)):
             data[i] = int.from_bytes(raw_data[i*3:i*3+3], byteorder='little', signed=True)
-        return data.astype(np.float32) / (2**23)
+        return data.astype(float32) / (2**23)
     elif sample_width == 4:
         # 32-bit samples are signed
-        data = np.frombuffer(raw_data, dtype=np.int32)
-        return data.astype(np.float32) / (2**31)
+        data = frombuffer(raw_data, dtype=int32)
+        return data.astype(float32) / (2**31)
     else:
         raise ValueError(f"Unsupported sample width: {sample_width}")
 
@@ -132,9 +142,9 @@ class Sound:
         if not self.is_playing:
             # Return silence if not playing
             if self.channels == 1:
-                return np.zeros(num_frames, dtype=np.float32)
+                return zeros(num_frames, dtype=float32)
             else:
-                return np.zeros((num_frames, self.channels), dtype=np.float32)
+                return zeros((num_frames, self.channels), dtype=float32)
 
         # Calculate how many frames we have left
         frames_left = len(self.data) - self.position
@@ -145,18 +155,18 @@ class Sound:
             # We've reached the end of the sound
             self.is_playing = False
             if self.channels == 1:
-                return np.zeros(num_frames, dtype=np.float32)
+                return zeros(num_frames, dtype=float32)
             else:
-                return np.zeros((num_frames, self.channels), dtype=np.float32)
+                return zeros((num_frames, self.channels), dtype=float32)
 
         # Get the actual frames to return
         frames_to_get = min(num_frames, frames_left)
 
         if self.channels == 1:
-            output = np.zeros(num_frames, dtype=np.float32)
+            output = zeros(num_frames, dtype=float32)
             output[:frames_to_get] = self.data[self.position:self.position+frames_to_get]
         else:
-            output = np.zeros((num_frames, self.channels), dtype=np.float32)
+            output = zeros((num_frames, self.channels), dtype=float32)
             output[:frames_to_get] = self.data[self.position:self.position+frames_to_get]
 
         self.position += frames_to_get
@@ -341,9 +351,9 @@ class Music:
         if not self.is_playing:
             # Return silence if not playing
             if self.channels == 1:
-                return np.zeros(num_frames, dtype=np.float32)
+                return zeros(num_frames, dtype=float32)
             else:
-                return np.zeros((num_frames, self.channels), dtype=np.float32)
+                return zeros((num_frames, self.channels), dtype=float32)
 
         with self.lock:
             if self.buffer is None:
@@ -354,9 +364,9 @@ class Music:
                 if self.wave_file and not self._fill_buffer():
                     self.is_playing = False
                     if self.channels == 1:
-                        return np.zeros(num_frames, dtype=np.float32)
+                        return zeros(num_frames, dtype=float32)
                     else:
-                        return np.zeros((num_frames, self.channels), dtype=np.float32)
+                        return zeros((num_frames, self.channels), dtype=float32)
 
             # Calculate how many frames we have left in buffer
             frames_left_in_buffer = len(self.buffer) - self.buffer_position
@@ -366,10 +376,10 @@ class Music:
             frames_to_get = min(num_frames, frames_left_in_buffer)
 
             if self.channels == 1:
-                output = np.zeros(num_frames, dtype=np.float32)
+                output = zeros(num_frames, dtype=float32)
                 output[:frames_to_get] = self.buffer[self.buffer_position:self.buffer_position+frames_to_get]
             else:
-                output = np.zeros((num_frames, self.channels), dtype=np.float32)
+                output = zeros((num_frames, self.channels), dtype=float32)
                 output[:frames_to_get] = self.buffer[self.buffer_position:self.buffer_position+frames_to_get]
 
             # Update buffer position
@@ -492,7 +502,7 @@ class ASIOEngine:
                 break
 
         # Mix all playing sounds and music
-        output = np.zeros((frames, self.output_channels), dtype=np.float32)
+        output = zeros((frames, self.output_channels), dtype=float32)
 
         # Mix sounds
         for sound_name, sound in self.sounds.items():
@@ -501,13 +511,13 @@ class ASIOEngine:
 
                 # If mono sound but stereo output, duplicate to both channels
                 if sound.channels == 1 and self.output_channels > 1:
-                    sound_data = np.column_stack([sound_data] * self.output_channels)
+                    sound_data = column_stack([sound_data] * self.output_channels)
 
                 # Ensure sound_data matches the output format
                 if sound.channels > self.output_channels:
                     # Down-mix if needed
                     if self.output_channels == 1:
-                        sound_data = np.mean(sound_data, axis=1)
+                        sound_data = mean(sound_data, axis=1)
                     else:
                         # Keep only the first output_channels
                         sound_data = sound_data[:, :self.output_channels]
@@ -522,13 +532,13 @@ class ASIOEngine:
 
                 # If mono music but stereo output, duplicate to both channels
                 if music.channels == 1 and self.output_channels > 1:
-                    music_data = np.column_stack([music_data] * self.output_channels)
+                    music_data = column_stack([music_data] * self.output_channels)
 
                 # Ensure music_data matches the output format
                 if music.channels > self.output_channels:
                     # Down-mix if needed
                     if self.output_channels == 1:
-                        music_data = np.mean(music_data, axis=1)
+                        music_data = mean(music_data, axis=1)
                     else:
                         # Keep only the first output_channels
                         music_data = music_data[:, :self.output_channels]
@@ -540,7 +550,7 @@ class ASIOEngine:
         output *= self.master_volume
 
         # Apply simple limiter to prevent clipping
-        max_val = np.max(np.abs(output))
+        max_val = max(abs(output))
         if max_val > 1.0:
             output = output / max_val
 

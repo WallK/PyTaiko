@@ -3,8 +3,6 @@ name: PyTaiko
 on:
     push:
         branches: ["main"]
-        tags:
-            - "v*.*.*"
     pull_request:
         branches: ["main"]
 
@@ -72,3 +70,4 @@ jobs:
                       *.exe
                       *.bin
                       *.app/**/*
+                  tag_name: 0.0.3

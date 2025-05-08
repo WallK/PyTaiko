@@ -58,7 +58,7 @@ def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> in
     return math.ceil(total_score / 10) * 10
 
 class TJAParser:
-    def __init__(self, path: str):
+    def __init__(self, path: str, start_delay: int = 0):
         #Defined on startup
         self.folder_path = Path(path)
         self.folder_name = self.folder_path.name
@@ -83,7 +83,7 @@ class TJAParser:
 
         self.distance = 0
         self.scroll_modifier = 1
-        self.current_ms = 0
+        self.current_ms = start_delay
         self.barline_display = True
         self.gogo_time = False
 

@@ -1,6 +1,7 @@
 [general]
 fps_counter = false
 judge_offset = 0
+autoplay = false
 
 [paths]
 tja_path = 'Songs'
@@ -13,7 +14,7 @@ right_don = ['J']
 right_kat = ['K']
 
 [audio]
-device_type = 'WASAPI'
+device_type = 'ASIO'
 asio_buffer = 6
 
 [video]

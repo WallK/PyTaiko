@@ -1,5 +1,6 @@
 import bisect
 import math
+import random
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +32,9 @@ class GameScreen:
         self.song_info = None
         self.screen_init = False
         self.movie = None
+        self.end_ms = 0
+        self.start_delay = 1000
+        self.song_started = False
 
     def load_textures(self):
         self.textures = load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/common.zip'))
@@ -73,6 +77,26 @@ class GameScreen:
         self.textures.update(load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/base1p.zip')))
         self.textures.update(load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/don1p.zip')))
 
+        self.bg_fever_name = 'bg_fever_a_' + str(random.randint(1, 4)).zfill(2)
+        self.bg_normal_name = 'bg_nomal_a_' + str(random.randint(1, 5)).zfill(2)
+        self.chibi_name = 'chibi_a_' + str(random.randint(1, 14)).zfill(2)
+        self.dance_name = 'dance_a_' + str(random.randint(1, 22)).zfill(2)
+        self.footer_name = 'dodai_a_' + str(random.randint(1, 3)).zfill(2)
+        self.donbg_name = 'donbg_a_' + str(random.randint(1, 6)).zfill(2)
+        self.fever_name = 'fever_a_' + str(random.randint(1, 4)).zfill(2)
+        self.renda_name = 'renda_a_' + str(random.randint(1, 3)).zfill(2)
+
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.bg_fever_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.bg_normal_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.chibi_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.dance_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.footer_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.donbg_name}_1p.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.donbg_name}_2p.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.fever_name}.zip')))
+        self.textures.update(load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.renda_name}.zip')))
+
+
         self.result_transition_1 = load_texture_from_zip(Path('Graphics/lumendata/enso_result.zip'), 'retry_game_img00125.png')
         self.result_transition_2 = load_texture_from_zip(Path('Graphics/lumendata/enso_result.zip'), 'retry_game_img00126.png')
 
@@ -99,7 +123,7 @@ class GameScreen:
             self.textures['onp_renda_dai'][0], self.textures['onp_renda_dai'][1],
             self.textures['onp_fusen'][0]]
 
-        self.tja = TJAParser(song)
+        self.tja = TJAParser(song, start_delay=self.start_delay)
         metadata = self.tja.get_metadata()
         if hasattr(self.tja, 'bg_movie'):
             if Path(self.tja.bg_movie).exists():
@@ -114,28 +138,31 @@ class GameScreen:
         self.song_music = audio.load_sound(str(Path(self.tja.wave)))
         self.start_ms = (get_current_ms() - self.tja.offset*1000)
 
-        audio.play_sound(self.song_music)
-
     def on_screen_start(self):
         if not self.screen_init:
             self.screen_init = True
             self.init_tja(session_data.selected_song, session_data.selected_difficulty)
-            self.current_ms = get_current_ms() - self.start_ms
             self.song_info = SongInfo(self.tja.title, 'TEST')
             self.result_transition = None
-            if self.movie is not None:
-                self.movie.start(get_current_ms())
 
     def on_screen_end(self):
         self.screen_init = False
         for zip in self.textures:
             for texture in self.textures[zip]:
                 ray.unload_texture(texture)
+        self.song_started = False
+        self.end_ms = 0
         return 'RESULT'
 
     def update(self):
         self.on_screen_start()
         self.current_ms = get_current_ms() - self.start_ms
+        if (self.current_ms >= self.tja.offset*1000 + self.start_delay) and not self.song_started:
+            if not audio.is_sound_playing(self.song_music):
+                audio.play_sound(self.song_music)
+            if self.movie is not None:
+                self.movie.start(get_current_ms())
+            self.song_started = True
         if self.movie is not None:
             self.movie.update()
 
@@ -150,12 +177,25 @@ class GameScreen:
         elif len(self.player_1.play_notes) == 0:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
-            self.result_transition = ResultTransition(self.height)
-            audio.play_sound(self.sound_result_transition)
+            if self.end_ms != 0:
+                if get_current_ms() >= self.end_ms + 8533.34:
+                    self.result_transition = ResultTransition(self.height)
+                    audio.play_sound(self.sound_result_transition)
+            else:
+                self.end_ms = get_current_ms()
+
+    def draw_background(self):
+        for i in range(0, self.width, self.textures[self.donbg_name + '_1p'][0].width):
+            ray.draw_texture(self.textures[self.donbg_name + '_1p'][0], i, 0, ray.WHITE)
+        ray.draw_texture(self.textures[self.bg_normal_name][0], 0, 360, ray.WHITE)
+        ray.draw_texture(self.textures[self.bg_normal_name][1], 0, 360, ray.fade(ray.WHITE, 0.25))
+        ray.draw_texture(self.textures[self.footer_name][0], 0, self.height - self.textures[self.footer_name][0].height + 20, ray.WHITE)
 
     def draw(self):
         if self.movie is not None:
             self.movie.draw()
+        else:
+            self.draw_background()
         self.player_1.draw(self)
         if self.song_info is not None:
             self.song_info.draw(self)
@@ -212,6 +252,8 @@ class Player:
         self.input_log: dict[float, tuple] = dict()
 
         self.gauge = Gauge(self.difficulty, metadata[-1][self.difficulty][0])
+
+        self.autoplay_hit_side = 'L'
 
     def get_result_score(self):
         return self.score, self.good_count, self.ok_count, self.bad_count, self.total_drumroll, self.max_combo
@@ -307,6 +349,7 @@ class Player:
         index = note.index
         if note.type == 7:
             note_type = game_screen.note_type_list[3][0]
+            self.play_notes.popleft()
         else:
             note_type = game_screen.note_type_list[note.type][0]
 
@@ -433,6 +476,32 @@ class Player:
                     self.check_note(game_screen, config["note_type"])
                     self.input_log[game_screen.current_ms] = (hit_type, key)
 
+    def autoplay_manager(self, game_screen):
+        if not get_config()["general"]["autoplay"]:
+            return
+        if len(self.play_notes) == 0:
+            return
+        note = self.play_notes[0]
+        if game_screen.current_ms >= note.hit_ms and note.type != 8:
+            hit_type = 'DON'
+            if note.type == 2 or note.type == 4:
+                hit_type = 'KAT'
+            self.lane_hit_effect = LaneHitEffect(hit_type)
+            if self.autoplay_hit_side == 'L':
+                self.autoplay_hit_side = 'R'
+            else:
+                self.autoplay_hit_side = 'L'
+            self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
+            sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
+            audio.play_sound(sound)
+            type = note.type
+            if type == 6 or type == 9:
+                type = 3
+            elif type == 5 or type == 7:
+                type = 1
+            self.check_note(game_screen, type)
+
+
     def update(self, game_screen: GameScreen):
         self.note_manager(game_screen)
         self.combo_display.update(game_screen, get_current_ms(), self.combo)
@@ -445,6 +514,7 @@ class Player:
         self.animation_manager(self.draw_arc_list)
         self.animation_manager(self.base_score_list)
         self.score_counter.update(get_current_ms(), self.score)
+        self.autoplay_manager(game_screen)
         self.key_manager(game_screen)
 
         self.gauge.update(get_current_ms(), self.good_count, self.ok_count, self.bad_count, self.total_notes)
@@ -543,6 +613,8 @@ class Player:
         self.draw_notes(game_screen)
         ray.draw_texture(game_screen.textures['lane_obi'][0], 0, 184, ray.WHITE)
         ray.draw_texture(game_screen.textures['lane_obi'][14], 211, 206, ray.WHITE)
+        if get_config()["general"]["autoplay"]:
+            ray.draw_texture(game_screen.textures['lane_obi'][58], 0, 290, ray.WHITE)
         for anim in self.draw_drum_hit_list:
             anim.draw(game_screen)
         self.combo_display.draw(game_screen)

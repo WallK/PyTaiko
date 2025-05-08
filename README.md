@@ -25,9 +25,7 @@ https://linear.app/pytaiko
 
 ## Known Issues
 
-- Songs with Kusudama notes will not work as it has not been implemented
-- Songs with very short drumrolls will not appear properly
-- Don-chan will be missing until someone else figures that out
+- See linear page.
 ## Run Locally
 
 Clone the project
@@ -51,7 +49,7 @@ Install dependencies
 Start the game
 
 ```bash
-  python main.py
+  python PyTaiko.py
 ```
 
 
@@ -62,7 +60,7 @@ Start the game
 
 see config.toml
 
-#### Why does it look like Gen 3?
+#### Why does it look like Gen 3 instead of Nijiiro?
 
 I like it
 

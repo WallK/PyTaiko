@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pyray as ray
 
-from libs.animation import Animation, Animation2
+from libs.animation import Animation
 from libs.audio import audio
 from libs.utils import (
     get_config,
@@ -46,6 +46,7 @@ class TitleScreen:
         if not self.screen_init:
             self.screen_init = True
             self.load_textures()
+
             self.scene = 'Opening Video'
             self.op_video = VideoPlayer(random.choice(self.op_video_list))
             self.attract_video = VideoPlayer(random.choice(self.attract_video_list))
@@ -107,25 +108,17 @@ class TitleScreen:
         elif self.scene == 'Attract Video':
             self.attract_video.draw()
 
-        ray.draw_text(f"Scene: {self.scene}", 20, 40, 20, ray.BLUE)
-
 class WarningScreen:
     class X:
         DELAY = 4250
-        def __init__(self, current_ms: float):
-            self.resize = Animation(current_ms, 166.67, 'texture_resize')
-            self.resize.params['initial_size'] = 1.0
-            self.resize.params['final_size'] = 1.5
-            self.resize.params['delay'] = self.DELAY
-            self.resize.params['reverse'] = 0
-
-            self.fadein = Animation2.create_fade(166.67, delay=self.DELAY, initial_opacity=0.0, final_opacity=1.0, reverse_delay=166.67)
-            self.fadein_2 = Animation2.create_fade(166.67, delay=self.DELAY + self.fadein.duration, initial_opacity=0.0, final_opacity=1.0)
+        def __init__(self):
+            self.resize = Animation.create_texture_resize(166.67, initial_size=1.0, final_size=1.5, delay=self.DELAY, reverse_delay=0)
+            self.fadein = Animation.create_fade(166.67, delay=self.DELAY, initial_opacity=0.0, final_opacity=1.0, reverse_delay=166.67)
+            self.fadein_2 = Animation.create_fade(166.67, delay=self.DELAY + self.fadein.duration, initial_opacity=0.0, final_opacity=1.0)
 
             self.sound_played = False
 
         def update(self, current_ms: float, sound, elapsed_time):
-
             self.fadein.update(current_ms)
             self.fadein_2.update(current_ms)
             self.resize.update(current_ms)
@@ -136,21 +129,16 @@ class WarningScreen:
 
         def draw(self, texture):
             scale = self.resize.attribute
-            width = texture.width
-            height = texture.height
-            x_x = 150 + (width//2) - ((width * scale)//2)
-            x_y = 200 + (height//2) - ((height * scale)//2)
-            x_source = ray.Rectangle(0, 0, width, height)
-            x_dest = ray.Rectangle(x_x, x_y, width*scale, height*scale)
+            x_x = 150 + (texture.width//2) - ((texture.width * scale)//2)
+            x_y = 200 + (texture.height//2) - ((texture.height * scale)//2)
+            x_source = ray.Rectangle(0, 0, texture.width, texture.height)
+            x_dest = ray.Rectangle(x_x, x_y, texture.width*scale, texture.height*scale)
             ray.draw_texture_pro(texture, x_source, x_dest, ray.Vector2(0,0), 0, ray.fade(ray.WHITE, self.fadein.attribute))
 
     class BachiHit:
-        def __init__(self, current_ms: float):
-            self.resize = Animation(current_ms, 233.34, 'texture_resize')
-            self.resize.params['initial_size'] = 0.5
-            self.resize.params['final_size'] = 1.5
-
-            self.fadein = Animation2.create_fade(116.67, initial_opacity=0.0, final_opacity=1.0, reverse_delay=0)
+        def __init__(self):
+            self.resize = Animation.create_texture_resize(233.34, initial_size=0.5, final_size=1.5)
+            self.fadein = Animation.create_fade(116.67, initial_opacity=0.0, final_opacity=1.0, reverse_delay=0)
 
             self.sound_played = False
 
@@ -165,19 +153,17 @@ class WarningScreen:
 
         def draw(self, texture):
             scale = self.resize.attribute
-            width = texture.width
-            height = texture.height
-            hit_x = 350 + (width//2) - ((width * scale)//2)
-            hit_y = 225 + (height//2) - ((height * scale)//2)
-            hit_source = ray.Rectangle(0, 0, width, height)
-            hit_dest = ray.Rectangle(hit_x, hit_y, width*scale, height*scale)
+            hit_x = 350 + (texture.width//2) - ((texture.width * scale)//2)
+            hit_y = 225 + (texture.height//2) - ((texture.height * scale)//2)
+            hit_source = ray.Rectangle(0, 0, texture.width, texture.height)
+            hit_dest = ray.Rectangle(hit_x, hit_y, texture.width*scale, texture.height*scale)
             ray.draw_texture_pro(texture, hit_source, hit_dest, ray.Vector2(0,0), 0, ray.fade(ray.WHITE, self.fadein.attribute))
 
     class Characters:
         def __init__(self, current_ms: float, start_ms: float):
             self.start_ms = start_ms
             self.current_ms = current_ms
-            self.shadow_fade = Animation2.create_fade(50, delay=16.67, initial_opacity=0.75)
+            self.shadow_fade = Animation.create_fade(50, delay=16.67, initial_opacity=0.75)
 
             self.animation_sequence = [(300.00, 5, 4), (183.33, 6, 4), (166.67, 7, 4), (166.67, 8, 9), (166.67, 11, 9), (166.67, 12, 9), (166.67, 13, 9),
                      (166.67, 5, 4), (150.00, 5, 4), (133.34, 6, 4), (133.34, 7, 4), (133.34, 8, 9), (133.34, 11, 9), (133.34, 12, 9), (133.34, 13, 9),
@@ -228,15 +214,15 @@ class WarningScreen:
                 ray.draw_texture(textures['keikoku'][19], 350, y+135, ray.WHITE)
 
     class Board:
-        def __init__(self, current_ms: float, screen_width, screen_height, texture):
+        def __init__(self, screen_width, screen_height, texture):
             #Move warning board down from top of screen
-            self.move_down = Animation2.create_move(266.67, total_distance=screen_height + ((screen_height - texture.height)//2) + 20, start_position=-720)
+            self.move_down = Animation.create_move(266.67, total_distance=screen_height + ((screen_height - texture.height)//2) + 20, start_position=-720)
 
             #Move warning board up a little bit
-            self.move_up = Animation2.create_move(116.67, start_position=92 + 20, delay=self.move_down.duration, total_distance =-30)
+            self.move_up = Animation.create_move(116.67, start_position=92 + 20, delay=self.move_down.duration, total_distance =-30)
 
             #And finally into its correct position
-            self.move_center = Animation2.create_move(116.67, start_position=82, delay=self.move_down.duration + self.move_up.duration, total_distance=10)
+            self.move_center = Animation.create_move(116.67, start_position=82, delay=self.move_down.duration + self.move_up.duration, total_distance=10)
             self.y_pos = 0
 
         def update(self, current_ms):
@@ -257,14 +243,12 @@ class WarningScreen:
     def __init__(self, current_ms: float, title_screen: TitleScreen):
         self.start_ms = current_ms
 
-        self.fade_in = Animation2.create_fade(300, delay=266.67, initial_opacity=0.0, final_opacity=1.0)
+        self.fade_in = Animation.create_fade(300, delay=266.67, initial_opacity=0.0, final_opacity=1.0)
+        self.fade_out = Animation.create_fade(500, delay=1000, initial_opacity=0.0, final_opacity=1.0)
 
-        #Fade to black
-        self.fade_out = Animation2.create_fade(500, delay=1000, initial_opacity=0.0, final_opacity=1.0)
-
-        self.board = self.Board(current_ms, title_screen.width, title_screen.height, title_screen.textures['keikoku'][1])
-        self.warning_x = self.X(current_ms)
-        self.warning_bachi_hit = self.BachiHit(current_ms)
+        self.board = self.Board(title_screen.width, title_screen.height, title_screen.textures['keikoku'][1])
+        self.warning_x = self.X()
+        self.warning_bachi_hit = self.BachiHit()
         self.characters = self.Characters(current_ms, self.start_ms)
 
         self.source_rect = ray.Rectangle(0, 0, title_screen.texture_black.width, title_screen.texture_black.height)

@@ -10,12 +10,13 @@ Download for OS of choice on releases page
 
 How to run:
 Windows:
-```bash
-  PyTaiko.exe
+```
+  Run PyTaiko.exe
 ```
 MacOS/Linux:
-```bash
-  PyTaiko.bin
+```
+Good luck, would suggest running with python directly
+```
 
 ## Roadmap
 
@@ -68,4 +69,4 @@ I like it
 
 ## Contributing
 
-I would highly suggest not contributing to this until sizeable progress has been made. The fabric of this code is ever changing and anything you write could disappear at any time
+Contributions are now open. I don't have any particular contribution guidelines other than be mindful of what builtin functions already exist in this project (ie, for animations, videos, etc)

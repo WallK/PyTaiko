@@ -95,11 +95,9 @@ def get_config() -> dict[str, Any]:
         config_file = tomllib.load(f)
     return config_file
 
-def draw_scaled_texture(texture, x: int, y: int, scale: float, color: ray.Color) -> None:
-    width = texture.width
-    height = texture.height
-    src_rect = ray.Rectangle(0, 0, width, height)
-    dst_rect = ray.Rectangle(x, y, width*scale, height*scale)
+def draw_scaled_texture(texture: ray.Texture, x: int, y: int, scale: float, color: ray.Color) -> None:
+    src_rect = ray.Rectangle(0, 0, texture.width, texture.height)
+    dst_rect = ray.Rectangle(x, y, texture.width*scale, texture.height*scale)
     ray.draw_texture_pro(texture, src_rect, dst_rect, ray.Vector2(0, 0), 0, color)
 
 @dataclass

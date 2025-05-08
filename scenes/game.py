@@ -5,7 +5,7 @@ from typing import Optional
 
 import pyray as ray
 
-from libs.animation import Animation, Animation2
+from libs.animation import Animation
 from libs.audio import audio
 from libs.tja import Balloon, Drumroll, Note, TJAParser, calculate_base_score
 from libs.utils import (
@@ -121,7 +121,7 @@ class GameScreen:
             self.screen_init = True
             self.init_tja(session_data.selected_song, session_data.selected_difficulty)
             self.current_ms = get_current_ms() - self.start_ms
-            self.song_info = SongInfo(self.current_ms, self.tja.title, 'TEST')
+            self.song_info = SongInfo(self.tja.title, 'TEST')
             self.result_transition = None
             if self.movie is not None:
                 self.movie.start(get_current_ms())
@@ -150,7 +150,7 @@ class GameScreen:
         elif len(self.player_1.play_notes) == 0:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
-            self.result_transition = ResultTransition(get_current_ms(), self.height)
+            self.result_transition = ResultTransition(self.height)
             audio.play_sound(self.sound_result_transition)
 
     def draw(self):
@@ -207,11 +207,11 @@ class Player:
         self.balloon_anim: Optional[BalloonAnimation] = None
         self.base_score_list: list[ScoreCounterAnimation] = []
         self.combo_display = Combo(self.combo, get_current_ms())
-        self.score_counter = ScoreCounter(self.score, get_current_ms())
+        self.score_counter = ScoreCounter(self.score)
 
         self.input_log: dict[float, tuple] = dict()
 
-        self.gauge = Gauge(get_current_ms(), self.difficulty, metadata[-1][self.difficulty][0])
+        self.gauge = Gauge(self.difficulty, metadata[-1][self.difficulty][0])
 
     def get_result_score(self):
         return self.score, self.good_count, self.ok_count, self.bad_count, self.total_drumroll, self.max_combo
@@ -326,7 +326,7 @@ class Player:
         self.curr_drumroll_count += 1
         self.total_drumroll += 1
         self.score += 100
-        self.base_score_list.append(ScoreCounterAnimation(get_current_ms(), 100))
+        self.base_score_list.append(ScoreCounterAnimation(100))
         if not isinstance(self.current_notes_draw[0], Drumroll):
             return
         self.current_notes_draw[0].color = max(0, 255 - (self.curr_drumroll_count * 10))
@@ -339,7 +339,7 @@ class Player:
         self.curr_balloon_count += 1
         self.total_drumroll += 1
         self.score += 100
-        self.base_score_list.append(ScoreCounterAnimation(get_current_ms(), 100))
+        self.base_score_list.append(ScoreCounterAnimation(100))
         if self.curr_balloon_count == note.count:
             self.is_balloon = False
             note.popped = True
@@ -377,22 +377,22 @@ class Player:
                 return
             big = curr_note.type == 3 or curr_note.type == 4
             if (curr_note.hit_ms - Player.TIMING_GOOD) + self.judge_offset <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_GOOD) + self.judge_offset:
-                self.draw_judge_list.append(Judgement(get_current_ms(), 'GOOD', big))
-                self.lane_hit_effect = LaneHitEffect(get_current_ms(), 'GOOD')
+                self.draw_judge_list.append(Judgement('GOOD', big))
+                self.lane_hit_effect = LaneHitEffect('GOOD')
                 self.good_count += 1
                 self.score += self.base_score
-                self.base_score_list.append(ScoreCounterAnimation(get_current_ms(), self.base_score))
+                self.base_score_list.append(ScoreCounterAnimation(self.base_score))
                 self.note_correct(game_screen, curr_note)
 
             elif (curr_note.hit_ms - Player.TIMING_OK) + self.judge_offset <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_OK) + self.judge_offset:
-                self.draw_judge_list.append(Judgement(get_current_ms(), 'OK', big))
+                self.draw_judge_list.append(Judgement('OK', big))
                 self.ok_count += 1
                 self.score += 10 * math.floor(self.base_score / 2 / 10)
-                self.base_score_list.append(ScoreCounterAnimation(get_current_ms(), 10 * math.floor(self.base_score / 2 / 10)))
+                self.base_score_list.append(ScoreCounterAnimation(10 * math.floor(self.base_score / 2 / 10)))
                 self.note_correct(game_screen, curr_note)
 
             elif (curr_note.hit_ms - Player.TIMING_BAD) + self.judge_offset <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_BAD) + self.judge_offset:
-                self.draw_judge_list.append(Judgement(get_current_ms(), 'BAD', big))
+                self.draw_judge_list.append(Judgement('BAD', big))
                 self.bad_count += 1
                 self.combo = 0
                 self.play_notes.popleft()
@@ -424,8 +424,8 @@ class Player:
             for key in config["keys"]:
                 if ray.is_key_pressed(ord(key)):
                     hit_type = config["type"]
-                    self.lane_hit_effect = LaneHitEffect(get_current_ms(), hit_type)
-                    self.draw_drum_hit_list.append(DrumHitEffect(get_current_ms(), hit_type, config["side"]))
+                    self.lane_hit_effect = LaneHitEffect(hit_type)
+                    self.draw_drum_hit_list.append(DrumHitEffect(hit_type, config["side"]))
 
                     sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
                     audio.play_sound(sound)
@@ -560,23 +560,17 @@ class Player:
             anim.draw(game_screen)
 
 class Judgement:
-    def __init__(self, game_screen, type: str, big: bool):
+    def __init__(self, type: str, big: bool):
         self.type = type
         self.big = big
         self.is_finished = False
-        current_ms = get_current_ms()
 
-        self.fade_animation_1 = Animation2.create_fade(132, initial_opacity=0.5, delay=100)
+        self.fade_animation_1 = Animation.create_fade(132, initial_opacity=0.5, delay=100)
+        self.fade_animation_2 = Animation.create_fade(316 - 233.3, delay=233.3)
+        self.move_animation = Animation.create_move(83, total_distance=15, start_position=144)
+        self.texture_animation = Animation.create_texture_change(100, textures=[(33, 50, 1), (50, 83, 2), (83, 100, 3), (100, float('inf'), 4)])
 
-        self.fade_animation_2 = Animation2.create_fade(316 - 233.3, delay=233.3)
-
-        self.move_animation = Animation2.create_move(83, total_distance=15, start_position=144)
-
-        self.texture_animation = Animation(current_ms, 100, 'texture_change')
-        self.texture_animation.params['textures'] = [(33, 50, 1), (50, 83, 2), (83, 100, 3), (100, float('inf'), 4)]
-
-    def update(self, game_screen):
-        current_ms = get_current_ms()
+    def update(self, current_ms):
         self.fade_animation_1.update(current_ms)
         self.fade_animation_2.update(current_ms)
         self.move_animation.update(current_ms)
@@ -610,10 +604,10 @@ class Judgement:
             ray.draw_texture(textures_2[10], 370, int(y), color)
 
 class LaneHitEffect:
-    def __init__(self, current_ms: float, type: str):
+    def __init__(self, type: str):
         self.type = type
         self.color = ray.fade(ray.WHITE, 0.5)
-        self.fade = Animation2.create_fade(150, delay=83, initial_opacity=0.5)
+        self.fade = Animation.create_fade(150, delay=83, initial_opacity=0.5)
         self.is_finished = False
 
     def update(self, current_ms: float):
@@ -632,12 +626,12 @@ class LaneHitEffect:
             ray.draw_texture(textures[6], 328, 192, self.color)
 
 class DrumHitEffect:
-    def __init__(self, current_ms: float, type: str, side: str):
+    def __init__(self, type: str, side: str):
         self.type = type
         self.side = side
         self.color = ray.fade(ray.WHITE, 1)
         self.is_finished = False
-        self.fade = Animation2.create_fade(100, delay=67)
+        self.fade = Animation.create_fade(100, delay=67)
 
     def update(self, current_ms: float):
         self.fade.update(current_ms)
@@ -753,15 +747,15 @@ class DrumrollCounter:
         self.is_finished = False
         self.total_duration = 1349
         self.drumroll_count = 0
-        self.fade_animation = Animation2.create_fade(166, delay=self.total_duration - 166)
-        self.stretch_animation = Animation(current_ms, 0, 'text_stretch')
+        self.fade_animation = Animation.create_fade(166, delay=self.total_duration - 166)
+        self.stretch_animation = Animation.create_text_stretch(0)
 
-    def update_count(self, current_ms: float, count: int, elapsed_time: float):
+    def update_count(self, count: int, elapsed_time: float):
         self.total_duration = elapsed_time + 1349
         self.fade_animation.delay = self.total_duration - 166
         if self.drumroll_count != count:
             self.drumroll_count = count
-            self.stretch_animation = Animation(current_ms, 50, 'text_stretch')
+            self.stretch_animation = Animation.create_text_stretch(50)
 
     def update(self, game_screen: GameScreen, current_ms: float, drumroll_count: int):
         self.stretch_animation.update(current_ms)
@@ -769,7 +763,7 @@ class DrumrollCounter:
 
         elapsed_time = current_ms - self.create_ms
         if drumroll_count != 0:
-            self.update_count(current_ms, drumroll_count, elapsed_time)
+            self.update_count(drumroll_count, elapsed_time)
         if self.fade_animation.is_finished:
             self.is_finished = True
 
@@ -793,16 +787,16 @@ class BalloonAnimation:
         self.balloon_count = 0
         self.balloon_total = balloon_total
         self.is_popped = False
-        self.fade_animation = Animation2.create_fade(166)
-        self.stretch_animation = Animation(current_ms, 0, 'text_stretch')
+        self.fade_animation = Animation.create_fade(166)
+        self.stretch_animation = Animation.create_text_stretch(0)
 
-    def update_count(self, current_ms: float, balloon_count: int):
+    def update_count(self, balloon_count: int):
         if self.balloon_count != balloon_count:
             self.balloon_count = balloon_count
-            self.stretch_animation = Animation(current_ms, 50, 'text_stretch')
+            self.stretch_animation = Animation.create_text_stretch(50)
 
     def update(self, game_screen: GameScreen, current_ms: float, balloon_count: int, is_popped: bool):
-        self.update_count(current_ms, balloon_count)
+        self.update_count(balloon_count)
         self.stretch_animation.update(current_ms)
         self.is_popped = is_popped
 
@@ -837,7 +831,7 @@ class BalloonAnimation:
 class Combo:
     def __init__(self, combo: int, current_ms: float):
         self.combo = combo
-        self.stretch_animation = Animation(current_ms, 0, 'text_stretch')
+        self.stretch_animation = Animation.create_text_stretch(0)
         self.color = [ray.fade(ray.WHITE, 1), ray.fade(ray.WHITE, 1), ray.fade(ray.WHITE, 1)]
         self.glimmer_dict = {0: 0, 1: 0, 2: 0}
         self.total_time = 250
@@ -851,7 +845,7 @@ class Combo:
     def update_count(self, current_ms: float, combo: int):
         if self.combo != combo:
             self.combo = combo
-            self.stretch_animation = Animation(current_ms, 50, 'text_stretch')
+            self.stretch_animation = Animation.create_text_stretch(50)
 
     def update(self, game_screen: GameScreen, current_ms: float, combo: int):
         self.update_count(current_ms, combo)
@@ -900,15 +894,14 @@ class Combo:
                     ray.draw_texture(game_screen.texture_combo_glimmer, x + (i * 30), y + self.glimmer_dict[j], self.color[j])
 
 class ScoreCounter:
-    def __init__(self, score: int, current_ms: float):
+    def __init__(self, score: int):
         self.score = score
-        self.create_ms = current_ms
-        self.stretch_animation = Animation(current_ms, 0, 'text_stretch')
+        self.stretch_animation = Animation.create_text_stretch(0)
 
     def update_count(self, current_ms: float, score: int):
         if self.score != score:
             self.score = score
-            self.stretch_animation = Animation(current_ms, 50, 'text_stretch')
+            self.stretch_animation = Animation.create_text_stretch(50)
 
     def update(self, current_ms: float, score: int):
         self.update_count(current_ms, score)
@@ -927,14 +920,14 @@ class ScoreCounter:
             ray.draw_texture_pro(game_screen.textures['lane_obi'][int(counter[i])+4], source_rect, dest_rect, ray.Vector2(0,0), 0, ray.WHITE)
 
 class ScoreCounterAnimation:
-    def __init__(self, current_ms: float, counter: int):
+    def __init__(self, counter: int):
         self.counter = counter
-        self.fade_animation_1 = Animation2.create_fade(50, initial_opacity=0.0, final_opacity=1.0)
-        self.move_animation_1 = Animation2.create_move(80, total_distance=-20, start_position=175)
-        self.fade_animation_2 = Animation2.create_fade(80, delay=366.74)
-        self.move_animation_2 = Animation2.create_move(66, total_distance=5, start_position=145, delay=80)
-        self.move_animation_3 = Animation2.create_move(66, delay=279.36, total_distance=-2, start_position=146)
-        self.move_animation_4 = Animation2.create_move(80, delay=366.74, total_distance=10, start_position=148)
+        self.fade_animation_1 = Animation.create_fade(50, initial_opacity=0.0, final_opacity=1.0)
+        self.move_animation_1 = Animation.create_move(80, total_distance=-20, start_position=175)
+        self.fade_animation_2 = Animation.create_fade(80, delay=366.74)
+        self.move_animation_2 = Animation.create_move(66, total_distance=5, start_position=145, delay=80)
+        self.move_animation_3 = Animation.create_move(66, delay=279.36, total_distance=-2, start_position=146)
+        self.move_animation_4 = Animation.create_move(80, delay=366.74, total_distance=10, start_position=148)
 
         self.color = ray.fade(ray.Color(254, 102, 0, 255), 1.0)
         self.is_finished = False
@@ -984,9 +977,9 @@ class SongInfo:
     FADE_DURATION = 366
     DISPLAY_DURATION = 1666
 
-    def __init__(self, current_ms: float, song_name: str, genre: str):
-        self.fade_in = Animation2.create_fade(self.FADE_DURATION, initial_opacity=0.0, final_opacity=1.0)
-        self.fade_out = Animation2.create_fade(self.FADE_DURATION, delay=self.FADE_DURATION + self.DISPLAY_DURATION)
+    def __init__(self, song_name: str, genre: str):
+        self.fade_in = Animation.create_fade(self.FADE_DURATION, initial_opacity=0.0, final_opacity=1.0)
+        self.fade_out = Animation.create_fade(self.FADE_DURATION, delay=self.FADE_DURATION + self.DISPLAY_DURATION)
 
         self.song_name = song_name
         self.genre = genre
@@ -1014,11 +1007,11 @@ class SongInfo:
             self.song_name_fade = ray.fade(ray.WHITE, 1 - self.fade_out.attribute)
 
         if self.fade_out.is_finished:
-            self._reset_animations(current_ms)
+            self._reset_animations()
 
-    def _reset_animations(self, current_ms: float):
-        self.fade_in = Animation2.create_fade(self.FADE_DURATION, initial_opacity=0.0, final_opacity=1.0)
-        self.fade_out = Animation2.create_fade(self.FADE_DURATION, delay=self.FADE_DURATION + self.DISPLAY_DURATION)
+    def _reset_animations(self):
+        self.fade_in = Animation.create_fade(self.FADE_DURATION, initial_opacity=0.0, final_opacity=1.0)
+        self.fade_out = Animation.create_fade(self.FADE_DURATION, delay=self.FADE_DURATION + self.DISPLAY_DURATION)
 
     def draw(self, game_screen: GameScreen):
         song_texture_index = (global_data.songs_played % 4) + 8
@@ -1033,8 +1026,8 @@ class SongInfo:
         self.song_title.draw(text_x, text_y, self.song_name_fade)
 
 class ResultTransition:
-    def __init__(self, current_ms: float, screen_height: int):
-        self.move = Animation2.create_move(983.33, start_position=0, total_distance=screen_height//2, ease_out='quadratic')
+    def __init__(self, screen_height: int):
+        self.move = Animation.create_move(983.33, start_position=0, total_distance=screen_height//2, ease_out='quadratic')
 
         self.is_finished = False
 
@@ -1057,7 +1050,7 @@ class ResultTransition:
             x += texture_2.width
 
 class Gauge:
-    def __init__(self, current_ms: float, difficulty: int, level: int):
+    def __init__(self, difficulty: int, level: int):
         self.gauge_length = 0
         self.difficulty = min(3, difficulty)
         self.clear_start = [0, 0, 68, 68]
@@ -1110,18 +1103,6 @@ class Gauge:
         self.rainbow_fade_in = None
         self.rainbow_animation = None
 
-    def _create_rainbow_anim(self, current_ms):
-        anim = Animation(current_ms, (16.67*8) * 3, 'texture_change')
-        anim.params['textures'] = []
-        for i in range(8):
-            anim.params['textures'].append(((16.67* 3)*i, (16.67 * 3)*(i+1), i))
-        anim.params['textures'] = tuple(anim.params['textures'])
-        return anim
-
-    def _create_anim(self, current_ms: float, init: float, final: float):
-        anim = Animation2.create_fade(450, initial_opacity=init, final_opacity=final)
-        return anim
-
     def update(self, current_ms: float, good_count: int, ok_count: int, bad_count: int, total_notes: int):
         gauge_length = int(((good_count +
             (ok_count * self.table[self.difficulty][self.level]["ok_multiplier"] +
@@ -1129,9 +1110,9 @@ class Gauge:
         previous_length = self.gauge_length
         self.gauge_length = min(87, gauge_length)
         if self.gauge_length == 87 and self.rainbow_fade_in is None:
-            self.rainbow_fade_in = self._create_anim(current_ms, 0.0, 1.0)
+            self.rainbow_fade_in = Animation.create_fade(450, initial_opacity=0.0, final_opacity=1.0)
         if self.gauge_length > previous_length:
-            self.gauge_update_anim = self._create_anim(current_ms, 1.0, 0.0)
+            self.gauge_update_anim = Animation.create_fade(450)
 
         if self.gauge_update_anim is not None:
             self.gauge_update_anim.update(current_ms)
@@ -1142,7 +1123,7 @@ class Gauge:
             self.rainbow_fade_in.update(current_ms)
 
         if self.rainbow_animation is None:
-            self.rainbow_animation = self._create_rainbow_anim(current_ms)
+            self.rainbow_animation = Animation.create_texture_change((16.67*8) * 3, textures=[((16.67 * 3) * i, (16.67 * 3) * (i + 1), i) for i in range(8)])
         else:
             self.rainbow_animation.update(current_ms)
             if self.rainbow_animation.is_finished or self.gauge_length < 87:

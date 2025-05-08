@@ -3,113 +3,6 @@ from typing import Optional
 from libs.utils import get_current_ms
 
 
-class Animation:
-    def __init__(self, current_ms: float, duration: float, type: str):
-        self.type = type
-        self.start_ms = current_ms
-        self.attribute = 0
-        self.duration = duration
-        self.params = dict()
-        self.is_finished = False
-
-    def update(self, current_ms: float):
-        if self.type == 'move':
-            self.move(current_ms,
-                self.duration,
-                self.params['total_distance'],
-                self.params['start_position'],
-                delay=self.params.get('delay', 0.0),
-                ease_in=self.params.get('ease_in', None),
-                ease_out=self.params.get('ease_out', None))
-        elif self.type == 'texture_change':
-            self.texture_change(current_ms,
-                self.duration,
-                self.params['textures'])
-        elif self.type == 'text_stretch':
-            self.text_stretch(current_ms,
-                self.duration)
-        elif self.type == 'texture_resize':
-            self.texture_resize(current_ms,
-                self.duration,
-                initial_size=self.params.get('initial_size', 1.0),
-                final_size=self.params.get('final_size', 1.0),
-                delay=self.params.get('delay', 0.0))
-            if self.params.get('reverse', None) is not None and current_ms - self.start_ms >= self.duration + self.params.get('delay', 0.0):
-                self.texture_resize(current_ms,
-                    self.duration,
-                    final_size=self.params.get('initial_size', 1.0),
-                    initial_size=self.params.get('final_size', 1.0),
-                    delay=self.params.get('delay', 0.0) + self.duration)
-
-    def _ease_out_progress(self, progress: float, ease: str | None) -> float:
-        if ease == 'quadratic':
-            return progress * (2 - progress)
-        elif ease == 'cubic':
-            return 1 - pow(1 - progress, 3)
-        elif ease == 'exponential':
-            return 1 - pow(2, -10 * progress)
-        else:
-            return progress
-    def _ease_in_progress(self, progress: float, ease: str | None) -> float:
-        if ease == 'quadratic':
-            return progress * progress
-        elif ease == 'cubic':
-            return progress * progress * progress
-        elif ease == 'exponential':
-            return pow(2, 10 * (progress - 1))
-        else:
-            return progress
-
-    def move(self, current_ms: float, duration: float, total_distance: float, start_position: float, delay: float, ease_in: str | None, ease_out: str | None) -> None:
-        elapsed_time = current_ms - self.start_ms
-        if elapsed_time < delay:
-            self.attribute = start_position
-
-        elapsed_time -= delay
-        if elapsed_time <= duration:
-            if ease_in is not None:
-                progress = self._ease_in_progress(elapsed_time / duration, ease_in)
-            elif ease_out is not None:
-                progress = self._ease_out_progress(elapsed_time / duration, ease_out)
-            else:
-                progress = elapsed_time / duration
-            self.attribute = start_position + (total_distance * progress)
-        else:
-            self.attribute = start_position + total_distance
-            self.is_finished = True
-    def texture_change(self, current_ms: float, duration: float, textures: list[tuple[float, float, int]]) -> None:
-        elapsed_time = current_ms - self.start_ms
-        if elapsed_time <= duration:
-            for start, end, index in textures:
-                if start < elapsed_time <= end:
-                    self.attribute = index
-        else:
-            self.is_finished = True
-    def text_stretch(self, current_ms: float, duration: float):
-        elapsed_time = current_ms - self.start_ms
-        if elapsed_time <= duration:
-            self.attribute = 2 + 5 * (elapsed_time // 25)
-        elif elapsed_time <= duration + 116:
-            frame_time = (elapsed_time - duration) // 16.57
-            self.attribute = 2 + 10 - (2 * (frame_time + 1))
-        else:
-            self.attribute = 0
-            self.is_finished = True
-    def texture_resize(self, current_ms: float, duration: float, initial_size: float, final_size: float, delay: float):
-        elapsed_time = current_ms - self.start_ms
-        if elapsed_time < delay:
-            self.attribute = initial_size
-        elapsed_time -= delay
-        if elapsed_time >= duration:
-            self.attribute = final_size
-            self.is_finished = True
-        elif elapsed_time < duration:
-            progress = elapsed_time / duration
-            self.attribute = initial_size + ((final_size - initial_size) * progress)
-        else:
-            self.attribute = final_size
-            self.is_finished = True
-
 class BaseAnimation():
     def __init__(self, duration: float, delay: float = 0.0):
         """
@@ -213,33 +106,134 @@ class MoveAnimation(BaseAnimation):
             progress = self._apply_easing(progress, self.ease_in, self.ease_out)
             self.attribute = self.start_position + (self.total_distance * progress)
 
+class TextureChangeAnimation(BaseAnimation):
+    def __init__(self, duration: float, textures: list[tuple[float, float, int]]):
+        super().__init__(duration)
+        self.textures = textures
+    def update(self, current_time_ms: float):
+        elapsed_time = current_time_ms - self.start_ms
+        if elapsed_time <= self.duration:
+            for start, end, index in self.textures:
+                if start < elapsed_time <= end:
+                    self.attribute = index
+        else:
+            self.is_finished = True
 
-class Animation2:
+class TextStretchAnimation(BaseAnimation):
+    def __init__(self, duration: float):
+        super().__init__(duration)
+    def update(self, current_time_ms: float):
+        elapsed_time = current_time_ms - self.start_ms
+        if elapsed_time <= self.duration:
+            self.attribute = 2 + 5 * (elapsed_time // 25)
+        elif elapsed_time <= self.duration + 116:
+            frame_time = (elapsed_time - self.duration) // 16.57
+            self.attribute = 2 + 10 - (2 * (frame_time + 1))
+        else:
+            self.attribute = 0
+            self.is_finished = True
+
+class TextureResizeAnimation(BaseAnimation):
+    def __init__(self, duration: float, initial_size: float = 1.0,
+                     final_size: float = 0.0, delay: float = 0.0,
+                     reverse_delay: Optional[float] = None):
+        super().__init__(duration, delay)
+        self.initial_size = initial_size
+        self.final_size = final_size
+        self.reverse_delay = reverse_delay
+
+    def update(self, current_time_ms: float):
+        elapsed_time = current_time_ms - self.start_ms
+
+        if elapsed_time <= self.delay:
+            self.attribute = self.initial_size
+        elif elapsed_time >= self.delay + self.duration:
+            self.attribute = self.final_size
+
+            if self.reverse_delay is not None:
+                self.start_ms = current_time_ms
+                self.delay = self.reverse_delay
+                self.initial_size, self.final_size = self.final_size, self.initial_size
+                self.reverse_delay = None
+            else:
+                self.is_finished = True
+        else:
+            animation_time = elapsed_time - self.delay
+            progress = animation_time / self.duration
+            self.attribute = self.initial_size + ((self.final_size - self.initial_size) * progress)
+
+
+class Animation:
     """Factory for creating different types of animations."""
 
     @staticmethod
     def create_fade(duration: float, **kwargs) -> FadeAnimation:
-        """Create a fade animation."""
+        """Create a fade animation.
+
+        Args:
+            duration: Length of the fade in milliseconds
+            delay: Time to wait before starting the fade
+            initial_opacity: Default is 1.0
+            final_opacity: Default is 0.0
+            reverse_delay: If provided, fade will play in reverse after this delay
+            ease_in: Control ease into the fade
+            ease_out: Control ease out of the fade
+
+        Easing options:
+            quadratic,
+            cubic,
+            exponential
+        """
         return FadeAnimation(duration, **kwargs)
 
     @staticmethod
     def create_move(duration: float, **kwargs) -> MoveAnimation:
-        """Create a movement animation."""
+        """Create a movement animation.
+
+        Args:
+            duration: Length of the move in milliseconds
+            start_position: The coordinates of the object before the move
+            total_distance: The distance travelled from the start to end position
+            delay: Time to wait before starting the move
+            ease_in: Control ease into the move
+            ease_out: Control ease out of the move
+
+        Easing options:
+            quadratic,
+            cubic,
+            exponential
+        """
         return MoveAnimation(duration, **kwargs)
-    '''
+
 
     @staticmethod
     def create_texture_change(duration: float, **kwargs) -> TextureChangeAnimation:
-        """Create a texture change animation."""
+        """Create a texture change animation
+
+        Args:
+            duration: Length of the change in milliseconds
+            textures: Passed in as a tuple of the starting millisecond, ending millisecond, and texture index
+        """
         return TextureChangeAnimation(duration, **kwargs)
 
     @staticmethod
     def create_text_stretch(duration: float) -> TextStretchAnimation:
-        """Create a text stretch animation."""
+        """Create a text stretch animation.
+
+        Args:
+            duration: Length of the stretch in milliseconds
+        """
         return TextStretchAnimation(duration)
 
     @staticmethod
     def create_texture_resize(duration: float, **kwargs) -> TextureResizeAnimation:
-        """Create a texture resize animation."""
+        """Create a texture resize animation.
+
+        Args:
+            duration: Length of the change in milliseconds
+            initial_size: Default is 1.0
+            final_size: Default is 0.0
+            delay: Time to wait before starting the resize
+            reverse_delay: If provided, resize will play in reverse after this delay
+        """
         return TextureResizeAnimation(duration, **kwargs)
-    '''

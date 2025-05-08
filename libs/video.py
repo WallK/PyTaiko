@@ -6,7 +6,10 @@ from libs.utils import get_current_ms
 
 
 class VideoPlayer:
-    def __init__(self, path):
+    def __init__(self, path: str):
+        """Initialize a video player instance. Audio must have the same name and an ogg extension.
+        Todo: extract audio from video directly
+        """
         self.is_finished_list = [False, False]
         self.video_path = path
         self.video = moviepy.VideoFileClip(path)
@@ -32,7 +35,7 @@ class VideoPlayer:
         if time_played > ending_lenience:
             self.is_finished_list[1] = True
 
-    def _load_frame(self, index):
+    def _load_frame(self, index: int):
         """Load a specific frame into the buffer"""
         if index >= len(self.frame_timestamps) or index < 0:
             return None
@@ -75,20 +78,26 @@ class VideoPlayer:
                     texture = self.frame_buffer.pop(ts)
                     ray.unload_texture(texture)
 
-    def is_started(self):
+    def is_started(self) -> bool:
+        """Returns boolean value if the video has begun"""
         return self.start_ms is not None
 
-    def start(self, current_ms):
+    def start(self, current_ms: float) -> None:
+        """Start video playback at call time"""
         self.start_ms = current_ms
         for i in range(min(self.buffer_size, len(self.frame_timestamps))):
             self._load_frame(i)
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
+        """Check if video is finished playing"""
         return all(self.is_finished_list)
 
-    def set_volume(self, volume):
+    def set_volume(self, volume: float) -> None:
+        """Set video volume, takes float value from 0.0 to 1.0"""
         audio.set_music_volume(self.audio, volume)
+
     def update(self):
+        """Updates video playback, advancing frames and audio"""
         self._audio_manager()
 
         if self.frame_index >= len(self.frame_timestamps) - 1:
@@ -113,10 +122,12 @@ class VideoPlayer:
                 self._load_frame(current_index + i)
 
     def draw(self):
+        """Draw video frames to the raylib canvas"""
         if self.current_frame is not None:
             ray.draw_texture(self.current_frame, 0, 0, ray.WHITE)
 
     def stop(self):
+        """Stops the video, audio, and clears its buffer"""
         for timestamp, texture in self.frame_buffer.items():
             ray.unload_texture(texture)
         self.frame_buffer.clear()

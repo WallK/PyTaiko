@@ -1,3 +1,4 @@
+import hashlib
 import math
 from collections import deque
 from dataclasses import dataclass, field, fields
@@ -375,6 +376,10 @@ class TJAParser:
                         note = Balloon(note)
                         note.count = int(balloon[balloon_index])
                         balloon_index += 1
+                    elif item == '8':
+                        new_pixels_per_ms = play_note_list[-1].pixels_per_frame / (1000 / 60)
+                        note.load_ms = note.hit_ms - (self.distance / new_pixels_per_ms)
+                        note.pixels_per_frame = play_note_list[-1].pixels_per_frame
                     self.current_ms += increment
                     play_note_list.append(note)
                     self.get_moji(play_note_list, ms_per_measure)
@@ -389,3 +394,10 @@ class TJAParser:
         draw_note_list = deque(sorted(play_note_list, key=lambda n: n.load_ms))
         bar_list = deque(sorted(bar_list, key=lambda b: b.load_ms))
         return play_note_list, draw_note_list, bar_list
+
+    def hash_note_data(self, notes: list):
+        n = hashlib.sha256()
+        for bar in notes:
+            for part in bar:
+                n.update(part.encode('utf-8'))
+        return n.hexdigest()

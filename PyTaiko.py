@@ -1,3 +1,5 @@
+import sqlite3
+
 import pyray as ray
 
 from libs.audio import audio
@@ -16,7 +18,29 @@ class Screens:
     GAME = "GAME"
     RESULT = "RESULT"
 
+def create_song_db():
+    with sqlite3.connect('scores.db') as con:
+        cursor = con.cursor()
+        create_table_query = '''
+        CREATE TABLE IF NOT EXISTS Scores (
+            hash TEXT PRIMARY KEY,
+            en_name TEXT NOT NULL,
+            jp_name TEXT NOT NULL,
+            diff INTEGER,
+            score INTEGER,
+            good INTEGER,
+            ok INTEGER,
+            bad INTEGER,
+            drumroll INTEGER,
+            combo INTEGER
+        );
+        '''
+        cursor.execute(create_table_query)
+        con.commit()
+    print("Scores database created successfully")
+
 def main():
+    create_song_db()
     screen_width: int = get_config()["video"]["screen_width"]
     screen_height: int = get_config()["video"]["screen_height"]
     render_width, render_height = ray.get_render_width(), ray.get_render_height()

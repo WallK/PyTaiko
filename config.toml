@@ -14,7 +14,7 @@ right_don = ['J']
 right_kat = ['K']
 
 [audio]
-device_type = 'ASIO'
+device_type = 'WASAPI'
 asio_buffer = 6
 
 [video]

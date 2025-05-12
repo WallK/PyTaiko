@@ -86,8 +86,10 @@ class FadeAnimation(BaseAnimation):
 class MoveAnimation(BaseAnimation):
     def __init__(self, duration: float, total_distance: int = 0,
                       start_position: int = 0, delay: float = 0.0,
+                      reverse_delay: Optional[float] = None,
                       ease_in: Optional[str] = None, ease_out: Optional[str] = None):
         super().__init__(duration, delay)
+        self.reverse_delay = reverse_delay
         self.total_distance = total_distance
         self.start_position = start_position
         self.ease_in = ease_in
@@ -100,7 +102,14 @@ class MoveAnimation(BaseAnimation):
 
         elif elapsed_time >= self.delay + self.duration:
             self.attribute = self.start_position + self.total_distance
-            self.is_finished = True
+            if self.reverse_delay is not None:
+                self.start_ms = current_time_ms
+                self.delay = self.reverse_delay
+                self.start_position = self.start_position + self.total_distance
+                self.total_distance = -(self.total_distance)
+                self.reverse_delay = None
+            else:
+                self.is_finished = True
         else:
             progress = (elapsed_time - self.delay) / self.duration
             progress = self._apply_easing(progress, self.ease_in, self.ease_out)
@@ -194,6 +203,7 @@ class Animation:
             duration: Length of the move in milliseconds
             start_position: The coordinates of the object before the move
             total_distance: The distance travelled from the start to end position
+            reverse_delay: If provided, move will play in reverse after this delay
             delay: Time to wait before starting the move
             ease_in: Control ease into the move
             ease_out: Control ease out of the move

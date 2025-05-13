@@ -160,8 +160,9 @@ class GameScreen:
         self.on_screen_start()
         self.current_ms = get_current_ms() - self.start_ms
         if (self.current_ms >= self.tja.offset*1000 + self.start_delay) and not self.song_started:
-            if not audio.is_sound_playing(self.song_music):
-                audio.play_sound(self.song_music)
+            if self.song_music is not None:
+                if not audio.is_sound_playing(self.song_music):
+                    audio.play_sound(self.song_music)
             if self.movie is not None:
                 self.movie.start(get_current_ms())
             self.song_started = True
@@ -252,6 +253,7 @@ class Player:
         self.gauge_hit_effect: list[GaugeHitEffect] = []
 
         self.autoplay_hit_side = 'L'
+        self.last_subdivision = -1
 
     def get_result_score(self):
         return self.score, self.good_count, self.ok_count, self.bad_count, self.total_drumroll, self.max_combo
@@ -475,30 +477,54 @@ class Player:
                     self.check_note(game_screen, config["note_type"])
                     self.input_log[game_screen.current_ms] = (hit_type, key)
 
-    def autoplay_manager(self, game_screen):
+    def autoplay_manager(self, game_screen: GameScreen):
         if not get_config()["general"]["autoplay"]:
             return
         if len(self.play_notes) == 0:
             return
         note = self.play_notes[0]
-        if game_screen.current_ms >= note.hit_ms and note.type != 8:
-            hit_type = 'DON'
-            if note.type == 2 or note.type == 4:
-                hit_type = 'KAT'
-            self.lane_hit_effect = LaneHitEffect(hit_type)
-            if self.autoplay_hit_side == 'L':
-                self.autoplay_hit_side = 'R'
-            else:
-                self.autoplay_hit_side = 'L'
-            self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
-            sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
-            audio.play_sound(sound)
-            type = note.type
-            if type == 6 or type == 9:
-                type = 3
-            elif type == 5 or type == 7:
-                type = 1
-            self.check_note(game_screen, type)
+        if self.is_drumroll or self.is_balloon:
+            subdivision_in_ms = game_screen.current_ms // ((60000 * 4 / game_screen.tja.bpm) / 24)
+            if subdivision_in_ms > self.last_subdivision:
+                self.last_subdivision = subdivision_in_ms
+                hit_type = 'DON'
+                self.lane_hit_effect = LaneHitEffect(hit_type)
+                if self.autoplay_hit_side == 'L':
+                    self.autoplay_hit_side = 'R'
+                else:
+                    self.autoplay_hit_side = 'L'
+                self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
+                audio.play_sound(game_screen.sound_don)
+                type = note.type
+                if type == 6 or type == 9:
+                    type = 3
+                elif type == 5 or type == 7:
+                    type = 1
+                self.check_note(game_screen, type)
+        else:
+            while game_screen.current_ms >= note.hit_ms and note.type <= 4:
+                hit_type = 'DON'
+                if note.type == 2 or note.type == 4:
+                    hit_type = 'KAT'
+                self.lane_hit_effect = LaneHitEffect(hit_type)
+                if self.autoplay_hit_side == 'L':
+                    self.autoplay_hit_side = 'R'
+                else:
+                    self.autoplay_hit_side = 'L'
+                self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
+                sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
+                audio.play_sound(sound)
+                type = note.type
+                if type == 6 or type == 9:
+                    type = 3
+                elif type == 5 or type == 7:
+                    type = 1
+                self.check_note(game_screen, type)
+                if len(self.play_notes) > 0:
+                    note = self.play_notes[0]
+                    print(note)
+                else:
+                    break
 
 
     def update(self, game_screen: GameScreen):

@@ -101,8 +101,8 @@ def main():
             ray.toggle_fullscreen()
 
         next_screen = screen.update()
-        screen.draw()
         ray.clear_background(ray.BLACK)
+        screen.draw()
 
         if next_screen is not None:
             current_screen = next_screen

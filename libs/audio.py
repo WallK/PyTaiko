@@ -5,7 +5,6 @@ import time
 import wave
 from threading import Lock, Thread
 
-import pyray as ray
 from numpy import (
     abs as np_abs,
 )
@@ -413,10 +412,10 @@ class Music:
             except Exception:
                 raise Exception("unable to close music stream")
 
-class ASIOEngine:
-    def __init__(self):
+class AudioEngine:
+    def __init__(self, type: str):
         self.target_sample_rate = 48000
-        self.buffer_size = get_config()["audio"]["asio_buffer"]
+        self.buffer_size = get_config()["audio"]["buffer_size"]
         self.sounds = {}
         self.music_streams = {}
         self.stream = None
@@ -431,6 +430,7 @@ class ASIOEngine:
         # Threading for music stream updates
         self.update_thread = None
         self.update_thread_running = False
+        self.type = type
 
     def _initialize_asio(self):
         """Set up ASIO device"""
@@ -438,11 +438,12 @@ class ASIOEngine:
         hostapis = sd.query_hostapis()
         asio_api_index = -1
         for i, api in enumerate(hostapis):
-            if isinstance(api, dict) and 'name' in api and api['name'] == 'ASIO':
+            if isinstance(api, dict) and 'name' in api and api['name'] == self.type:
                 asio_api_index = i
                 break
 
-        if asio_api_index is not None:
+        print(hostapis)
+        if isinstance(hostapis, tuple):
             asio_api = hostapis[asio_api_index]
             if isinstance(asio_api, dict) and 'default_output_device' in asio_api:
                 default_asio_device = asio_api['default_output_device']
@@ -461,9 +462,7 @@ class ASIOEngine:
                     self.output_channels = 2
                 return True
             else:
-                print("No default ASIO device found, using system default.")
-        else:
-            print("ASIO API not found, using system default device.")
+                print("ASIO API not found, using system default device.")
 
         # If we get here, use default system device
         self.device_id = None
@@ -740,21 +739,5 @@ class ASIOEngine:
             return self.music_streams[music].get_time_played()
         raise ValueError(f"Music stream {music} not initialized")
 
-class AudioEngineWrapper:
-    def __init__(self, host_api):
-        self.host_api = host_api
-        if host_api == 'WASAPI':
-            self._module = ray
-        elif host_api == 'ASIO':
-            self._module = ASIOEngine()
-        else:
-            raise Exception("Invalid host API passed to wrapper")
-    def __getattr__(self, name):
-            try:
-                return getattr(self._module, name)
-            except AttributeError:
-                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}' and '{type(self._module).__name__}' has no attribute '{name}'")
-
-audio = AudioEngineWrapper(get_config()["audio"]["device_type"])
-if get_config()["audio"]["device_type"] == 'ASIO':
-    audio.set_master_volume(0.75)
+audio = AudioEngine(get_config()["audio"]["device_type"])
+audio.set_master_volume(0.75)

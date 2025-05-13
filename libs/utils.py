@@ -120,6 +120,7 @@ def reset_session():
 
 @dataclass
 class GlobalData:
+    textures: dict[str, list[ray.Texture]] = field(default_factory=lambda: dict())
     songs_played: int = 0
 
 global_data = GlobalData()

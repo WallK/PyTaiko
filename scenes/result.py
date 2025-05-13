@@ -21,6 +21,7 @@ class ResultScreen:
         self.width = width
         self.height = height
         self.screen_init = False
+        self.fade_out = None
 
     def load_textures(self):
         zip_file = Path('Graphics/lumendata/enso_result.zip')
@@ -41,6 +42,7 @@ class ResultScreen:
             self.song_info = FontText(session_data.song_title, 40).texture
             audio.play_sound(self.bgm)
             self.fade_in = FadeIn(get_current_ms())
+            self.fade_out = None
             self.gauge = None
             self.score_delay = None
             self.score_animator = ScoreAnimator(session_data.result_score)
@@ -62,7 +64,6 @@ class ResultScreen:
     def on_screen_end(self):
         self.screen_init = False
         global_data.songs_played += 1
-        audio.play_sound(self.sound_don)
         for zip in self.textures:
             for texture in self.textures[zip]:
                 ray.unload_texture(texture)
@@ -113,11 +114,16 @@ class ResultScreen:
             if ray.is_key_pressed(ord(don)):
                 if not self.is_skipped:
                     self.is_skipped = True
-                    audio.play_sound(self.sound_don)
                 else:
-                    return self.on_screen_end()
+                    if self.fade_out is None:
+                        self.fade_out = FadeOut()
+                audio.play_sound(self.sound_don)
         self.update_score_animation(self.is_skipped)
 
+        if self.fade_out is not None:
+            self.fade_out.update(get_current_ms())
+            if self.fade_out.is_finished:
+                return self.on_screen_end()
 
     def draw_score_info(self):
         if self.good > -1:
@@ -175,6 +181,9 @@ class ResultScreen:
         if self.fade_in is not None:
             self.fade_in.draw(self.width, self.height, self.textures['result'][326], self.textures['result'][327])
 
+        if self.fade_out is not None:
+            self.fade_out.draw(self.width, self.height)
+
 
 class FadeIn:
     def __init__(self, current_ms: float):
@@ -206,7 +215,7 @@ class FontText:
         codepoints_no_dup = set()
         codepoints_no_dup.update(session_data.song_title)
         codepoints = ray.load_codepoints(''.join(codepoints_no_dup), codepoint_count)
-        self.font = ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 32, codepoints, 0)
+        self.font = ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 40, codepoints, 0)
         self.text = OutlinedText(self.font, str(text), font_size, ray.WHITE, ray.BLACK, outline_thickness=4)
 
         self.texture = self.text.texture
@@ -287,3 +296,17 @@ class Gauge:
         else:
             draw_scaled_texture(textures[187], 1058, 124, (10/11), color)
             draw_scaled_texture(textures[188], 1182, 115, (10/11), color)
+
+class FadeOut:
+    def __init__(self) -> None:
+        self.texture = global_data.textures['scene_change_fade'][0]
+        self.fade_out = Animation.create_fade(1000, initial_opacity=0.0, final_opacity=1.0)
+        self.is_finished = False
+    def update(self, current_time_ms: float):
+        self.fade_out.update(current_time_ms)
+        print(self.fade_out.attribute)
+        self.is_finished = self.fade_out.is_finished
+    def draw(self, screen_width: int, screen_height: int):
+        src = ray.Rectangle(0, 0, self.texture.width, self.texture.height)
+        dst = ray.Rectangle(0, 0, screen_width, screen_height)
+        ray.draw_texture_pro(self.texture, src, dst, ray.Vector2(0,0), 0, ray.fade(ray.WHITE, self.fade_out.attribute))

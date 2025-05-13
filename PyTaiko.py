@@ -1,9 +1,10 @@
 import sqlite3
+from pathlib import Path
 
 import pyray as ray
 
 from libs.audio import audio
-from libs.utils import get_config
+from libs.utils import get_config, global_data, load_all_textures_from_zip
 from scenes.entry import EntryScreen
 from scenes.game import GameScreen
 from scenes.result import ResultScreen
@@ -89,6 +90,7 @@ def main():
     #rl_set_blend_factors_separate(RL_SRC_ALPHA, RL_ONE_MINUS_SRC_ALPHA, RL_ONE, RL_ONE_MINUS_SRC_ALPHA, RL_FUNC_ADD, RL_FUNC_ADD)
     ray.rl_set_blend_factors_separate(0x302, 0x303, 1, 0x303, 0x8006, 0x8006)
     ray.set_exit_key(ray.KeyboardKey.KEY_A)
+    global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
     while not ray.window_should_close():
 
         ray.begin_texture_mode(target)
@@ -100,10 +102,7 @@ def main():
 
         next_screen = screen.update()
         screen.draw()
-        if screen == title_screen:
-            ray.clear_background(ray.BLACK)
-        else:
-            ray.clear_background(ray.WHITE)
+        ray.clear_background(ray.BLACK)
 
         if next_screen is not None:
             current_screen = next_screen

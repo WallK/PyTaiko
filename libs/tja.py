@@ -67,6 +67,11 @@ class TJAParser:
 
         #Defined on file_to_data()
         self.data = []
+        with open(self.file_path, 'rt', encoding='utf-8-sig') as tja_file:
+            for line in tja_file:
+                line = strip_comments(line).strip()
+                if line != '':
+                    self.data.append(str(line))
 
         #Defined on get_metadata()
         self.title = ''
@@ -88,16 +93,7 @@ class TJAParser:
         self.barline_display = True
         self.gogo_time = False
 
-    def _file_to_data(self):
-        with open(self.file_path, 'rt', encoding='utf-8-sig') as tja_file:
-            for line in tja_file:
-                line = strip_comments(line).strip()
-                if line != '':
-                    self.data.append(str(line))
-            return self.data
-
     def get_metadata(self):
-        self._file_to_data()
         current_diff = None  # Track which difficulty we're currently processing
 
         for item in self.data:
@@ -173,7 +169,6 @@ class TJAParser:
                 self.bpm, self.wave, self.offset, self.demo_start, self.course_data]
 
     def data_to_notes(self, diff):
-        self._file_to_data()
         note_start = -1
         note_end = -1
         target_found = False
@@ -393,8 +388,6 @@ class TJAParser:
         # Bars can be sorted like this because they don't need hit detection
         draw_note_list = deque(sorted(play_note_list, key=lambda n: n.load_ms))
         bar_list = deque(sorted(bar_list, key=lambda b: b.load_ms))
-        for note in play_note_list:
-            print(note)
         return play_note_list, draw_note_list, bar_list
 
     def hash_note_data(self, notes: list):

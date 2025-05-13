@@ -80,10 +80,6 @@ class GameScreen:
         self.textures.update(load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/base1p.zip')))
         self.textures.update(load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/don1p.zip')))
 
-
-        self.result_transition_1 = load_texture_from_zip(Path('Graphics/lumendata/enso_result.zip'), 'retry_game_img00125.png')
-        self.result_transition_2 = load_texture_from_zip(Path('Graphics/lumendata/enso_result.zip'), 'retry_game_img00126.png')
-
     def load_sounds(self):
         sounds_dir = Path("Sounds")
         self.sound_don = audio.load_sound(str(sounds_dir / "inst_00_don.wav"))
@@ -202,7 +198,7 @@ class GameScreen:
         if self.song_info is not None:
             self.song_info.draw(self)
         if self.result_transition is not None:
-            self.result_transition.draw(self.width, self.height, self.result_transition_1, self.result_transition_2)
+            self.result_transition.draw(self.width, self.height, global_data.textures['shutter'][0], global_data.textures['shutter'][1])
 
 class Player:
     TIMING_GOOD = 25.0250015258789
@@ -1124,7 +1120,7 @@ class SongInfo:
         codepoint_count = ray.ffi.new('int *', 0)
         unique_codepoints = set(text)
         codepoints = ray.load_codepoints(''.join(unique_codepoints), codepoint_count)
-        return ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 32, codepoints, 0)
+        return ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 40, codepoints, 0)
 
     def update(self, current_ms: float):
         self.fade_in.update(current_ms)

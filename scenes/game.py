@@ -472,7 +472,8 @@ class Player:
                     self.draw_drum_hit_list.append(DrumHitEffect(hit_type, config["side"]))
 
                     sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
-                    audio.play_sound(sound)
+                    if get_config()["general"]["sfx"]:
+                        audio.play_sound(sound)
 
                     self.check_note(game_screen, config["note_type"])
                     self.input_log[game_screen.current_ms] = (hit_type, key)

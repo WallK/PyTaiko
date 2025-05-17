@@ -5,9 +5,7 @@ import time
 import wave
 from threading import Lock, Thread
 
-from numpy import (
-    abs as np_abs,
-)
+from numpy import abs as np_abs
 from numpy import (
     arange,
     column_stack,
@@ -20,9 +18,7 @@ from numpy import (
     uint8,
     zeros,
 )
-from numpy import (
-    max as np_max,
-)
+from numpy import max as np_max
 
 os.environ["SD_ENABLE_ASIO"] = "1"
 import sounddevice as sd

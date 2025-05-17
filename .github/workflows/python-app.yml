@@ -43,7 +43,8 @@ jobs:
                   output-dir: .
                   include-module: raylib,moviepy,numpy,sounddevice
                   include-package: imageio_ffmpeg
-                  enable-plugins: numpy
+                  noinclude-setuptools-mode: nofollow
+                  noinclude-IPython-mode: nofollow
 
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
@@ -57,18 +58,3 @@ jobs:
                       *.exe
                       *.bin
                       *.app/**/*
-
-            # - name: Release
-            #   uses: softprops/action-gh-release@v2
-            #   with:
-            #       repository: yonokid/PyTaiko
-            #       files: |
-            #           Graphics/*
-            #           Sounds/*
-            #           Videos/*
-            #           config.toml
-            #           *.exe
-            #           *.bin
-            #           *.app/**/*
-            #       tag_name: 0.0.3
-            #       make_latest: true

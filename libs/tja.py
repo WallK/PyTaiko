@@ -1,6 +1,5 @@
 import hashlib
 import math
-import os
 from collections import deque
 from dataclasses import dataclass, field, fields
 from pathlib import Path
@@ -8,24 +7,70 @@ from pathlib import Path
 from libs.utils import get_pixels_per_frame, strip_comments
 
 
-@dataclass
+@dataclass()
 class Note:
     type: int = field(init=False)
     hit_ms: float = field(init=False)
     load_ms: float = field(init=False)
     pixels_per_frame: float = field(init=False)
+    display: bool = field(init=False)
     index: int = field(init=False)
+    bpm: float = field(init=False)
+    gogo_time: bool = field(init=False)
     moji: int = field(init=False)
+
+    def __le__(self, other):
+        return self.hit_ms <= other.hit_ms
+
+    def _get_hash_data(self) -> bytes:
+        """Get deterministic byte representation for hashing"""
+        field_values = []
+        for f in sorted([f.name for f in fields(self)]):  # Sort for consistency
+            value = getattr(self, f, None)
+            field_values.append((f, value))
+        field_values.append(('__class__', self.__class__.__name__))
+        hash_string = str(field_values)
+        return hash_string.encode('utf-8')
+
+    def get_hash(self, algorithm='sha256') -> str:
+        """Generate hash of the note"""
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update(self._get_hash_data())
+        return hash_obj.hexdigest()
+
+    def __hash__(self) -> int:
+        """Make instances hashable for use in sets/dicts"""
+        return int(self.get_hash('md5')[:8], 16)  # Use first 8 chars of MD5 as int
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 @dataclass
 class Drumroll(Note):
     _source_note: Note
     color: int = field(init=False)
 
+    def __repr__(self):
+        return str(self.__dict__)
+
     def __post_init__(self):
         for field_name in [f.name for f in fields(Note)]:
             if hasattr(self._source_note, field_name):
                 setattr(self, field_name, getattr(self._source_note, field_name))
+
+    def _get_hash_data(self) -> bytes:
+        """Override to include source note and drumroll-specific data"""
+        field_values = []
+        for f in sorted([f.name for f in fields(Note)]):
+            value = getattr(self, f, None)
+            field_values.append((f, value))
+
+        field_values.append(('color', getattr(self, 'color', None)))
+        field_values.append(('__class__', self.__class__.__name__))
+        field_values.append(('_source_note_hash', self._source_note.get_hash()))
+
+        hash_string = str(field_values)
+        return hash_string.encode('utf-8')
 
 @dataclass
 class Balloon(Note):
@@ -33,10 +78,55 @@ class Balloon(Note):
     count: int = field(init=False)
     popped: bool = False
 
+    def __repr__(self):
+        return str(self.__dict__)
+
     def __post_init__(self):
         for field_name in [f.name for f in fields(Note)]:
             if hasattr(self._source_note, field_name):
                 setattr(self, field_name, getattr(self._source_note, field_name))
+
+    def _get_hash_data(self) -> bytes:
+        """Override to include source note and balloon-specific data"""
+        field_values = []
+        for f in sorted([f.name for f in fields(Note)]):
+            value = getattr(self, f, None)
+            field_values.append((f, value))
+        field_values.append(('count', getattr(self, 'count', None)))
+        field_values.append(('popped', self.popped))
+        field_values.append(('__class__', self.__class__.__name__))
+        field_values.append(('_source_note_hash', self._source_note.get_hash()))
+
+        hash_string = str(field_values)
+        return hash_string.encode('utf-8')
+
+@dataclass
+class CourseData:
+    level: int = 0
+    balloon: list[int] = field(default_factory=lambda: [])
+    scoreinit: list[int] = field(default_factory=lambda: [])
+    scorediff: int = 0
+
+@dataclass
+class TJAMetadata:
+    title: dict[str, str] = field(default_factory= lambda: {'en': ''})
+    subtitle: dict[str, str] = field(default_factory= lambda: {'en': ''})
+    genre: str = ''
+    wave: Path = Path()
+    demostart: float = 0.0
+    offset: float = 0.0
+    bpm: float = 120.0
+    bgmovie: Path = Path()
+    movieoffset: float = 0.0
+    course_data: dict[int, CourseData] = field(default_factory=dict)
+
+@dataclass
+class TJAEXData:
+    new_audio: bool = False
+    old_audio: bool = False
+    limited_time: bool = False
+    new: bool = False
+
 
 def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> int:
     total_notes = 0
@@ -60,117 +150,114 @@ def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> in
     return math.ceil(total_score / 10) * 10
 
 class TJAParser:
-    def __init__(self, path: str, start_delay: int = 0):
-        #Defined on startup
-        self.folder_path = Path(path)
-        self.folder_name = self.folder_path.name
-        for _, _, files in os.walk(self.folder_path):
-            for file in files:
-                if file.endswith('tja'):
-                    self.file_path = self.folder_path / f'{file}'
+    def __init__(self, path: Path, start_delay: int = 0, distance: int = 866):
+        self.file_path: Path = path
 
-        #Defined on file_to_data()
-        self.data = []
-        with open(self.file_path, 'rt', encoding='utf-8-sig') as tja_file:
-            for line in tja_file:
-                line = strip_comments(line).strip()
-                if line != '':
-                    self.data.append(str(line))
+        lines = self.file_path.read_text(encoding='utf-8-sig').splitlines()
+        self.data = [cleaned for line in lines
+                     if (cleaned := strip_comments(line).strip())]
 
-        #Defined on get_metadata()
-        self.title = ''
-        self.title_ja = ''
-        self.subtitle = ''
-        self.subtitle_ja = ''
-        self.wave = self.folder_path / ""
-        self.offset = 0
-        self.demo_start = 0
-        self.course_data = dict()
+        self.metadata = TJAMetadata()
+        self.ex_data = TJAEXData()
+        self.get_metadata()
 
-        #Defined in metadata but can change throughout the chart
-        self.bpm = 120
-        self.time_signature = 4/4
-
-        self.distance = 0
-        self.scroll_modifier = 1
-        self.current_ms = start_delay
-        self.barline_display = True
-        self.gogo_time = False
+        self.distance = distance
+        self.current_ms: float = start_delay
 
     def get_metadata(self):
         current_diff = None  # Track which difficulty we're currently processing
 
         for item in self.data:
-            if item[0] == '#':
+            if item.startswith("#") or item[0].isdigit():
                 continue
-            elif 'SUBTITLEJA' in item:
-                self.subtitle_ja = str(item.split('SUBTITLEJA:')[1])
-            elif 'TITLEJA' in item:
-                self.title_ja = str(item.split('TITLEJA:')[1])
-            elif 'SUBTITLE' in item:
-                self.subtitle = str(item.split('SUBTITLE:')[1][2:])
-            elif 'TITLE' in item:
-                self.title = str(item.split('TITLE:')[1])
-            elif 'BPM' in item:
-                self.bpm = float(item.split(':')[1])
-            elif 'WAVE' in item:
-                filename = item.split(':')[1].strip()
-                self.wave = self.folder_path / filename
-            elif 'OFFSET' in item:
-                self.offset = float(item.split(':')[1])
-            elif 'DEMOSTART' in item:
-                self.demo_start = float(item.split(':')[1])
-            elif 'BGMOVIE' in item:
-                self.bg_movie = self.folder_path / item.split(':')[1].strip()
-            elif 'COURSE' in item:
-                # Determine which difficulty we're now processing
+            elif item.startswith('SUBTITLE'):
+                region_code = 'en'
+                if item[len('SUBTITLE')] != ':':
+                    region_code = (item[len('SUBTITLE'):len('SUBTITLE')+2]).lower()
+                self.metadata.subtitle[region_code] = ''.join(item.split(':')[1:])
+                if '限定' in self.metadata.subtitle:
+                    self.ex_data.limited_time = True
+            elif item.startswith('TITLE'):
+                region_code = 'en'
+                if item[len('TITLE')] != ':':
+                    region_code = (item[len('TITLE'):len('TITLE')+2]).lower()
+                self.metadata.title[region_code] = ''.join(item.split(':')[1:])
+            elif item.startswith('BPM'):
+                self.metadata.bpm = float(item.split(':')[1])
+            elif item.startswith('WAVE'):
+                self.metadata.wave = self.file_path.parent / item.split(':')[1].strip()
+            elif item.startswith('OFFSET'):
+                self.metadata.offset = float(item.split(':')[1])
+            elif item.startswith('DEMOSTART'):
+                self.metadata.demostart = float(item.split(':')[1])
+            elif item.startswith('BGMOVIE'):
+                self.metadata.bgmovie = self.file_path.parent / item.split(':')[1].strip()
+            elif item.startswith('MOVIEOFFSET'):
+                self.metadata.movieoffset = float(item.split(':')[1])
+            elif item.startswith('COURSE'):
                 course = str(item.split(':')[1]).lower().strip()
 
-                # Map the course string to its corresponding index
-                if course == 'dan' or course == '6':
+                if course == '6' or course == 'dan':
                     current_diff = 6
-                    self.course_data[6] = []
-                elif course == 'tower' or course == '5':
+                elif course == '5' or course == 'tower':
                     current_diff = 5
-                    self.course_data[5] = []
-                elif course == 'edit' or course == '4':
+                elif course == '4' or course == 'edit' or course == 'ura':
                     current_diff = 4
-                    self.course_data[4] = []
-                elif course == 'oni' or course == '3':
+                elif course == '3' or course == 'oni':
                     current_diff = 3
-                    self.course_data[3] = []
-                elif course == 'hard' or course == '2':
+                elif course == '2' or course == 'hard':
                     current_diff = 2
-                    self.course_data[2] = []
-                elif course == 'normal' or course == '1':
+                elif course == '1' or course == 'normal':
                     current_diff = 1
-                    self.course_data[1] = []
-                elif course == 'easy' or course == '0':
+                elif course == '0' or course == 'easy':
                     current_diff = 0
-                    self.course_data[0] = []
-
-            # Only process these items if we have a current difficulty
+                else:
+                    raise Exception("course level empty")
+                self.metadata.course_data[current_diff] = CourseData()
             elif current_diff is not None:
-                if 'LEVEL' in item:
-                    level = int(float(item.split(':')[1]))
-                    self.course_data[current_diff].append(level)
-                elif 'BALLOON' in item:
+                if item.startswith('LEVEL'):
+                    self.metadata.course_data[current_diff].level = int(float(item.split(':')[1]))
+                elif item.startswith('BALLOONNOR'):
                     balloon_data = item.split(':')[1]
                     if balloon_data == '':
                         continue
-                    self.course_data[current_diff].append([int(x) for x in balloon_data.split(',')])
-                elif 'SCOREINIT' in item:
+                    self.metadata.course_data[current_diff].balloon.extend([int(x) for x in balloon_data.split(',')])
+                elif item.startswith('BALLOONEXP'):
+                    balloon_data = item.split(':')[1]
+                    if balloon_data == '':
+                        continue
+                    self.metadata.course_data[current_diff].balloon.extend([int(x) for x in balloon_data.split(',')])
+                elif item.startswith('BALLOONMAS'):
+                    balloon_data = item.split(':')[1]
+                    if balloon_data == '':
+                        continue
+                    self.metadata.course_data[current_diff].balloon = ([int(x) for x in balloon_data.split(',')])
+                elif item.startswith('BALLOON'):
+                    balloon_data = item.split(':')[1]
+                    if balloon_data == '':
+                        continue
+                    self.metadata.course_data[current_diff].balloon = [int(x) for x in balloon_data.split(',')]
+                elif item.startswith('SCOREINIT'):
                     score_init = item.split(':')[1]
                     if score_init == '':
                         continue
-                    self.course_data[current_diff].append([int(x) for x in score_init.split(',')])
-                elif 'SCOREDIFF' in item:
+                    self.metadata.course_data[current_diff].scoreinit = [int(x) for x in score_init.split(',')]
+                elif item.startswith('SCOREDIFF'):
                     score_diff = item.split(':')[1]
                     if score_diff == '':
                         continue
-                    self.course_data[current_diff].append(int(score_diff))
-        return [self.title, self.title_ja, self.subtitle, self.subtitle_ja,
-                self.bpm, self.wave, self.offset, self.demo_start, self.course_data]
+                    self.metadata.course_data[current_diff].scorediff = int(score_diff)
+        for region_code in self.metadata.title:
+            if '-New Audio-' in self.metadata.title[region_code] or '-新曲-' in self.metadata.title[region_code]:
+                self.metadata.title[region_code] = self.metadata.title[region_code].strip('-New Audio-')
+                self.metadata.title[region_code] = self.metadata.title[region_code].strip('-新曲-')
+                self.ex_data.new_audio = True
+            elif '-Old Audio-' in self.metadata.title[region_code] or '-旧曲-' in self.metadata.title[region_code]:
+                self.metadata.title[region_code] = self.metadata.title[region_code].strip('-Old Audio-')
+                self.metadata.title[region_code] = self.metadata.title[region_code].strip('-旧曲-')
+                self.ex_data.old_audio = True
+            elif '限定' in self.metadata.title[region_code]:
+                self.ex_data.limited_time = True
 
     def data_to_notes(self, diff):
         note_start = -1
@@ -223,9 +310,7 @@ class TJAParser:
                     if item != line:
                         notes.append(bar)
                         bar = []
-        if len(self.course_data[diff]) < 2:
-            return notes, None
-        return notes, self.course_data[diff][1]
+        return notes
 
     def get_moji(self, play_note_list: deque[Note], ms_per_measure: float) -> None:
         se_notes = {
@@ -287,66 +372,91 @@ class TJAParser:
                     else:
                         play_note_list[-3].moji = se_notes[play_note_list[-3].moji][2]
 
-    def notes_to_position(self, diff):
+    def notes_to_position(self, diff: int):
         play_note_list: deque[Note | Drumroll | Balloon] = deque()
         bar_list: deque[Note] = deque()
         draw_note_list: deque[Note | Drumroll | Balloon] = deque()
-        notes, balloon = self.data_to_notes(diff)
-        balloon_index = 0
+        notes = self.data_to_notes(diff)
+        balloon = self.metadata.course_data[diff].balloon.copy()
+        count = 0
         index = 0
+        time_signature = 4/4
+        bpm = self.metadata.bpm
+        scroll_modifier = 1
+        barline_display = True
+        gogo_time = False
+        skip_branch = False
         for bar in notes:
             #Length of the bar is determined by number of notes excluding commands
             bar_length = sum(len(part) for part in bar if '#' not in part)
-
+            barline_added = False
             for part in bar:
+                if part.startswith('#BRANCHSTART'):
+                    skip_branch = True
+                    continue
                 if '#JPOSSCROLL' in part:
                     continue
                 elif '#NMSCROLL' in part:
                     continue
                 elif '#MEASURE' in part:
                     divisor = part.find('/')
-                    self.time_signature = float(part[9:divisor]) / float(part[divisor+1:])
+                    time_signature = float(part[9:divisor]) / float(part[divisor+1:])
                     continue
                 elif '#SCROLL' in part:
-                    self.scroll_modifier = float(part[7:])
+                    scroll_modifier = float(part[7:])
                     continue
                 elif '#BPMCHANGE' in part:
-                    self.bpm = float(part[11:])
+                    bpm = float(part[11:])
                     continue
                 elif '#BARLINEOFF' in part:
-                    self.barline_display = False
+                    barline_display = False
                     continue
                 elif '#BARLINEON' in part:
-                    self.barline_display = True
+                    barline_display = True
                     continue
                 elif '#GOGOSTART' in part:
-                    self.gogo_time = True
+                    gogo_time = True
                     continue
                 elif '#GOGOEND' in part:
-                    self.gogo_time = False
+                    gogo_time = False
                     continue
                 elif '#LYRIC' in part:
                     continue
+                elif part.startswith('#M'):
+                    skip_branch = False
+                    continue
                 #Unrecognized commands will be skipped for now
-                elif '#' in part:
+                elif len(part) > 0 and not part[0].isdigit():
+                    continue
+                if skip_branch:
                     continue
 
-                #https://gist.github.com/KatieFrogs/e000f406bbc70a12f3c34a07303eec8b#measure
-                ms_per_measure = 60000 * (self.time_signature*4) / self.bpm
+                if bpm == 0:
+                    ms_per_measure = 0
+                else:
+                    #https://gist.github.com/KatieFrogs/e000f406bbc70a12f3c34a07303eec8b#measure
+                    ms_per_measure = 60000 * (time_signature*4) / bpm
 
                 #Create note object
-                bar = Note()
+                bar_line = Note()
 
                 #Determines how quickly the notes need to move across the screen to reach the judgment circle in time
-                bar.pixels_per_frame = get_pixels_per_frame(self.bpm * self.time_signature * self.scroll_modifier, self.time_signature*4, self.distance)
-                pixels_per_ms = bar.pixels_per_frame / (1000 / 60)
+                bar_line.pixels_per_frame = get_pixels_per_frame(bpm * time_signature * scroll_modifier, time_signature*4, self.distance)
+                pixels_per_ms = bar_line.pixels_per_frame / (1000 / 60)
 
-                bar.hit_ms = self.current_ms
-                bar.load_ms = bar.hit_ms - (self.distance / pixels_per_ms)
-                bar.type = 0
+                bar_line.hit_ms = self.current_ms
+                if pixels_per_ms == 0:
+                    bar_line.load_ms = bar_line.hit_ms
+                else:
+                    bar_line.load_ms = bar_line.hit_ms - (self.distance / pixels_per_ms)
+                bar_line.type = 0
+                bar_line.display = barline_display
+                bar_line.bpm = bpm
+                if barline_added:
+                    bar_line.display = False
 
-                if self.barline_display:
-                    bar_list.append(bar)
+                bar_list.append(bar_line)
+                barline_added = True
 
                 #Empty bar is still a bar, otherwise start increment
                 if len(part) == 0:
@@ -355,29 +465,40 @@ class TJAParser:
                 else:
                     increment = ms_per_measure / bar_length
 
-                for item in (part):
+                for item in part:
                     if item == '0':
                         self.current_ms += increment
                         continue
                     note = Note()
                     note.hit_ms = self.current_ms
-                    note.load_ms = note.hit_ms - (self.distance / pixels_per_ms)
+                    if pixels_per_ms == 0:
+                        note.load_ms = note.hit_ms
+                    else:
+                        note.load_ms = note.hit_ms - (self.distance / pixels_per_ms)
                     note.type = int(item)
-                    note.pixels_per_frame = bar.pixels_per_frame
+                    note.pixels_per_frame = bar_line.pixels_per_frame
                     note.index = index
+                    note.bpm = bpm
+                    note.gogo_time = gogo_time
                     note.moji = -1
                     if item in {'5', '6'}:
                         note = Drumroll(note)
                         note.color = 255
-                    elif item in {'7', '9'}:
+                    elif item in {'7'}:
+                        count += 1
                         if balloon is None:
                             raise Exception("Balloon note found, but no count was specified")
                         note = Balloon(note)
-                        note.count = int(balloon[balloon_index])
-                        balloon_index += 1
+                        if not balloon:
+                            note.count = 1
+                        else:
+                            note.count = balloon.pop(0)
                     elif item == '8':
                         new_pixels_per_ms = play_note_list[-1].pixels_per_frame / (1000 / 60)
-                        note.load_ms = note.hit_ms - (self.distance / new_pixels_per_ms)
+                        if new_pixels_per_ms == 0:
+                            note.load_ms = note.hit_ms
+                        else:
+                            note.load_ms = note.hit_ms - (self.distance / new_pixels_per_ms)
                         note.pixels_per_frame = play_note_list[-1].pixels_per_frame
                     self.current_ms += increment
                     play_note_list.append(note)
@@ -385,7 +506,9 @@ class TJAParser:
                     index += 1
                     if len(play_note_list) > 3:
                         if isinstance(play_note_list[-2], Drumroll) and play_note_list[-1].type != 8:
-                            raise Exception(play_note_list[-2])
+                            print(self.file_path, diff)
+                            print(bar)
+                            raise Exception(f"{play_note_list[-2]}")
         # https://stackoverflow.com/questions/72899/how-to-sort-a-list-of-dictionaries-by-a-value-of-the-dictionary-in-python
         # Sorting by load_ms is necessary for drawing, as some notes appear on the
         # screen slower regardless of when they reach the judge circle
@@ -394,9 +517,23 @@ class TJAParser:
         bar_list = deque(sorted(bar_list, key=lambda b: b.load_ms))
         return play_note_list, draw_note_list, bar_list
 
-    def hash_note_data(self, notes: list):
+    def hash_note_data(self, play_notes: deque[Note | Drumroll | Balloon], bars: deque[Note]):
         n = hashlib.sha256()
-        for bar in notes:
-            for part in bar:
-                n.update(part.encode('utf-8'))
+        list1 = list(play_notes)
+        list2 = list(bars)
+        merged: list[Note | Drumroll | Balloon] = []
+        i = 0
+        j = 0
+        while i < len(list1) and j < len(list2):
+            if list1[i] <= list2[j]:
+                merged.append(list1[i])
+                i += 1
+            else:
+                merged.append(list2[j])
+                j += 1
+        merged.extend(list1[i:])
+        merged.extend(list2[j:])
+        for item in merged:
+            n.update(item.get_hash().encode('utf-8'))
+
         return n.hexdigest()

@@ -24,10 +24,12 @@ from libs.video import VideoPlayer
 
 
 class GameScreen:
+    JUDGE_X = 414
+    SCREEN_WIDTH = 1280
+    SCREEN_HEIGHT = 720
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
-        self.judge_x = 414
         self.current_ms = 0
         self.result_transition = None
         self.song_info = None
@@ -82,16 +84,14 @@ class GameScreen:
 
     def load_sounds(self):
         sounds_dir = Path("Sounds")
-        self.sound_don = audio.load_sound(str(sounds_dir / "inst_00_don.wav"))
-        self.sound_kat = audio.load_sound(str(sounds_dir / "inst_00_katsu.wav"))
-        self.sound_balloon_pop = audio.load_sound(str(sounds_dir / "balloon_pop.wav"))
-        self.sound_result_transition = audio.load_sound(str(sounds_dir / "result" / "VO_RESULT [1].ogg"))
+        self.sound_don = audio.load_sound(sounds_dir / "inst_00_don.wav")
+        self.sound_kat = audio.load_sound(sounds_dir / "inst_00_katsu.wav")
+        self.sound_restart = audio.load_sound(sounds_dir / 'song_select' / 'Skip.ogg')
+        self.sound_balloon_pop = audio.load_sound(sounds_dir / "balloon_pop.wav")
+        self.sound_result_transition = audio.load_sound(sounds_dir / "result" / "VO_RESULT [1].ogg")
         self.sounds = [self.sound_don, self.sound_kat, self.sound_balloon_pop, self.sound_result_transition]
 
-    def init_tja(self, song: str, difficulty: int):
-        self.load_textures()
-        self.load_sounds()
-
+    def init_tja(self, song: Path, difficulty: int):
         #Map notes to textures
         self.note_type_list = [self.textures['lane_syousetsu'][0],
             self.textures['onp_don'], self.textures['onp_katsu'],
@@ -103,26 +103,27 @@ class GameScreen:
             self.textures['onp_renda_dai'][0], self.textures['onp_renda_dai'][1],
             self.textures['onp_fusen'][0]]
 
-        self.tja = TJAParser(song, start_delay=self.start_delay)
-        metadata = self.tja.get_metadata()
-        if hasattr(self.tja, 'bg_movie'):
-            if Path(self.tja.bg_movie).exists():
-                self.movie = VideoPlayer(str(Path(self.tja.bg_movie)))
-                self.movie.set_volume(0.0)
+        self.tja = TJAParser(song, start_delay=self.start_delay, distance=self.width - GameScreen.JUDGE_X)
+        if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
+            self.movie = VideoPlayer(self.tja.metadata.bgmovie)
+            self.movie.set_volume(0.0)
         else:
             self.movie = None
-        self.tja.distance = self.width - self.judge_x
-        session_data.song_title = self.tja.title
+        session_data.song_title = self.tja.metadata.title.get(get_config()['general']['language'].lower(), self.tja.metadata.title['en'])
 
-        self.player_1 = Player(self, 1, difficulty, metadata)
-        self.song_music = audio.load_sound(str(Path(self.tja.wave)))
-        self.start_ms = (get_current_ms() - self.tja.offset*1000)
+        self.player_1 = Player(self, 1, difficulty)
+        if not hasattr(self, 'song_music'):
+            self.song_music = audio.load_sound(self.tja.metadata.wave)
+            audio.normalize_sound(self.song_music, 0.1935)
+        self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
     def on_screen_start(self):
         if not self.screen_init:
             self.screen_init = True
+            self.load_textures()
+            self.load_sounds()
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
-            self.song_info = SongInfo(self.tja.title, 'TEST')
+            self.song_info = SongInfo(session_data.song_title, 'TEST')
             self.result_transition = None
 
     def on_screen_end(self):
@@ -130,6 +131,8 @@ class GameScreen:
         for zip in self.textures:
             for texture in self.textures[zip]:
                 ray.unload_texture(texture)
+        audio.unload_sound(self.song_music)
+        del self.song_music
         self.song_started = False
         self.end_ms = 0
         self.movie = None
@@ -140,7 +143,8 @@ class GameScreen:
             return
         with sqlite3.connect('scores.db') as con:
             cursor = con.cursor()
-            hash = self.tja.hash_note_data(self.tja.data_to_notes(self.player_1.difficulty)[0])
+            notes, _, bars = TJAParser.notes_to_position(TJAParser(self.tja.file_path), self.player_1.difficulty)
+            hash = self.tja.hash_note_data(notes, bars)
             check_query = "SELECT score FROM Scores WHERE hash = ? LIMIT 1"
             cursor.execute(check_query, (hash,))
             result = cursor.fetchone()
@@ -149,8 +153,8 @@ class GameScreen:
                 INSERT OR REPLACE INTO Scores (hash, en_name, jp_name, diff, score, good, ok, bad, drumroll, combo)
                 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 '''
-                data = (hash, self.tja.title,
-                        self.tja.title_ja, self.player_1.difficulty,
+                data = (hash, self.tja.metadata.title['en'],
+                        self.tja.metadata.title['ja'], self.player_1.difficulty,
                         session_data.result_score, session_data.result_good,
                         session_data.result_ok, session_data.result_bad,
                         session_data.result_total_drumroll, session_data.result_max_combo)
@@ -160,10 +164,11 @@ class GameScreen:
     def update(self):
         self.on_screen_start()
         self.current_ms = get_current_ms() - self.start_ms
-        if (self.current_ms >= self.tja.offset*1000 + self.start_delay - get_config()["general"]["judge_offset"]) and not self.song_started:
+        if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - get_config()["general"]["judge_offset"]) and not self.song_started:
             if self.song_music is not None:
                 if not audio.is_sound_playing(self.song_music):
                     audio.play_sound(self.song_music)
+                    print(f"Song started at {self.current_ms}")
             if self.movie is not None:
                 self.movie.start(get_current_ms())
             self.song_started = True
@@ -182,14 +187,20 @@ class GameScreen:
                 return self.on_screen_end()
         elif len(self.player_1.play_notes) == 0:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
-            self.write_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
             if self.end_ms != 0:
                 if get_current_ms() >= self.end_ms + 8533.34:
                     self.result_transition = ResultTransition(self.height)
                     audio.play_sound(self.sound_result_transition)
             else:
+                self.write_score()
                 self.end_ms = get_current_ms()
+
+        if ray.is_key_pressed(ray.KeyboardKey.KEY_F1):
+            audio.stop_sound(self.song_music)
+            self.init_tja(global_data.selected_song, session_data.selected_difficulty)
+            audio.play_sound(self.sound_restart)
+            self.song_started = False
 
     def draw(self):
         if self.movie is not None:
@@ -207,7 +218,7 @@ class Player:
     TIMING_OK = 75.0750045776367
     TIMING_BAD = 108.441665649414
 
-    def __init__(self, game_screen: GameScreen, player_number: int, difficulty: int, metadata):
+    def __init__(self, game_screen: GameScreen, player_number: int, difficulty: int):
 
         self.player_number = player_number
         self.difficulty = difficulty
@@ -248,7 +259,7 @@ class Player:
 
         self.input_log: dict[float, tuple] = dict()
 
-        self.gauge = Gauge(self.difficulty, metadata[-1][self.difficulty][0])
+        self.gauge = Gauge(self.difficulty, game_screen.tja.metadata.course_data[self.difficulty].level)
         self.gauge_hit_effect: list[GaugeHitEffect] = []
 
         self.autoplay_hit_side = 'L'
@@ -282,7 +293,7 @@ class Player:
         for i in range(len(self.current_bars)-1, -1, -1):
             bar = self.current_bars[i]
             position = self.get_position(game_screen, bar.hit_ms, bar.pixels_per_frame)
-            if position < game_screen.judge_x + 650:
+            if position < GameScreen.JUDGE_X + 650:
                 self.current_bars.pop(i)
 
     def play_note_manager(self, game_screen: GameScreen):
@@ -335,7 +346,7 @@ class Player:
         if note.type in {5, 6, 7} and len(self.current_notes_draw) > 1:
             note = self.current_notes_draw[1]
         position = self.get_position(game_screen, note.hit_ms, note.pixels_per_frame)
-        if position < game_screen.judge_x + 650:
+        if position < GameScreen.JUDGE_X + 650:
             self.current_notes_draw.pop(0)
 
     def note_manager(self, game_screen: GameScreen):
@@ -420,7 +431,7 @@ class Player:
                 return
             big = curr_note.type == 3 or curr_note.type == 4
             if (curr_note.hit_ms - Player.TIMING_GOOD) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_GOOD):
-                self.draw_judge_list.append(Judgement('GOOD', big))
+                self.draw_judge_list.append(Judgement('GOOD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.lane_hit_effect = LaneHitEffect('GOOD')
                 self.good_count += 1
                 self.score += self.base_score
@@ -428,14 +439,14 @@ class Player:
                 self.note_correct(game_screen, curr_note)
 
             elif (curr_note.hit_ms - Player.TIMING_OK) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_OK):
-                self.draw_judge_list.append(Judgement('OK', big))
+                self.draw_judge_list.append(Judgement('OK', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.ok_count += 1
                 self.score += 10 * math.floor(self.base_score / 2 / 10)
                 self.base_score_list.append(ScoreCounterAnimation(10 * math.floor(self.base_score / 2 / 10)))
                 self.note_correct(game_screen, curr_note)
 
             elif (curr_note.hit_ms - Player.TIMING_BAD) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_BAD):
-                self.draw_judge_list.append(Judgement('BAD', big))
+                self.draw_judge_list.append(Judgement('BAD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.bad_count += 1
                 self.combo = 0
                 self.play_notes.popleft()
@@ -484,7 +495,10 @@ class Player:
             return
         note = self.play_notes[0]
         if self.is_drumroll or self.is_balloon:
-            subdivision_in_ms = game_screen.current_ms // ((60000 * 4 / game_screen.tja.bpm) / 24)
+            if self.play_notes[0].bpm == 0:
+                subdivision_in_ms = 0
+            else:
+                subdivision_in_ms = game_screen.current_ms // ((60000 * 4 / self.play_notes[0].bpm) / 24)
             if subdivision_in_ms > self.last_subdivision:
                 self.last_subdivision = subdivision_in_ms
                 hit_type = 'DON'
@@ -522,7 +536,6 @@ class Player:
                 self.check_note(game_screen, type)
                 if len(self.play_notes) > 0:
                     note = self.play_notes[0]
-                    print(note)
                 else:
                     break
 
@@ -596,6 +609,8 @@ class Player:
             return
 
         for bar in reversed(self.current_bars):
+            if not bar.display:
+                continue
             position = self.get_position(game_screen, bar.load_ms, bar.pixels_per_frame)
             ray.draw_texture(game_screen.note_type_list[bar.type], position+60, 190, ray.WHITE)
 
@@ -603,9 +618,18 @@ class Player:
         if len(self.current_notes_draw) <= 0:
             return
 
-        eighth_in_ms = (60000 * 4 / game_screen.tja.bpm) / 8
+        if len(self.current_bars) > 0:
+            if self.current_bars[0].bpm == 0:
+                eighth_in_ms = 0
+            else:
+                eighth_in_ms = (60000 * 4 / self.current_bars[0].bpm) / 8
+        else:
+            if self.current_notes_draw[0].bpm == 0:
+                eighth_in_ms = 0
+            else:
+                eighth_in_ms = (60000 * 4 / self.current_notes_draw[0].bpm) / 8
         current_eighth = 0
-        if self.combo >= 50:
+        if self.combo >= 50 and eighth_in_ms != 0:
             current_eighth = int((game_screen.current_ms - game_screen.start_ms) // eighth_in_ms)
 
         for note in reversed(self.current_notes_draw):
@@ -664,10 +688,13 @@ class Player:
             anim.draw(game_screen)
 
 class Judgement:
-    def __init__(self, type: str, big: bool):
+    def __init__(self, type: str, big: bool, ms_display: Optional[float]=None):
         self.type = type
         self.big = big
         self.is_finished = False
+        self.curr_hit_ms = None
+        if ms_display is not None:
+            self.curr_hit_ms = str(round(ms_display, 2))
 
         self.fade_animation_1 = Animation.create_fade(132, initial_opacity=0.5, delay=100)
         self.fade_animation_2 = Animation.create_fade(316 - 233.3, delay=233.3)
@@ -696,6 +723,8 @@ class Judgement:
                 ray.draw_texture(textures_1[19], 342, 184, color)
                 ray.draw_texture(textures_2[index+5], 304, 143, hit_color)
             ray.draw_texture(textures_2[9], 370, int(y), color)
+            if self.curr_hit_ms is not None:
+                ray.draw_text(self.curr_hit_ms, 370, int(y)-20, 40, ray.fade(ray.YELLOW, self.fade_animation_1.attribute))
         elif self.type == 'OK':
             if self.big:
                 ray.draw_texture(textures_1[20], 342, 184, color)
@@ -704,8 +733,12 @@ class Judgement:
                 ray.draw_texture(textures_1[18], 342, 184, color)
                 ray.draw_texture(textures_2[index], 304, 143, hit_color)
             ray.draw_texture(textures_2[4], 370, int(y), color)
+            if self.curr_hit_ms is not None:
+                ray.draw_text(self.curr_hit_ms, 370, int(y)-20, 40, ray.fade(ray.WHITE, self.fade_animation_1.attribute))
         elif self.type == 'BAD':
             ray.draw_texture(textures_2[10], 370, int(y), color)
+            if self.curr_hit_ms is not None:
+                ray.draw_text(self.curr_hit_ms, 370, int(y)-20, 40, ray.fade(ray.BLUE, self.fade_animation_1.attribute))
 
 class LaneHitEffect:
     def __init__(self, type: str):
@@ -1133,20 +1166,12 @@ class SongInfo:
     def __init__(self, song_name: str, genre: str):
         self.song_name = song_name
         self.genre = genre
-
-        self.font = self._load_font_for_text(song_name)
         self.song_title = OutlinedText(
-            self.font, song_name, 40, ray.WHITE, ray.BLACK, outline_thickness=4
+            song_name, 40, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5
         )
         self.fade_in = Animation.create_fade(self.FADE_DURATION, initial_opacity=0.0, final_opacity=1.0)
         self.fade_out = Animation.create_fade(self.FADE_DURATION, delay=self.DISPLAY_DURATION)
         self.fade_fake = Animation.create_fade(0, delay=self.DISPLAY_DURATION*2 + self.FADE_DURATION)
-
-    def _load_font_for_text(self, text: str) -> ray.Font:
-        codepoint_count = ray.ffi.new('int *', 0)
-        unique_codepoints = set(text)
-        codepoints = ray.load_codepoints(''.join(unique_codepoints), codepoint_count)
-        return ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 40, codepoints, 0)
 
     def update(self, current_ms: float):
         self.fade_in.update(current_ms)

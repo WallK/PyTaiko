@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pyray as ray
 from moviepy import VideoFileClip
 
@@ -6,14 +8,14 @@ from libs.utils import get_current_ms
 
 
 class VideoPlayer:
-    def __init__(self, path: str):
+    def __init__(self, path: Path):
         """Initialize a video player instance. Audio must have the same name and an ogg extension.
         Todo: extract audio from video directly
         """
         self.is_finished_list = [False, False]
         self.video_path = path
         self.video = VideoFileClip(path)
-        audio_path = path[:-4] + '.ogg'
+        audio_path = path.with_suffix('.ogg')
         self.audio = audio.load_music_stream(audio_path)
 
         self.buffer_size = 10  # Number of frames to keep in memory

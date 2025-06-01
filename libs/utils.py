@@ -1,3 +1,4 @@
+import hashlib
 import os
 import tempfile
 import time
@@ -85,6 +86,8 @@ def strip_comments(code: str) -> str:
     return result
 
 def get_pixels_per_frame(bpm: float, time_signature: float, distance: float) -> float:
+    if bpm == 0:
+        return 0
     beat_duration = 60 / bpm
     total_time = time_signature * beat_duration
     total_frames = 60 * total_time
@@ -119,37 +122,163 @@ def reset_session():
 
 @dataclass
 class GlobalData:
-    selected_song: str = '' #Path
+    selected_song: Path = Path()
     textures: dict[str, list[ray.Texture]] = field(default_factory=lambda: dict())
     songs_played: int = 0
 
 global_data = GlobalData()
 
+rotation_cache = dict()
+char_size_cache = dict()
+horizontal_cache = dict()
+text_cache = set()
+for file in Path('cache/image').iterdir():
+    text_cache.add(file.stem)
+
 @dataclass
 class OutlinedText:
-    font: ray.Font
     text: str
     font_size: int
     text_color: ray.Color
     outline_color: ray.Color
+    font: ray.Font = ray.Font()
     outline_thickness: int = 2
     vertical: bool = False
     line_spacing: float = 1.0  # Line spacing for vertical text
+    horizontal_spacing: float = 1.0  # Character spacing for horizontal text
     lowercase_spacing_factor: float = 0.85  # Adjust spacing for lowercase letters and whitespace
-    vertical_chars: set = field(default_factory=lambda: {'-', '|', '/', '\\', 'ー'})
+    vertical_chars: set = field(default_factory=lambda: {'-', '‐', '|', '/', '\\', 'ー', '～', '~', '（', '）', '(', ')',
+                                                        '「', '」', '[', ']', '［', '］', '【', '】', '…', '→', '→', ':', '：'})
     no_space_chars: set = field(default_factory=lambda: {
         'ぁ', 'ア','ぃ', 'イ','ぅ', 'ウ','ぇ', 'エ','ぉ', 'オ',
         'ゃ', 'ャ','ゅ', 'ュ','ょ', 'ョ','っ', 'ッ','ゎ', 'ヮ',
         'ヶ', 'ヵ','ㇰ','ㇱ','ㇲ','ㇳ','ㇴ','ㇵ','ㇶ','ㇷ','ㇸ',
         'ㇹ','ㇺ','ㇻ','ㇼ','ㇽ','ㇾ','ㇿ'
     })
+    # New field for horizontal exception strings
+    horizontal_exceptions: set = field(default_factory=lambda: {'!!!!', '!!!', '!!', '！！','！！！','!?', '！？', '??', '？？', '†††', '(°∀°)', '(°∀°)'})
+    # New field for adjacent punctuation characters
+    adjacent_punctuation: set = field(default_factory=lambda: {'.', ',', '。', '、', "'", '"', '´', '`'})
 
     def __post_init__(self):
         # Cache for rotated characters
-        self._rotation_cache = {}
+        self._rotation_cache = rotation_cache
         # Cache for character measurements
-        self._char_size_cache = {}
+        self._char_size_cache = char_size_cache
+        # Cache for horizontal exception measurements
+        self._horizontal_cache = horizontal_cache
+        self.hash = self._get_hash()
         self.texture = self._create_texture()
+
+    def _load_font_for_text(self, text: str) -> ray.Font:
+        codepoint_count = ray.ffi.new('int *', 0)
+        unique_codepoints = set(text)
+        codepoints = ray.load_codepoints(''.join(unique_codepoints), codepoint_count)
+        return ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), self.font_size, codepoints, 0)
+
+    def _get_hash(self):
+        n = hashlib.sha256()
+        n.update(self.text.encode('utf-8'))
+        n.update(str(self.vertical).encode('utf-8'))
+        n.update(str(self.horizontal_spacing).encode('utf-8'))  # Include horizontal spacing in hash
+        n.update(str(self.outline_color.a).encode('utf-8'))
+        n.update(str(self.outline_color.r).encode('utf-8'))
+        n.update(str(self.outline_color.g).encode('utf-8'))
+        n.update(str(self.outline_color.b).encode('utf-8'))
+        n.update(str(self.text_color.a).encode('utf-8'))
+        n.update(str(self.text_color.r).encode('utf-8'))
+        n.update(str(self.text_color.g).encode('utf-8'))
+        n.update(str(self.text_color.b).encode('utf-8'))
+        n.update(str(self.font_size).encode('utf-8'))
+        return n.hexdigest()
+
+    def _parse_text_segments(self):
+        """Parse text into segments, identifying horizontal exceptions"""
+        if not self.vertical:
+            return [{'text': self.text, 'is_horizontal': False}]
+
+        segments = []
+        i = 0
+        current_segment = ""
+
+        while i < len(self.text):
+            # Check if any horizontal exception starts at current position
+            found_exception = None
+            for exception in self.horizontal_exceptions:
+                if self.text[i:].startswith(exception):
+                    found_exception = exception
+                    break
+
+            if found_exception:
+                # Save current segment if it exists
+                if current_segment:
+                    segments.append({'text': current_segment, 'is_horizontal': False})
+                    current_segment = ""
+
+                # Add horizontal exception as separate segment
+                segments.append({'text': found_exception, 'is_horizontal': True})
+                i += len(found_exception)
+            else:
+                # Add character to current segment
+                current_segment += self.text[i]
+                i += 1
+
+        # Add remaining segment
+        if current_segment:
+            segments.append({'text': current_segment, 'is_horizontal': False})
+
+        return segments
+
+    def _group_characters_with_punctuation(self, text):
+        """Group characters with their adjacent punctuation"""
+        groups = []
+        i = 0
+
+        while i < len(text):
+            current_char = text[i]
+            group = {'main_char': current_char, 'adjacent_punct': []}
+
+            # Look ahead for adjacent punctuation
+            j = i + 1
+            while j < len(text) and text[j] in self.adjacent_punctuation:
+                group['adjacent_punct'].append(text[j])
+                j += 1
+
+            groups.append(group)
+            i = j  # Move to next non-punctuation character
+
+        return groups
+
+    def _get_horizontal_exception_texture(self, text: str, color):
+        """Get or create a texture for horizontal exception text"""
+        cache_key = (text, color.r, color.g, color.b, color.a, 'horizontal')
+
+        if cache_key in self._horizontal_cache:
+            return self._horizontal_cache[cache_key]
+
+        # Measure the text
+        text_size = ray.measure_text_ex(self.font, text, self.font_size, 1.0)
+        padding = int(self.outline_thickness * 3)
+
+        # Create image with proper dimensions
+        img_width = int(text_size.x + padding * 2)
+        img_height = int(text_size.y + padding * 2)
+        temp_image = ray.gen_image_color(img_width, img_height, ray.Color(0, 0, 0, 0))
+
+        # Draw the text centered
+        ray.image_draw_text_ex(
+            temp_image,
+            self.font,
+            text,
+            ray.Vector2(padding, padding),
+            self.font_size,
+            1.0,
+            color
+        )
+
+        # Cache the image
+        self._horizontal_cache[cache_key] = temp_image
+        return temp_image
 
     def _get_char_size(self, char):
         """Cache character size measurements"""
@@ -165,8 +294,7 @@ class OutlinedText:
         """Calculate vertical spacing between characters"""
         # Check if current char is lowercase, whitespace or a special character
         is_spacing_char = (current_char.islower() or
-                          current_char.isspace() or
-                          current_char in self.no_space_chars)
+                          current_char.isspace())
 
         # Additional check for capitalization transition
         if next_char and ((current_char.isupper() and next_char.islower()) or
@@ -177,33 +305,27 @@ class OutlinedText:
         spacing = self.line_spacing * (self.lowercase_spacing_factor if is_spacing_char else 1.0)
         return self.font_size * spacing
 
-    def _get_rotated_char(self, char, color):
+    def _get_rotated_char(self, char: str, color):
         """Get or create a rotated character texture from cache"""
-        cache_key = (char, color[0], color[1], color[2], color[3])
+        cache_key = (char, color.r, color.g, color.b, color.a)
 
         if cache_key in self._rotation_cache:
             return self._rotation_cache[cache_key]
 
         char_size = self._get_char_size(char)
-
-        # For rotated text, we need extra padding to prevent cutoff
-        padding = max(int(self.font_size * 0.2), 2)  # Add padding proportional to font size
-        temp_width = int(char_size.y) + padding * 2
-        temp_height = int(char_size.x) + padding * 2
-
-        # Create a temporary image with padding to ensure characters aren't cut off
+        padding = int(self.outline_thickness * 3)  # Increased padding
+        temp_width = max(int(char_size.y) + padding, self.font_size + padding)
+        temp_height = max(int(char_size.x) + padding, self.font_size + padding)
         temp_image = ray.gen_image_color(temp_width, temp_height, ray.Color(0, 0, 0, 0))
 
-        # Calculate centering offsets
-        x_offset = padding
-        y_offset = padding
+        center_x = (temp_width - char_size.y) // 2
+        center_y = (temp_height - char_size.x) // 2
 
-        # Draw the character centered in the temporary image
         ray.image_draw_text_ex(
             temp_image,
             self.font,
             char,
-            ray.Vector2(x_offset-5, y_offset),
+            ray.Vector2(center_x-5, center_y),  # Centered placement with padding
             self.font_size,
             1.0,
             color
@@ -223,191 +345,379 @@ class OutlinedText:
         self._rotation_cache[cache_key] = rotated_image
         return rotated_image
 
+    def _calculate_horizontal_text_width(self):
+        """Calculate the total width of horizontal text with custom spacing"""
+        if not self.text:
+            return 0
+
+        total_width = 0
+        for i, char in enumerate(self.text):
+            char_size = ray.measure_text_ex(self.font, char, self.font_size, 1.0)
+            total_width += char_size.x
+
+            # Add spacing between characters (except for the last character)
+            if i < len(self.text) - 1:
+                total_width += (char_size.x * (self.horizontal_spacing - 1.0))
+
+        return total_width
+
     def _calculate_dimensions(self):
-        """Calculate dimensions based on orientation"""
+        padding = int(self.outline_thickness * 3)
+
         if not self.vertical:
-            # Horizontal text
-            text_size = ray.measure_text_ex(self.font, self.text, self.font_size, 1.0)
-
-            # Add extra padding to prevent cutoff
-            extra_padding = max(int(self.font_size * 0.15), 2)
-            width = int(text_size.x + self.outline_thickness * 4 + extra_padding * 2)
-            height = int(text_size.y + self.outline_thickness * 4 + extra_padding * 2)
-            padding_x = self.outline_thickness * 2 + extra_padding
-            padding_y = self.outline_thickness * 2 + extra_padding
-
-            return width, height, padding_x, padding_y
+            if self.horizontal_spacing == 1.0:
+                # Use default raylib measurement for normal spacing
+                text_size = ray.measure_text_ex(self.font, self.text, self.font_size, 1.0)
+                return int(text_size.x + padding * 2), int(text_size.y + padding * 2)
+            else:
+                # Calculate custom spacing width
+                text_width = self._calculate_horizontal_text_width()
+                text_height = ray.measure_text_ex(self.font, "Ag", self.font_size, 1.0).y  # Use sample chars for height
+                return int(text_width + padding * 2), int(text_height + padding * 2)
         else:
-            # For vertical text, pre-calculate all character heights and widths
+            # Parse text into segments
+            segments = self._parse_text_segments()
+
             char_heights = []
             char_widths = []
 
-            for i, char in enumerate(self.text):
-                next_char = self.text[i+1] if i+1 < len(self.text) else None
-                char_heights.append(self._calculate_vertical_spacing(char, next_char))
-
-                # For vertical characters, consider rotated dimensions
-                if char in self.vertical_chars:
-                    # Use padded width for rotated characters
-                    padding = max(int(self.font_size * 0.2), 2) * 2
-                    char_widths.append(self._get_char_size(char).x + padding)
+            for segment in segments:
+                if segment['is_horizontal']:
+                    # For horizontal exceptions, add their height as spacing
+                    text_size = ray.measure_text_ex(self.font, segment['text'], self.font_size, 1.0)
+                    char_heights.append(text_size.y * self.line_spacing)
+                    char_widths.append(text_size.x)
                 else:
-                    char_widths.append(self._get_char_size(char).x)
+                    # Process vertical text with character grouping
+                    char_groups = self._group_characters_with_punctuation(segment['text'])
+
+                    for i, group in enumerate(char_groups):
+                        main_char = group['main_char']
+                        adjacent_punct = group['adjacent_punct']
+
+                        # Get next group's main character for spacing calculation
+                        next_char = char_groups[i+1]['main_char'] if i+1 < len(char_groups) else None
+                        char_heights.append(self._calculate_vertical_spacing(main_char, next_char))
+
+                        # Calculate width considering main char + adjacent punctuation
+                        main_char_size = self._get_char_size(main_char)
+                        group_width = main_char_size.x
+
+                        # Add width for adjacent punctuation
+                        for punct in adjacent_punct:
+                            punct_size = self._get_char_size(punct)
+                            group_width += punct_size.x
+
+                        # For vertical characters, consider rotated dimensions
+                        if main_char in self.vertical_chars:
+                            char_widths.append(group_width + padding)
+                        else:
+                            char_widths.append(group_width)
 
             max_char_width = max(char_widths) if char_widths else 0
             total_height = sum(char_heights) if char_heights else 0
 
-            # Add extra padding for vertical text
-            extra_padding = max(int(self.font_size * 0.15), 2)
-            width = int(max_char_width + self.outline_thickness * 4 + extra_padding * 2)
-            height = int(total_height + self.outline_thickness * 4 + extra_padding * 2)
-            padding_x = self.outline_thickness * 2 + extra_padding
-            padding_y = self.outline_thickness * 2 + extra_padding
+            width = int(max_char_width + padding * 2)  # Padding on both sides
+            height = int(total_height + padding * 2)   # Padding on top and bottom
 
-            return width, height, padding_x, padding_y
+            return width, height
 
-    def _draw_horizontal_text(self, image, padding_x, padding_y):
-        """Draw horizontal text with outline"""
-        # Draw outline
-        for dx in range(-self.outline_thickness, self.outline_thickness + 1):
-            for dy in range(-self.outline_thickness, self.outline_thickness + 1):
-                if dx == 0 and dy == 0:
-                    continue
-                ray.image_draw_text_ex(
-                    image,
-                    self.font,
-                    self.text,
-                    ray.Vector2(padding_x + dx, padding_y + dy),
-                    self.font_size,
-                    1.0,
-                    self.outline_color
-                )
+    def _draw_horizontal_text(self, image):
+        if self.horizontal_spacing == 1.0:
+            # Use original method for normal spacing
+            text_size = ray.measure_text_ex(self.font, self.text, self.font_size, 1.0)
+            position = ray.Vector2((image.width - text_size.x) / 2, (image.height - text_size.y) / 2)
 
-        # Draw main text
-        ray.image_draw_text_ex(
-            image,
-            self.font,
-            self.text,
-            ray.Vector2(padding_x, padding_y),
-            self.font_size,
-            1.0,
-            self.text_color
-        )
+            for dx in range(-self.outline_thickness, self.outline_thickness + 1):
+                for dy in range(-self.outline_thickness, self.outline_thickness + 1):
+                    # Skip the center position (will be drawn as main text)
+                    if dx == 0 and dy == 0:
+                        continue
 
-    def _draw_vertical_text(self, image, width, padding_x, padding_y):
-        """Draw vertical text with outline"""
-        # Precalculate positions and spacings to avoid redundant calculations
-        positions = []
-        current_y = padding_y
+                    # Calculate outline distance
+                    dist = (dx*dx + dy*dy) ** 0.5
 
-        for i, char in enumerate(self.text):
-            char_size = self._get_char_size(char)
-            char_height = self._calculate_vertical_spacing(
-                char,
-                self.text[i+1] if i+1 < len(self.text) else None
-            )
-
-            # Calculate center position for each character
-            if char in self.vertical_chars:
-                # For vertical characters, we need to use the rotated image dimensions
-                rotated_img = self._get_rotated_char(char, self.text_color)
-                char_width = rotated_img.width
-                center_offset = (width - char_width) // 2
-            else:
-                char_width = char_size.x
-                center_offset = (width - char_width) // 2
-
-            positions.append((char, center_offset, current_y, char_height, char in self.vertical_chars))
-            current_y += char_height
-
-        # First draw all outlines
-        for dx in range(-self.outline_thickness, self.outline_thickness + 1):
-            for dy in range(-self.outline_thickness, self.outline_thickness + 1):
-                if dx == 0 and dy == 0:
-                    continue
-
-                for char, center_offset, y_pos, _, is_vertical in positions:
-                    if is_vertical:
-                        rotated_img = self._get_rotated_char(char, self.outline_color)
-                        ray.image_draw(
-                            image,
-                            rotated_img,
-                            ray.Rectangle(0, 0, rotated_img.width, rotated_img.height),
-                            ray.Rectangle(
-                                int(center_offset + dx),
-                                int(y_pos + dy),
-                                rotated_img.width,
-                                rotated_img.height
-                            ),
-                            ray.WHITE
-                        )
-                    else:
+                    # Only draw outline positions that are near the outline thickness
+                    if dist <= self.outline_thickness + 0.5:
                         ray.image_draw_text_ex(
                             image,
                             self.font,
-                            char,
-                            ray.Vector2(center_offset + dx, y_pos + dy),
+                            self.text,
+                            ray.Vector2(position.x + dx, position.y + dy),
                             self.font_size,
                             1.0,
                             self.outline_color
                         )
 
-        # Then draw all main text
-        for char, center_offset, y_pos, _, is_vertical in positions:
-            if is_vertical:
-                rotated_img = self._get_rotated_char(char, self.text_color)
-                ray.image_draw(
-                    image,
-                    rotated_img,
-                    ray.Rectangle(0, 0, rotated_img.width, rotated_img.height),
-                    ray.Rectangle(
-                        int(center_offset),
-                        int(y_pos),
-                        rotated_img.width,
-                        rotated_img.height
-                    ),
-                    ray.WHITE
-                )
-            else:
+            # Draw main text
+            ray.image_draw_text_ex(
+                image,
+                self.font,
+                self.text,
+                position,
+                self.font_size,
+                1.0,
+                self.text_color
+            )
+        else:
+            # Draw text with custom character spacing
+            text_width = self._calculate_horizontal_text_width()
+            text_height = ray.measure_text_ex(self.font, "Ag", self.font_size, 1.0).y
+
+            start_x = (image.width - text_width) / 2
+            start_y = (image.height - text_height) / 2
+
+            # First draw all outlines
+            current_x = start_x
+            for i, char in enumerate(self.text):
+                char_size = ray.measure_text_ex(self.font, char, self.font_size, 1.0)
+
+                for dx in range(-self.outline_thickness, self.outline_thickness + 1):
+                    for dy in range(-self.outline_thickness, self.outline_thickness + 1):
+                        if dx == 0 and dy == 0:
+                            continue
+
+                        dist = (dx*dx + dy*dy) ** 0.5
+                        if dist <= self.outline_thickness + 0.5:
+                            ray.image_draw_text_ex(
+                                image,
+                                self.font,
+                                char,
+                                ray.Vector2(current_x + dx, start_y + dy),
+                                self.font_size,
+                                1.0,
+                                self.outline_color
+                            )
+
+                # Move to next character position
+                current_x += char_size.x
+                if i < len(self.text) - 1:  # Add spacing except for last character
+                    current_x += (char_size.x * (self.horizontal_spacing - 1.0))
+
+            # Then draw all main text
+            current_x = start_x
+            for i, char in enumerate(self.text):
+                char_size = ray.measure_text_ex(self.font, char, self.font_size, 1.0)
+
                 ray.image_draw_text_ex(
                     image,
                     self.font,
                     char,
-                    ray.Vector2(center_offset, y_pos),
+                    ray.Vector2(current_x, start_y),
                     self.font_size,
                     1.0,
                     self.text_color
                 )
 
-    def _create_texture(self):
-        """Create a texture with outlined text"""
-        # Calculate dimensions
-        width, height, padding_x, padding_y = self._calculate_dimensions()
+                # Move to next character position
+                current_x += char_size.x
+                if i < len(self.text) - 1:  # Add spacing except for last character
+                    current_x += (char_size.x * (self.horizontal_spacing - 1.0))
 
-        # Create transparent image
+    def _draw_vertical_text(self, image, width):
+        padding = int(self.outline_thickness * 2)
+        segments = self._parse_text_segments()
+
+        positions = []
+        current_y = padding  # Start with padding at the top
+
+        for segment in segments:
+            if segment['is_horizontal']:
+                # Handle horizontal exception
+                text_size = ray.measure_text_ex(self.font, segment['text'], self.font_size, 1.0)
+                center_offset = (width - text_size.x) // 2
+                char_height = text_size.y * self.line_spacing
+
+                positions.append({
+                    'type': 'horizontal',
+                    'text': segment['text'],
+                    'x': center_offset,
+                    'y': current_y,
+                    'height': char_height
+                })
+                current_y += char_height
+            else:
+                # Handle vertical text with character grouping
+                char_groups = self._group_characters_with_punctuation(segment['text'])
+
+                for i, group in enumerate(char_groups):
+                    main_char = group['main_char']
+                    adjacent_punct = group['adjacent_punct']
+
+                    # Get next group for spacing calculation
+                    next_char = char_groups[i+1]['main_char'] if i+1 < len(char_groups) else None
+                    char_height = self._calculate_vertical_spacing(main_char, next_char)
+
+                    # Calculate positioning for main character
+                    main_char_size = self._get_char_size(main_char)
+
+                    if main_char in self.vertical_chars:
+                        rotated_img = self._get_rotated_char(main_char, self.text_color)
+                        main_char_width = rotated_img.width
+                        center_offset = (width - main_char_width) // 2
+                    else:
+                        main_char_width = main_char_size.x
+                        center_offset = (width - main_char_width) // 2
+
+                    # Add main character position
+                    positions.append({
+                        'type': 'vertical',
+                        'char': main_char,
+                        'x': center_offset,
+                        'y': current_y,
+                        'height': char_height,
+                        'is_vertical_char': main_char in self.vertical_chars
+                    })
+
+                    # Add adjacent punctuation positions
+                    punct_x_offset = center_offset + main_char_width
+                    for punct in adjacent_punct:
+                        punct_size = self._get_char_size(punct)
+
+                        positions.append({
+                            'type': 'vertical',
+                            'char': punct,
+                            'x': punct_x_offset,
+                            'y': current_y+5,
+                            'height': 0,  # No additional height for punctuation
+                            'is_vertical_char': punct in self.vertical_chars,
+                            'is_adjacent': True
+                        })
+
+                        punct_x_offset += punct_size.x
+
+                    current_y += char_height
+
+        # First draw all outlines
+        outline_thickness = int(self.outline_thickness)
+
+        for pos in positions:
+            if pos['type'] == 'horizontal':
+                # Draw horizontal text outline
+                for dx in range(-outline_thickness, outline_thickness + 1):
+                    for dy in range(-outline_thickness, outline_thickness + 1):
+                        if dx == 0 and dy == 0:
+                            continue
+
+                        dist = (dx*dx + dy*dy) ** 0.5
+                        if dist <= outline_thickness + 0.5:
+                            ray.image_draw_text_ex(
+                                image,
+                                self.font,
+                                pos['text'],
+                                ray.Vector2(pos['x'] + dx, pos['y'] + dy),
+                                self.font_size,
+                                1.0,
+                                self.outline_color
+                            )
+            else:
+                # Draw vertical character outline
+                for dx in range(-outline_thickness, outline_thickness + 1):
+                    for dy in range(-outline_thickness, outline_thickness + 1):
+                        if dx == 0 and dy == 0:
+                            continue
+
+                        dist = (dx*dx + dy*dy) ** 0.5
+                        if dist <= outline_thickness + 0.5:
+                            if pos['is_vertical_char']:
+                                rotated_img = self._get_rotated_char(pos['char'], self.outline_color)
+                                ray.image_draw(
+                                    image,
+                                    rotated_img,
+                                    ray.Rectangle(0, 0, rotated_img.width, rotated_img.height),
+                                    ray.Rectangle(
+                                        int(pos['x'] + dx),
+                                        int(pos['y'] + dy),
+                                        rotated_img.width,
+                                        rotated_img.height
+                                    ),
+                                    ray.WHITE
+                                )
+                            else:
+                                ray.image_draw_text_ex(
+                                    image,
+                                    self.font,
+                                    pos['char'],
+                                    ray.Vector2(pos['x'] + dx, pos['y'] + dy),
+                                    self.font_size,
+                                    1.0,
+                                    self.outline_color
+                                )
+
+        # Then draw all main text
+        for pos in positions:
+            if pos['type'] == 'horizontal':
+                # Draw horizontal text
+                ray.image_draw_text_ex(
+                    image,
+                    self.font,
+                    pos['text'],
+                    ray.Vector2(pos['x'], pos['y']),
+                    self.font_size,
+                    1.0,
+                    self.text_color
+                )
+            else:
+                # Draw vertical character
+                if pos['is_vertical_char']:
+                    rotated_img = self._get_rotated_char(pos['char'], self.text_color)
+                    ray.image_draw(
+                        image,
+                        rotated_img,
+                        ray.Rectangle(0, 0, rotated_img.width, rotated_img.height),
+                        ray.Rectangle(
+                            int(pos['x']),
+                            int(pos['y']),
+                            rotated_img.width,
+                            rotated_img.height
+                        ),
+                        ray.WHITE
+                    )
+                else:
+                    ray.image_draw_text_ex(
+                        image,
+                        self.font,
+                        pos['char'],
+                        ray.Vector2(pos['x'], pos['y']),
+                        self.font_size,
+                        1.0,
+                        self.text_color
+                    )
+
+    def _create_texture(self):
+        if self.hash in text_cache:
+            texture = ray.load_texture(f'cache/image/{self.hash}.png')
+            return texture
+
+        self.font = self._load_font_for_text(self.text)
+
+        width, height = self._calculate_dimensions()
+
+        width += int(self.outline_thickness * 1.5)
+        height += int(self.outline_thickness * 1.5)
+
         image = ray.gen_image_color(width, height, ray.Color(0, 0, 0, 0))
 
-        # Draw text based on orientation
         if not self.vertical:
-            self._draw_horizontal_text(image, padding_x, padding_y)
+            self._draw_horizontal_text(image)
         else:
-            self._draw_vertical_text(image, width, padding_x, padding_y)
+            self._draw_vertical_text(image, width)
 
-        # Create texture from image
+        ray.export_image(image, f'cache/image/{self.hash}.png')
         texture = ray.load_texture_from_image(image)
         ray.unload_image(image)
         return texture
 
     def draw(self, src: ray.Rectangle, dest: ray.Rectangle, origin: ray.Vector2, rotation: float, color: ray.Color):
-        """Draw the outlined text"""
         ray.draw_texture_pro(self.texture, src, dest, origin, rotation, color)
 
     def unload(self):
-        """Clean up resources"""
-        # Unload all cached rotated images
         for img in self._rotation_cache.values():
             ray.unload_image(img)
         self._rotation_cache.clear()
 
-        # Unload texture
+        for img in self._horizontal_cache.values():
+            ray.unload_image(img)
+        self._horizontal_cache.clear()
+
         ray.unload_texture(self.texture)

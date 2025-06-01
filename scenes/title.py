@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pyray as ray
 
+from libs import song_hash
 from libs.animation import Animation
 from libs.audio import audio
 from libs.utils import (
@@ -19,9 +20,9 @@ class TitleScreen:
         self.width = width
         self.height = height
         video_dir = Path(get_config()["paths"]["video_path"]) / "op_videos"
-        self.op_video_list = [str(file) for file in video_dir.glob("**/*.mp4")]
+        self.op_video_list = [file for file in video_dir.glob("**/*.mp4")]
         video_dir = Path(get_config()["paths"]["video_path"]) / "attract_videos"
-        self.attract_video_list = [str(file) for file in video_dir.glob("**/*.mp4")]
+        self.attract_video_list = [file for file in video_dir.glob("**/*.mp4")]
         self.load_sounds()
         self.screen_init = False
 
@@ -32,10 +33,10 @@ class TitleScreen:
         sounds_dir = Path("Sounds")
         title_dir = sounds_dir / "title"
 
-        self.sound_bachi_swipe = audio.load_sound(str(title_dir / "SE_ATTRACT_2.ogg"))
-        self.sound_bachi_hit = audio.load_sound(str(title_dir / "SE_ATTRACT_3.ogg"))
-        self.sound_warning_message = audio.load_sound(str(title_dir / "VO_ATTRACT_3.ogg"))
-        self.sound_warning_error = audio.load_sound(str(title_dir / "SE_ATTRACT_1.ogg"))
+        self.sound_bachi_swipe = audio.load_sound(title_dir / "SE_ATTRACT_2.ogg")
+        self.sound_bachi_hit = audio.load_sound(title_dir / "SE_ATTRACT_3.ogg")
+        self.sound_warning_message = audio.load_sound(title_dir / "VO_ATTRACT_3.ogg")
+        self.sound_warning_error = audio.load_sound(title_dir / "SE_ATTRACT_1.ogg")
         self.sounds = [self.sound_bachi_swipe, self.sound_bachi_hit, self.sound_warning_message, self.sound_warning_error]
 
     def load_textures(self):
@@ -46,6 +47,8 @@ class TitleScreen:
         if not self.screen_init:
             self.screen_init = True
             self.load_textures()
+
+            song_hash.song_hashes = song_hash.build_song_hashes()
 
             self.scene = 'Opening Video'
             self.op_video = VideoPlayer(random.choice(self.op_video_list))
@@ -94,8 +97,10 @@ class TitleScreen:
         self.on_screen_start()
 
         self.scene_manager()
-        if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
-            return self.on_screen_end()
+        keys = get_config()["keybinds"]["left_don"] + get_config()["keybinds"]["right_don"]
+        for key in keys:
+            if ray.is_key_pressed(ord(key)):
+                return self.on_screen_end()
 
     def draw(self):
         if self.scene == 'Opening Video':

@@ -29,10 +29,10 @@ class ResultScreen:
 
     def load_sounds(self):
         sounds_dir = Path("Sounds")
-        self.sound_don = audio.load_sound(str(sounds_dir / "inst_00_don.wav"))
-        self.sound_kat = audio.load_sound(str(sounds_dir / "inst_00_katsu.wav"))
-        self.sound_num_up = audio.load_sound(str(sounds_dir / "result" / "SE_RESULT [4].ogg"))
-        self.bgm = audio.load_sound(str(sounds_dir / "result" / "JINGLE_SEISEKI [1].ogg"))
+        self.sound_don = audio.load_sound(sounds_dir / "inst_00_don.wav")
+        self.sound_kat = audio.load_sound(sounds_dir / "inst_00_katsu.wav")
+        self.sound_num_up = audio.load_sound(sounds_dir / "result" / "SE_RESULT [4].ogg")
+        self.bgm = audio.load_sound(sounds_dir / "result" / "JINGLE_SEISEKI [1].ogg")
 
     def on_screen_start(self):
         if not self.screen_init:
@@ -211,12 +211,7 @@ class FadeIn:
 
 class FontText:
     def __init__(self, text, font_size):
-        codepoint_count = ray.ffi.new('int *', 0)
-        codepoints_no_dup = set()
-        codepoints_no_dup.update(session_data.song_title)
-        codepoints = ray.load_codepoints(''.join(codepoints_no_dup), codepoint_count)
-        self.font = ray.load_font_ex(str(Path('Graphics/Modified-DFPKanteiryu-XB.ttf')), 40, codepoints, 0)
-        self.text = OutlinedText(self.font, str(text), font_size, ray.WHITE, ray.BLACK, outline_thickness=4)
+        self.text = OutlinedText(str(text), font_size, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)
 
         self.texture = self.text.texture
 

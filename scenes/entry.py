@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pyray as ray
 
-from libs.utils import load_texture_from_zip
+from libs.utils import get_config, load_texture_from_zip
 
 
 class EntryScreen:
@@ -24,8 +24,10 @@ class EntryScreen:
 
     def update(self):
         self.on_screen_start()
-        if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
-            return self.on_screen_end()
+        keys = get_config()["keybinds"]["left_don"] + get_config()["keybinds"]["right_don"]
+        for key in keys:
+            if ray.is_key_pressed(ord(key)):
+                return self.on_screen_end()
 
     def draw(self):
         ray.draw_texture(self.texture_footer, 0, self.height - 151, ray.WHITE)

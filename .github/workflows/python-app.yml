@@ -30,6 +30,13 @@ jobs:
             - name: Install Nuitka
               run: |
                   uv add nuitka
+                  - name: Clear Build Cache
+                    run: |
+                        rm -rf ~/.nuitka
+                        rm -rf PyTaiko.dist
+                        rm -rf PyTaiko.build
+                    shell: bash
+                    continue-on-error: true
             - name: Build Executable
               run: |
                   uv run nuitka --mode=app --remove-output --output-dir=. --include-module=raylib,moviepy,numpy,sounddevice,soundfile,tomlkit --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow PyTaiko.py

@@ -3,8 +3,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-import pandas as pd
-
+#import pandas as pd
 from libs.tja import TJAParser
 from libs.utils import get_config
 
@@ -87,7 +86,7 @@ def build_song_hashes(output_file="cache/song_hashes.json"):
     print(f"Song hashes saved to {output_file}. Updated {updated_count} files.")
     return song_hashes
 
-
+'''
 def get_japanese_songs_for_version(df, version_column):
     # Filter rows where the specified version column has 'YES'
     version_songs = df[df[version_column] != "NO"]
@@ -196,3 +195,4 @@ def get_japanese_songs_for_version(df, version_column):
 
 if len(sys.argv) > 1:
     get_japanese_songs_for_version(pd.read_csv("full.csv"), sys.argv[1])
+'''

@@ -42,9 +42,9 @@ jobs:
                   echo "=== Contents of libs/song_hash.py ==="
                   cat libs/song_hash.py | head -20
                   echo "=== Searching for pandas ==="
-                  grep -n "pandas" . -r --exclude-dir=.git || echo "No pandas found"
+                  grep -n "pandas" . -r --exclude-dir=.git
                   echo "=== Python files with imports ==="
-                  find . -name "*.py" -exec grep -l "import pandas\|from pandas" {} \; || echo "No pandas imports found"
+                  find . -name "*.py" -exec grep -l "import pandas\|from pandas" {} \;
             - name: Build Executable
               run: |
                   uv run nuitka --mode=app --remove-output --output-dir=. --include-module=raylib,moviepy,numpy,sounddevice,soundfile,tomlkit --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow PyTaiko.py

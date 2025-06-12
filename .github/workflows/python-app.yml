@@ -20,7 +20,7 @@ jobs:
               with:
                   enable-cache: true
             - name: Setup Python
-              run: uv python install 3.12
+              run: uv python install
             - name: Install Dependencies
               run: |
                   uv sync
@@ -29,7 +29,7 @@ jobs:
                   uv add nuitka
             - name: Build Executable
               run: |
-                  uv run nuitka --mode=app --include-module=raylib,moviepy,numpy,sounddevice,soundfile,tomlkit --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow PyTaiko.py
+                  uv run nuitka --mode=app --include-module=raylib,moviepy,numpy,sounddevice,soundfile,tomlkit --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow --assume-yes-for-downloads PyTaiko.py
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
               with:

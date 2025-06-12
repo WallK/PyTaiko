@@ -1,9 +1,9 @@
+import csv
 import json
 import sys
 from pathlib import Path
 from typing import Optional
 
-#import pandas as pd
 from libs.tja import TJAParser
 from libs.utils import get_config
 
@@ -86,15 +86,19 @@ def build_song_hashes(output_file="cache/song_hashes.json"):
     print(f"Song hashes saved to {output_file}. Updated {updated_count} files.")
     return song_hashes
 
-'''
-def get_japanese_songs_for_version(df, version_column):
-    # Filter rows where the specified version column has 'YES'
-    version_songs = df[df[version_column] != "NO"]
+def get_japanese_songs_for_version(csv_file_path, version_column):
+    # Read CSV file and filter rows where the specified version column has 'YES'
+    version_songs = []
+
+    with open(csv_file_path, 'r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row.get(version_column, "NO") != "NO":
+                version_songs.append(row)
 
     # Extract Japanese titles (JPTITLE column)
-    japanese_titles = version_songs[
-        "TITLE 【TITLE2】\nJPTITLE／「TITLE2」 より"
-    ].tolist()
+    title_column = "TITLE 【TITLE2】\nJPTITLE／「TITLE2」 より"
+    japanese_titles = [row[title_column] for row in version_songs if title_column in row]
 
     japanese_titles = [name.split("\n") for name in japanese_titles]
     second_lines = [
@@ -194,5 +198,4 @@ def get_japanese_songs_for_version(df, version_column):
 
 
 if len(sys.argv) > 1:
-    get_japanese_songs_for_version(pd.read_csv("full.csv"), sys.argv[1])
-'''
+    get_japanese_songs_for_version("full.csv", sys.argv[1])

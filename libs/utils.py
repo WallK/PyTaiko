@@ -3,7 +3,6 @@ import math
 import os
 import tempfile
 import time
-import tomlkit
 import zipfile
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -11,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pyray as ray
+import tomlkit
 
 #TJA Format creator is unknown. I did not create the format, but I did write the parser though.
 

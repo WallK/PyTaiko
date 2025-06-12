@@ -219,6 +219,9 @@ rotation_cache = dict()
 char_size_cache = dict()
 horizontal_cache = dict()
 text_cache = set()
+if not Path('cache/image').exists():
+    Path('cache').mkdir()
+    Path('cache/image').mkdir()
 for file in Path('cache/image').iterdir():
     text_cache.add(file.stem)
 

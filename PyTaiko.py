@@ -69,12 +69,9 @@ def main():
     ray.set_config_flags(ray.ConfigFlags.FLAG_MSAA_4X_HINT)
     ray.set_trace_log_level(ray.TraceLogLevel.LOG_ERROR)
 
-    #ray.set_window_max_size(screen_width, screen_height)
-    #ray.set_window_min_size(screen_width, screen_height)
     ray.init_window(screen_width, screen_height, "PyTaiko")
     if global_data.config["video"]["borderless"]:
         ray.toggle_borderless_windowed()
-    #ray.clear_window_state(ray.ConfigFlags.FLAG_WINDOW_TOPMOST)
     if global_data.config["video"]["fullscreen"]:
         ray.maximize_window()
 

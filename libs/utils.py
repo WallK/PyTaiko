@@ -97,12 +97,20 @@ def get_pixels_per_frame(bpm: float, time_signature: float, distance: float) -> 
     return (distance / total_frames)
 
 def get_config() -> dict[str, Any]:
-    with open('config.toml', "r", encoding="utf-8") as f:
+    if Path('dev-config.toml').exists():
+        with open(Path('dev-config.toml'), "r", encoding="utf-8") as f:
+            config_file = tomlkit.load(f)
+        return config_file
+    with open(Path('config.toml'), "r", encoding="utf-8") as f:
         config_file = tomlkit.load(f)
     return config_file
 
 def save_config(config: dict[str, Any]) -> None:
-    with open('config.toml', "w", encoding="utf-8") as f:
+    if Path('dev-config.toml').exists():
+        with open(Path('dev-config.toml'), "w", encoding="utf-8") as f:
+            tomlkit.dump(config, f)
+            return
+    with open(Path('config.toml'), "w", encoding="utf-8") as f:
         tomlkit.dump(config, f)
 
 def is_l_don_pressed() -> bool:

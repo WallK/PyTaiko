@@ -731,7 +731,8 @@ class Judgement:
                 ray.draw_texture(textures_2[index+5], 304, 143, hit_color)
             ray.draw_texture(textures_2[9], 370, int(y), color)
             if self.curr_hit_ms is not None:
-                ray.draw_text(self.curr_hit_ms, 370, int(y)-20, 40, ray.fade(ray.YELLOW, self.fade_animation_1.attribute))
+                pass
+                #ray.draw_text(self.curr_hit_ms, 370, int(y)-20, 40, ray.fade(ray.YELLOW, self.fade_animation_1.attribute))
         elif self.type == 'OK':
             if self.big:
                 ray.draw_texture(textures_1[20], 342, 184, color)

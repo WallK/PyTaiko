@@ -16,6 +16,11 @@ from libs.utils import (
 from libs.video import VideoPlayer
 
 
+class State:
+    OP_VIDEO = 0
+    WARNING = 1
+    ATTRACT_VIDEO = 2
+
 class TitleScreen:
     def __init__(self, width: int, height: int):
         self.width = width
@@ -48,7 +53,7 @@ class TitleScreen:
         if not self.screen_init:
             self.screen_init = True
             self.load_textures()
-            self.scene = 'Opening Video'
+            self.state = State.OP_VIDEO
             self.op_video = VideoPlayer(random.choice(self.op_video_list))
             self.attract_video = VideoPlayer(random.choice(self.attract_video_list))
             self.warning_board = None
@@ -66,7 +71,7 @@ class TitleScreen:
         return "ENTRY"
 
     def scene_manager(self):
-        if self.scene == 'Opening Video':
+        if self.state == State.OP_VIDEO:
             if not self.op_video.is_started():
                 self.op_video.start(get_current_ms())
             self.op_video.update()
@@ -74,20 +79,20 @@ class TitleScreen:
                 self.op_video.stop()
                 self.op_video = VideoPlayer(random.choice(self.op_video_list))
 
-                self.scene = 'Warning Board'
+                self.state = State.WARNING
                 self.warning_board = WarningScreen(get_current_ms(), self)
-        elif self.scene == 'Warning Board' and self.warning_board is not None:
+        elif self.state == State.WARNING and self.warning_board is not None:
             self.warning_board.update(get_current_ms(), self)
             if self.warning_board.is_finished:
-                self.scene = 'Attract Video'
+                self.state = State.ATTRACT_VIDEO
                 self.attract_video.start(get_current_ms())
-        elif self.scene == 'Attract Video':
+        elif self.state == State.ATTRACT_VIDEO:
             self.attract_video.update()
             if self.attract_video.is_finished():
                 self.attract_video.stop()
                 self.attract_video = VideoPlayer(random.choice(self.attract_video_list))
 
-                self.scene = 'Opening Video'
+                self.state = State.OP_VIDEO
                 self.op_video.start(get_current_ms())
 
 
@@ -99,14 +104,14 @@ class TitleScreen:
             return self.on_screen_end()
 
     def draw(self):
-        if self.scene == 'Opening Video':
+        if self.state == State.OP_VIDEO:
             self.op_video.draw()
-        elif self.scene == 'Warning Board' and self.warning_board is not None:
+        elif self.state == State.WARNING and self.warning_board is not None:
             bg_source = ray.Rectangle(0, 0, self.textures['keikoku'][0].width, self.textures['keikoku'][0].height)
             bg_dest = ray.Rectangle(0, 0, self.width, self.height)
             ray.draw_texture_pro(self.textures['keikoku'][0], bg_source, bg_dest, ray.Vector2(0,0), 0, ray.WHITE)
             self.warning_board.draw(self)
-        elif self.scene == 'Attract Video':
+        elif self.state == State.ATTRACT_VIDEO:
             self.attract_video.draw()
 
 class WarningScreen:

@@ -136,3 +136,5 @@ class VideoPlayer:
 
         if audio.is_music_stream_playing(self.audio):
             audio.stop_music_stream(self.audio)
+
+        self.video.close()

@@ -116,11 +116,12 @@ class MoveAnimation(BaseAnimation):
             self.attribute = self.start_position + (self.total_distance * progress)
 
 class TextureChangeAnimation(BaseAnimation):
-    def __init__(self, duration: float, textures: list[tuple[float, float, int]]):
+    def __init__(self, duration: float, textures: list[tuple[float, float, int]], delay: float):
         super().__init__(duration)
         self.textures = textures
+        self.delay = delay
     def update(self, current_time_ms: float):
-        elapsed_time = current_time_ms - self.start_ms
+        elapsed_time = current_time_ms - self.start_ms - self.delay
         if elapsed_time <= self.duration:
             for start, end, index in self.textures:
                 if start < elapsed_time <= end:
@@ -223,6 +224,7 @@ class Animation:
         Args:
             duration: Length of the change in milliseconds
             textures: Passed in as a tuple of the starting millisecond, ending millisecond, and texture index
+            delay: Time to wait before starting the change
         """
         return TextureChangeAnimation(duration, **kwargs)
 

@@ -22,6 +22,10 @@ from libs.utils import (
 )
 
 
+class State:
+    BROWSING = 0
+    SONG_SELECTED = 1
+
 class SongSelectScreen:
     BOX_CENTER = 444
     def __init__(self, screen_width: int, screen_height: int):
@@ -56,7 +60,7 @@ class SongSelectScreen:
             self.move_away = Animation.create_move(float('inf'))
             self.diff_fade_out = Animation.create_fade(0, final_opacity=1.0)
             self.background_move = Animation.create_move(15000, start_position=0, total_distance=1280)
-            self.state = "BROWSING"
+            self.state = State.BROWSING
             self.text_fade_out = None
             self.text_fade_in = None
             self.texture_index = 784
@@ -91,7 +95,7 @@ class SongSelectScreen:
         self.demo_song = None
         self.navigator.get_current_item().box.wait = get_current_ms()
     def handle_input(self):
-        if self.state == "BROWSING":
+        if self.state == State.BROWSING:
             if ray.is_key_pressed(ray.KeyboardKey.KEY_LEFT_CONTROL) or (is_l_kat_pressed() and get_current_ms() <= self.last_moved + 100):
                 self.reset_demo_music()
                 self.wait = get_current_ms()
@@ -126,14 +130,14 @@ class SongSelectScreen:
                 else:
                     selected_song = self.navigator.select_current_item()
                     if selected_song:
-                        self.state = "SONG_SELECTED"
+                        self.state = State.SONG_SELECTED
                         if 4 not in selected_song.tja.metadata.course_data:
                             self.is_ura = False
                         audio.play_sound(self.sound_don)
                         self.move_away = Animation.create_move(233, total_distance=500)
                         self.diff_fade_out = Animation.create_fade(83)
 
-        elif self.state == "SONG_SELECTED":
+        elif self.state == State.SONG_SELECTED:
             # Handle song selection confirmation or cancel
             if is_l_don_pressed() or is_r_don_pressed():
                 if self.selected_difficulty == -1:
@@ -142,7 +146,7 @@ class SongSelectScreen:
                     self.diff_fade_out = Animation.create_fade(0, final_opacity=1.0)
                     self.text_fade_out = None
                     self.text_fade_in = None
-                    self.state = "BROWSING"
+                    self.state = State.BROWSING
                     for item in self.navigator.items:
                         item.box.reset()
                 else:
@@ -211,7 +215,7 @@ class SongSelectScreen:
         if self.background_fade_change is None:
             self.last_texture_index = self.texture_index
         for song in self.navigator.items:
-            song.box.update(self.state == "SONG_SELECTED")
+            song.box.update(self.state == State.SONG_SELECTED)
             song.box.is_open = song.box.position == SongSelectScreen.BOX_CENTER + 150
             if not isinstance(song, Directory) and song.box.is_open:
                 if self.demo_song is None and get_current_ms() >= song.box.wait + (83.33*3):
@@ -283,7 +287,7 @@ class SongSelectScreen:
         if self.ura_switch_animation is not None:
             self.ura_switch_animation.draw(self.textures)
 
-        if self.selected_song and self.state == "SONG_SELECTED":
+        if self.selected_song and self.state == State.SONG_SELECTED:
             self.draw_selector()
             fade = ray.WHITE
             if self.text_fade_in is not None:

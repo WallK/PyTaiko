@@ -18,7 +18,7 @@ right_kat = ['K']
 
 [audio]
 device_type = "Windows WASAPI"
-buffer_size = 22
+buffer_size = 64
 sample_rate = -1
 exclusive = false
 

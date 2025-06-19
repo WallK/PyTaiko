@@ -23,6 +23,10 @@ class BaseAnimation():
         """Update the animation based on the current time."""
         pass
 
+    def restart(self) -> None:
+        self.start_ms = get_current_ms()
+        self.is_finished = False
+
     def _ease_in(self, progress: float, ease_type: str) -> float:
         if ease_type == "quadratic":
             return progress * progress
@@ -57,9 +61,18 @@ class FadeAnimation(BaseAnimation):
         super().__init__(duration, delay)
         self.initial_opacity = initial_opacity
         self.final_opacity = final_opacity
+        self.initial_opacity_saved = initial_opacity
+        self.final_opacity_saved = final_opacity
         self.ease_in = ease_in
         self.ease_out = ease_out
         self.reverse_delay = reverse_delay
+        self.reverse_delay_saved = reverse_delay
+
+    def restart(self):
+        super().restart()
+        self.reverse_delay = self.reverse_delay_saved
+        self.initial_opacity = self.initial_opacity_saved
+        self.final_opacity = self.final_opacity_saved
 
     def update(self, current_time_ms: float):
         elapsed_time = current_time_ms - self.start_ms
@@ -90,10 +103,19 @@ class MoveAnimation(BaseAnimation):
                       ease_in: Optional[str] = None, ease_out: Optional[str] = None):
         super().__init__(duration, delay)
         self.reverse_delay = reverse_delay
+        self.reverse_delay_saved = reverse_delay
         self.total_distance = total_distance
         self.start_position = start_position
+        self.total_distance_saved = total_distance
+        self.start_position_saved = start_position
         self.ease_in = ease_in
         self.ease_out = ease_out
+
+    def restart(self):
+        super().restart()
+        self.reverse_delay = self.reverse_delay_saved
+        self.total_distance = self.total_distance_saved
+        self.start_position = self.start_position_saved
 
     def update(self, current_time_ms: float):
         elapsed_time = current_time_ms - self.start_ms
@@ -120,6 +142,7 @@ class TextureChangeAnimation(BaseAnimation):
         super().__init__(duration)
         self.textures = textures
         self.delay = delay
+
     def update(self, current_time_ms: float):
         elapsed_time = current_time_ms - self.start_ms - self.delay
         if elapsed_time <= self.duration:
@@ -151,6 +174,16 @@ class TextureResizeAnimation(BaseAnimation):
         self.initial_size = initial_size
         self.final_size = final_size
         self.reverse_delay = reverse_delay
+        self.initial_size_saved = initial_size
+        self.final_size_saved = final_size
+        self.reverse_delay_saved = reverse_delay
+
+    def restart(self):
+        super().restart()
+        self.reverse_delay = self.reverse_delay_saved
+        self.initial_size = self.initial_size_saved
+        self.final_size = self.final_size_saved
+
 
     def update(self, current_time_ms: float):
         elapsed_time = current_time_ms - self.start_ms

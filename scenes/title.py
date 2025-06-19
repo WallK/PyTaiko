@@ -31,6 +31,7 @@ class TitleScreen:
         self.attract_video_list = [file for file in video_dir.glob("**/*.mp4")]
         self.load_sounds()
         self.screen_init = False
+        self.fade_out = None
 
     def get_videos(self):
         return self.op_video, self.attract_video
@@ -38,7 +39,7 @@ class TitleScreen:
     def load_sounds(self):
         sounds_dir = Path("Sounds")
         title_dir = sounds_dir / "title"
-
+        self.sound_don = audio.load_sound(sounds_dir / "inst_00_don.wav")
         self.sound_bachi_swipe = audio.load_sound(title_dir / "SE_ATTRACT_2.ogg")
         self.sound_bachi_hit = audio.load_sound(title_dir / "SE_ATTRACT_3.ogg")
         self.sound_warning_message = audio.load_sound(title_dir / "VO_ATTRACT_3.ogg")
@@ -99,9 +100,15 @@ class TitleScreen:
     def update(self):
         self.on_screen_start()
 
+        if self.fade_out is not None:
+            self.fade_out.update(get_current_ms())
+            if self.fade_out.is_finished:
+                return self.on_screen_end()
+
         self.scene_manager()
         if is_l_don_pressed() or is_r_don_pressed():
-            return self.on_screen_end()
+            self.fade_out = Animation.create_fade(1000, initial_opacity=0.0, final_opacity=1.0)
+            audio.play_sound(self.sound_don)
 
     def draw(self):
         if self.state == State.OP_VIDEO:
@@ -113,6 +120,11 @@ class TitleScreen:
             self.warning_board.draw(self)
         elif self.state == State.ATTRACT_VIDEO:
             self.attract_video.draw()
+
+        if self.fade_out is not None:
+            src = ray.Rectangle(0, 0, self.texture_black.width, self.texture_black.height)
+            dest = ray.Rectangle(0, 0, self.width, self.height)
+            ray.draw_texture_pro(self.texture_black, src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, self.fade_out.attribute))
 
 class WarningScreen:
     class X:

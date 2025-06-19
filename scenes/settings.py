@@ -23,6 +23,7 @@ class SettingsScreen:
         self.setting_index = 0
         self.in_setting_edit = False
         self.editing_key = False
+        self.editing_gamepad = False
         self.temp_key_input = ""
 
     def on_screen_start(self):
@@ -122,12 +123,33 @@ class SettingsScreen:
             elif key_pressed == ray.KeyboardKey.KEY_ESCAPE:
                 self.editing_key = False
 
+    def handle_gamepad_binding(self, section, key):
+        self.editing_gamepad = True
+        self.temp_key_input = ""
+
+    def update_gamepad_binding(self):
+        """Update gamepad binding based on input"""
+        button_pressed = ray.get_gamepad_button_pressed()
+        if button_pressed != 0:
+            current_header = self.headers[self.header_index]
+            settings = self.get_current_settings()
+            if settings:
+                setting_key, _ = settings[self.setting_index]
+                self.config[current_header][setting_key] = [button_pressed]
+                self.editing_gamepad = False
+        if ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):
+            self.editing_gamepad = False
+
     def update(self):
         self.on_screen_start()
 
         # Handle key binding editing
         if self.editing_key:
             self.update_key_binding()
+            return
+
+        if self.editing_gamepad:
+            self.update_gamepad_binding()
             return
 
         current_header = self.headers[self.header_index]
@@ -166,14 +188,18 @@ class SettingsScreen:
                 elif isinstance(setting_value, (int, float)):
                     self.handle_numeric_change(current_header, setting_key, 1)
                 elif isinstance(setting_value, str):
-                    if 'keybinds' in current_header:
+                    if 'keys' in current_header:
                         self.handle_key_binding(current_header, setting_key)
+                    elif 'gamepad' in current_header:
+                        self.handle_gamepad_binding(current_header, setting_key)
                     else:
                         self.handle_string_cycle(current_header, setting_key)
                 elif isinstance(setting_value, list) and len(setting_value) > 0:
                     if isinstance(setting_value[0], str) and len(setting_value[0]) == 1:
                         # Key binding
                         self.handle_key_binding(current_header, setting_key)
+                    elif isinstance(setting_value[0], int):
+                        self.handle_gamepad_binding(current_header, setting_key)
             elif is_l_don_pressed():
                 # Modify setting value (reverse direction for numeric)
                 setting_key, setting_value = settings[self.setting_index]
@@ -183,7 +209,7 @@ class SettingsScreen:
                 elif isinstance(setting_value, (int, float)):
                     self.handle_numeric_change(current_header, setting_key, -1)
                 elif isinstance(setting_value, str):
-                    if 'keybinds' not in current_header:
+                    if ('keys' not in current_header) and ('gamepad' not in current_header):
                         self.handle_string_cycle(current_header, setting_key)
 
             elif ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):

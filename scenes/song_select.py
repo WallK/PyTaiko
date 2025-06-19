@@ -47,7 +47,7 @@ class SongSelectScreen:
         self.sound_skip = audio.load_sound(sounds_dir / 'song_select' / 'Skip.ogg')
         self.sound_ura_switch = audio.load_sound(sounds_dir / 'song_select' / 'SE_SELECT [4].ogg')
         audio.set_sound_volume(self.sound_ura_switch, 0.25)
-        #self.sound_select = audio.load_sound(sounds_dir / "song_select.wav")
+        self.sound_bgm = audio.load_sound(sounds_dir / "song_select" / "JINGLE_GENRE [1].ogg")
         #self.sound_cancel = audio.load_sound(sounds_dir / "cancel.wav")
 
     def on_screen_start(self):
@@ -78,22 +78,25 @@ class SongSelectScreen:
             if str(global_data.selected_song) in self.navigator.all_song_files:
                 self.navigator.mark_crowns_dirty_for_song(self.navigator.all_song_files[str(global_data.selected_song)])
 
-    def on_screen_end(self):
+    def on_screen_end(self, next_screen):
         self.screen_init = False
         global_data.selected_song = self.navigator.get_current_item().path
         session_data.selected_difficulty = self.selected_difficulty
+        audio.unload_sound(self.sound_bgm)
         self.reset_demo_music()
         for zip in self.textures:
             for texture in self.textures[zip]:
                 ray.unload_texture(texture)
-        return "GAME"
+        return next_screen
 
     def reset_demo_music(self):
         if self.demo_song is not None:
             audio.stop_music_stream(self.demo_song)
             audio.unload_music_stream(self.demo_song)
+            audio.play_sound(self.sound_bgm)
         self.demo_song = None
         self.navigator.get_current_item().box.wait = get_current_ms()
+
     def handle_input(self):
         if self.state == State.BROWSING:
             if ray.is_key_pressed(ray.KeyboardKey.KEY_LEFT_CONTROL) or (is_l_kat_pressed() and get_current_ms() <= self.last_moved + 100):
@@ -205,7 +208,7 @@ class SongSelectScreen:
         if self.game_transition is not None:
             self.game_transition.update(get_current_ms())
             if self.game_transition.is_finished:
-                return self.on_screen_end()
+                return self.on_screen_end("GAME")
         else:
             self.handle_input()
 
@@ -224,6 +227,7 @@ class SongSelectScreen:
                     audio.normalize_music_stream(self.demo_song, 0.1935)
                     audio.seek_music_stream(self.demo_song, song.tja.metadata.demostart)
                     audio.play_music_stream(self.demo_song)
+                    audio.stop_sound(self.sound_bgm)
             if song.box.is_open:
                 current_box = song.box
                 if current_box.texture_index != 552 and get_current_ms() >= song.box.wait + (83.33*3):
@@ -254,6 +258,9 @@ class SongSelectScreen:
 
         if self.ura_switch_animation is not None:
             self.ura_switch_animation.update(get_current_ms())
+
+        if ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):
+            return self.on_screen_end('ENTRY')
 
     def draw_selector(self):
         if self.selected_difficulty == -1:

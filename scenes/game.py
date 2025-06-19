@@ -28,22 +28,18 @@ from libs.video import VideoPlayer
 
 class GameScreen:
     JUDGE_X = 414
-    SCREEN_WIDTH = 1280
-    SCREEN_HEIGHT = 720
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
         self.current_ms = 0
         self.result_transition = None
+        self.transition = None
         self.song_info = None
         self.screen_init = False
         self.movie = None
         self.end_ms = 0
         self.start_delay = 1000
         self.song_started = False
-        self.prev_touch_count = 0
-
-        self.background = Background(width, height)
 
     def load_textures(self):
         self.textures = load_all_textures_from_zip(Path('Graphics/lumendata/enso_system/common.zip'))
@@ -124,13 +120,15 @@ class GameScreen:
     def on_screen_start(self):
         if not self.screen_init:
             self.screen_init = True
+            self.background = Background(self.width, self.height)
             self.load_textures()
             self.load_sounds()
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
             self.song_info = SongInfo(session_data.song_title, 'TEST')
             self.result_transition = None
+            self.transition = Transition(self.height)
 
-    def on_screen_end(self):
+    def on_screen_end(self, next_screen):
         self.screen_init = False
         for zip in self.textures:
             for texture in self.textures[zip]:
@@ -140,7 +138,7 @@ class GameScreen:
         self.song_started = False
         self.end_ms = 0
         self.movie = None
-        return 'RESULT'
+        return next_screen
 
     def write_score(self):
         if global_data.config['general']['autoplay']:
@@ -167,6 +165,8 @@ class GameScreen:
 
     def update(self):
         self.on_screen_start()
+        if self.transition is not None:
+            self.transition.update(get_current_ms())
         self.current_ms = get_current_ms() - self.start_ms
         if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
             if self.song_music is not None:
@@ -188,7 +188,7 @@ class GameScreen:
         if self.result_transition is not None:
             self.result_transition.update(get_current_ms())
             if self.result_transition.is_finished:
-                return self.on_screen_end()
+                return self.on_screen_end('RESULT')
         elif len(self.player_1.play_notes) == 0:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
@@ -206,6 +206,10 @@ class GameScreen:
             audio.play_sound(self.sound_restart)
             self.song_started = False
 
+        if ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):
+            audio.stop_sound(self.song_music)
+            return self.on_screen_end('SONG_SELECT')
+
     def draw(self):
         if self.movie is not None:
             self.movie.draw()
@@ -214,6 +218,8 @@ class GameScreen:
         self.player_1.draw(self)
         if self.song_info is not None:
             self.song_info.draw(self)
+        if self.transition is not None:
+            self.transition.draw(self.height)
         if self.result_transition is not None:
             self.result_transition.draw(self.width, self.height, global_data.textures['shutter'][0], global_data.textures['shutter'][1])
 
@@ -1214,6 +1220,32 @@ class SongInfo:
         src = ray.Rectangle(0, 0, self.song_title.texture.width, self.song_title.texture.height)
         dest = ray.Rectangle(text_x, text_y, self.song_title.texture.width, self.song_title.texture.height)
         self.song_title.draw(src, dest, ray.Vector2(0, 0), 0, self.song_name_fade)
+
+class Transition:
+    def __init__(self, screen_height: int) -> None:
+        self.is_finished = False
+        self.rainbow_up = Animation.create_move(266, start_position=0, total_distance=screen_height + global_data.textures['scene_change_rainbow'][2].height, ease_in='cubic')
+        self.chara_down = None
+    def update(self, current_time_ms: float):
+        self.rainbow_up.update(current_time_ms)
+        if self.rainbow_up.is_finished and self.chara_down is None:
+            self.chara_down = Animation.create_move(33, start_position=0, total_distance=30)
+
+        if self.chara_down is not None:
+            self.chara_down.update(current_time_ms)
+            self.is_finished = self.chara_down.is_finished
+
+    def draw(self, screen_height: int):
+        ray.draw_texture(global_data.textures['scene_change_rainbow'][1], 0, screen_height - int(self.rainbow_up.attribute), ray.WHITE)
+        texture = global_data.textures['scene_change_rainbow'][0]
+        src = ray.Rectangle(0, 0, texture.width, texture.height)
+        dest = ray.Rectangle(0, -int(self.rainbow_up.attribute), texture.width, screen_height)
+        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+        texture = global_data.textures['scene_change_rainbow'][3]
+        offset = 0
+        if self.chara_down is not None:
+            offset = int(self.chara_down.attribute)
+        ray.draw_texture(texture, 76, -int(self.rainbow_up.attribute*3) - offset, ray.WHITE)
 
 class ResultTransition:
     def __init__(self, screen_height: int):

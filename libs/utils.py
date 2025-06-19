@@ -63,7 +63,6 @@ def load_all_textures_from_zip(zip_path: Path) -> dict[str, list[ray.Texture]]:
             result_dict[true_filename][index] = texture
     return result_dict
 
-
 def rounded(num: float) -> int:
     sign = 1 if (num >= 0) else -1
     num = abs(num)
@@ -114,14 +113,16 @@ def save_config(config: dict[str, Any]) -> None:
         tomlkit.dump(config, f)
 
 def is_l_don_pressed() -> bool:
-    keys = global_data.config["keybinds"]["left_don"]
+    keys = global_data.config["keys"]["left_don"]
+    gamepad_buttons = global_data.config["gamepad"]["left_don"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
             return True
 
     if ray.is_gamepad_available(0):
-        if ray.is_gamepad_button_pressed(0, 16):
-            return True
+        for button in gamepad_buttons:
+            if ray.is_gamepad_button_pressed(0, button):
+                return True
 
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
@@ -134,14 +135,16 @@ def is_l_don_pressed() -> bool:
     return False
 
 def is_r_don_pressed() -> bool:
-    keys = global_data.config["keybinds"]["right_don"]
+    keys = global_data.config["keys"]["right_don"]
+    gamepad_buttons = global_data.config["gamepad"]["right_don"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
             return True
 
     if ray.is_gamepad_available(0):
-        if ray.is_gamepad_button_pressed(0, 17):
-            return True
+        for button in gamepad_buttons:
+            if ray.is_gamepad_button_pressed(0, button):
+                return True
 
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
@@ -154,14 +157,16 @@ def is_r_don_pressed() -> bool:
     return False
 
 def is_l_kat_pressed() -> bool:
-    keys = global_data.config["keybinds"]["left_kat"]
+    keys = global_data.config["keys"]["left_kat"]
+    gamepad_buttons = global_data.config["gamepad"]["left_kat"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
             return True
 
     if ray.is_gamepad_available(0):
-        if ray.is_gamepad_button_pressed(0, 10):
-            return True
+        for button in gamepad_buttons:
+            if ray.is_gamepad_button_pressed(0, button):
+                return True
 
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
@@ -174,14 +179,16 @@ def is_l_kat_pressed() -> bool:
     return False
 
 def is_r_kat_pressed() -> bool:
-    keys = global_data.config["keybinds"]["right_kat"]
+    keys = global_data.config["keys"]["right_kat"]
+    gamepad_buttons = global_data.config["gamepad"]["right_kat"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
             return True
 
     if ray.is_gamepad_available(0):
-        if ray.is_gamepad_button_pressed(0, 12):
-            return True
+        for button in gamepad_buttons:
+            if ray.is_gamepad_button_pressed(0, button):
+                return True
 
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}

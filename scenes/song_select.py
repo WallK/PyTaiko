@@ -1,5 +1,5 @@
-
 import sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Union
 
@@ -258,7 +258,7 @@ class SongSelectScreen:
             self.ura_switch_animation.update(get_current_ms())
 
         if self.navigator.genre_bg is not None:
-            self.navigator.genre_bg.update()
+            self.navigator.genre_bg.update(get_current_ms())
 
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):
             return self.on_screen_end('ENTRY')
@@ -369,9 +369,13 @@ class SongBox:
         615: 532,
     }
     def __init__(self, name: str, texture_index: int, is_dir: bool, tja: Optional[TJAParser] = None,
-        tja_count: Optional[int] = None, box_texture: Optional[ray.Texture] = None):
+        tja_count: Optional[int] = None, box_texture: Optional[ray.Texture] = None, name_texture_index: Optional[int] = None):
         self.text_name = name
         self.texture_index = texture_index
+        if name_texture_index is None:
+            self.name_texture_index = texture_index
+        else:
+            self.name_texture_index = name_texture_index
         self.box_texture = box_texture
         self.scores = dict()
         self.crown = dict()
@@ -509,7 +513,7 @@ class SongBox:
         '''
 
         if self.name is None and -56 <= self.position <= 1280:
-            self.name = OutlinedText(self.text_name, 40, ray.Color(255, 255, 255, 255), SongBox.OUTLINE_MAP.get(self.texture_index, ray.Color(101, 0, 82, 255)), outline_thickness=5, vertical=True)
+            self.name = OutlinedText(self.text_name, 40, ray.Color(255, 255, 255, 255), SongBox.OUTLINE_MAP.get(self.name_texture_index, ray.Color(101, 0, 82, 255)), outline_thickness=5, vertical=True)
             #print(f"loaded {self.text_name}")
         elif self.name is not None and (self.position < -56 or self.position > 1280):
             self.name.unload()
@@ -537,6 +541,9 @@ class SongBox:
             dest = ray.Rectangle(x + 47 - int(self.name.texture.width / 2), y+35, self.name.texture.width, min(self.name.texture.height, 417))
             self.name.draw(src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
 
+        if self.tja is not None:
+            if self.tja.ex_data.new:
+                ray.draw_texture(textures['song_select'][677], x-5, y-85, ray.WHITE)
         if self.scores:
             highest_key = max(self.scores.keys())
             score = self.scores[highest_key]
@@ -606,7 +613,7 @@ class SongBox:
                 ray.draw_texture(textures['song_select'][SongBox.GENRE_CHAR_MAP[self.texture_index]+1], 650, 125, color)
                 ray.draw_texture(textures['song_select'][SongBox.GENRE_CHAR_MAP[self.texture_index]], 470, 180, color)
             elif self.box_texture is not None:
-                ray.draw_texture(self.box_texture, (x+48) - (self.box_texture.width//2), (y+130), color)
+                ray.draw_texture(self.box_texture, (x+48) - (self.box_texture.width//2), (y+240) - (self.box_texture.height//2), color)
 
     def draw(self, x: int, y: int, textures, is_ura: bool, fade_override=None):
         if self.is_open and get_current_ms() >= self.wait + 83.33:
@@ -647,17 +654,20 @@ class GenreBG:
         self.start_position = start_box.position
         self.end_position = end_box.position
         self.title = title
-    def update(self):
+        self.fade_in = Animation.create_fade(116, initial_opacity=0.0, final_opacity=1.0, ease_in='quadratic', delay=50)
+    def update(self, current_ms):
         self.start_position = self.start_box.position
         self.end_position = self.end_box.position
+        self.fade_in.update(current_ms)
     def draw(self, textures, y):
         texture_index = GenreBG.BG_MAP[self.end_box.texture_index]
+        color = ray.fade(ray.WHITE, self.fade_in.attribute)
 
         offset = -150 if self.start_box.is_open else 0
         texture = textures['song_select'][texture_index]
         src = ray.Rectangle(0, 0, -texture.width, texture.height)
         dest = ray.Rectangle(self.start_position+offset-5, y-70, texture.width, texture.height)
-        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, ray.WHITE)
+        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, color)
 
         extra_distance = 155 if self.end_box.is_open or self.start_box.is_open else 0
         x = self.start_position+18+offset
@@ -667,12 +677,12 @@ class GenreBG:
             dest = ray.Rectangle(x, y-70, self.start_position + 1280 + 56, texture.height)
         else:
             dest = ray.Rectangle(x, y-70, abs(self.end_position) - self.start_position + extra_distance + 57, texture.height)
-        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, ray.WHITE)
+        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, color)
 
 
         if self.end_position < self.start_position and self.end_position >= -56:
             dest = ray.Rectangle(0, y-70, min(self.end_position+75, 1280) + extra_distance, texture.height)
-            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, ray.WHITE)
+            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0,0), 0, color)
 
         offset = 150 if self.end_box.is_open else 0
         ray.draw_texture(textures['song_select'][texture_index], self.end_position+75+offset, y-70, ray.WHITE)
@@ -684,17 +694,17 @@ class GenreBG:
             texture = textures['song_select'][GenreBG.HEADER_MAP[self.end_box.texture_index]]
             src = ray.Rectangle(0, 0, texture.width, texture.height)
             dest = ray.Rectangle((1280//2) - (dest_width//2), y-68, dest_width, texture.height)
-            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, color)
 
             texture = textures['song_select'][GenreBG.HEADER_MAP[self.end_box.texture_index]+1]
             src = ray.Rectangle(0, 0, -texture.width, texture.height)
             dest = ray.Rectangle((1280//2) - (dest_width//2) - (texture.width//2), y-68, texture.width, texture.height)
-            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
-            ray.draw_texture(texture, (1280//2) + (dest_width//2) - (texture.width//2), y-68, ray.WHITE)
+            ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, color)
+            ray.draw_texture(texture, (1280//2) + (dest_width//2) - (texture.width//2), y-68, color)
 
             src = ray.Rectangle(0, 0, self.title.texture.width, self.title.texture.height)
             dest = ray.Rectangle((1280//2) - (dest_width//2), y-68, dest_width, self.title.texture.height)
-            self.title.draw(src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+            self.title.draw(src, dest, ray.Vector2(0, 0), 0, color)
 
 class YellowBox:
     def __init__(self, name: OutlinedText, is_back: bool, tja: Optional[TJAParser] = None, subtitle: Optional[OutlinedText] = None):
@@ -867,6 +877,8 @@ class YellowBox:
                     ray.draw_texture(textures['custom'][1], 458, 120, color)
                 elif self.tja.ex_data.limited_time:
                     ray.draw_texture(textures['song_select'][418], 458, 120, color)
+                elif self.tja.ex_data.new:
+                    ray.draw_texture(textures['song_select'][408], 458, 120, color)
 
                 #Difficulties
                 ray.draw_texture(textures['song_select'][395], 458, 210, color)
@@ -967,12 +979,22 @@ class FileSystemItem:
 
 class Directory(FileSystemItem):
     """Represents a directory in the navigation system"""
-    def __init__(self, path: Path, name: str, texture_index: int, has_box_def=False, to_root=False, back=False, tja_count=0, box_texture=None):
+    COLLECTIONS = [
+        'NEW',
+        'RECENT',
+        'FAVORITE',
+        'DIFFICULTY',
+        'RECOMMENDED'
+    ]
+    def __init__(self, path: Path, name: str, texture_index: int, has_box_def=False, to_root=False, back=False, tja_count=0, box_texture=None, collection=None):
         super().__init__(path, name)
         self.has_box_def = has_box_def
         self.to_root = to_root
         self.back = back
         self.tja_count = tja_count
+        self.collection = None
+        if collection in Directory.COLLECTIONS:
+            self.collection = collection
 
         if self.to_root or self.back:
             texture_index = 552
@@ -981,11 +1003,14 @@ class Directory(FileSystemItem):
 
 class SongFile(FileSystemItem):
     """Represents a song file (TJA) in the navigation system"""
-    def __init__(self, path: Path, name: str, texture_index: int, tja=None):
+    def __init__(self, path: Path, name: str, texture_index: int, tja=None, name_texture_index: Optional[int]=None):
         super().__init__(path, name)
+        self.is_recent = (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)) <= timedelta(days=7)
         self.tja = tja or TJAParser(path)
+        if self.is_recent:
+            self.tja.ex_data.new = True
         title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
-        self.box = SongBox(title, texture_index, False, tja=self.tja)
+        self.box = SongBox(title, texture_index, False, tja=self.tja, name_texture_index=name_texture_index if name_texture_index is not None else texture_index)
         self.box.get_scores()
 
 class FileNavigator:
@@ -1012,6 +1037,7 @@ class FileNavigator:
         self.current_dir = Path()
         self.current_root_dir = Path()
         self.items: list[Directory | SongFile] = []
+        self.new_items: list[Directory | SongFile] = []
         self.selected_index = 0
         self.history = []
         self.box_open = False
@@ -1051,9 +1077,10 @@ class FileNavigator:
             name = dir_path.name if dir_path.name else str(dir_path)
             texture_index = 620
             box_texture = None
+            collection = None
 
             if has_box_def:
-                name, texture_index = self._parse_box_def(dir_path)
+                name, texture_index, collection = self._parse_box_def(dir_path)
                 box_png_path = dir_path / "box.png"
                 if box_png_path.exists():
                     box_texture = ray.load_texture(str(box_png_path))
@@ -1066,7 +1093,8 @@ class FileNavigator:
                 dir_path, name, texture_index,
                 has_box_def=has_box_def,
                 tja_count=tja_count,
-                box_texture=box_texture
+                box_texture=box_texture,
+                collection=collection
             )
             self.all_directories[dir_key] = directory_obj
 
@@ -1098,6 +1126,8 @@ class FileNavigator:
                 if song_key not in self.all_song_files:
                     try:
                         song_obj = SongFile(tja_path, tja_path.name, texture_index)
+                        if song_obj.is_recent:
+                            self.new_items.append(SongFile(tja_path, tja_path.name, 620, name_texture_index=texture_index))
                         self.all_song_files[song_key] = song_obj
                     except Exception as e:
                         print(f"Error creating SongFile for {tja_path}: {e}")
@@ -1195,7 +1225,7 @@ class FileNavigator:
 
     def _find_tja_files_in_directory_only(self, directory: Path):
         """Find TJA files only in the specified directory, not recursively in subdirectories with box.def"""
-        tja_files = []
+        tja_files: list[Path] = []
 
         try:
             for path in directory.iterdir():
@@ -1212,7 +1242,7 @@ class FileNavigator:
         return tja_files
 
     def _find_tja_files_recursive(self, directory: Path, box_def_dirs_only=True):
-        tja_files = []
+        tja_files: list[Path] = []
 
         try:
             has_box_def = (directory / "box.def").exists()
@@ -1239,6 +1269,7 @@ class FileNavigator:
         """Parse box.def file for directory metadata"""
         texture_index = 620
         name = path.name
+        collection = None
 
         try:
             with open(path / "box.def", 'r', encoding='utf-8') as box_def:
@@ -1252,14 +1283,16 @@ class FileNavigator:
                     elif line.startswith("#TITLEJA:"):
                         if global_data.config['general']['language'] == 'ja':
                             name = line.split(":", 1)[1].strip()
+                    elif line.startswith("#COLLECTION"):
+                        collection = line.split(":", 1)[1].strip()
         except Exception as e:
             print(f"Error parsing box.def in {path}: {e}")
 
-        return name, texture_index
+        return name, texture_index, collection
 
     def _read_song_list(self, path: Path):
         """Read and process song_list.txt file"""
-        tja_files = []
+        tja_files: list[Path] = []
         updated_lines = []
         file_updated = False
         with open(path / 'song_list.txt', 'r', encoding='utf-8-sig') as song_list:
@@ -1370,6 +1403,8 @@ class FileNavigator:
         # Add pre-generated content for this directory
         if dir_key in self.directory_contents:
             content_items = self.directory_contents[dir_key]
+            if isinstance(selected_item, Directory) and selected_item.collection == Directory.COLLECTIONS[0]:
+                content_items = self.new_items
 
             i = 1
             for item in content_items:

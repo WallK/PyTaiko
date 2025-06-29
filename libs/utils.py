@@ -810,6 +810,7 @@ class OutlinedText:
             self._draw_vertical_text(image, width)
 
         ray.export_image(image, f'cache/image/{self.hash}.png')
+        text_cache.add(self.hash)
         texture = ray.load_texture_from_image(image)
         ray.unload_image(image)
         return texture

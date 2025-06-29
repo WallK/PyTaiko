@@ -2,7 +2,6 @@ import sqlite3
 from pathlib import Path
 
 import pyray as ray
-import sentry_sdk
 from dotenv import dotenv_values
 from raylib.defines import (
     RL_FUNC_ADD,
@@ -10,7 +9,6 @@ from raylib.defines import (
     RL_ONE_MINUS_SRC_ALPHA,
     RL_SRC_ALPHA,
 )
-from sentry_sdk import profiler
 
 from libs import song_hash
 from libs.audio import audio
@@ -112,20 +110,6 @@ def main():
     ray.set_exit_key(ray.KeyboardKey.KEY_A)
     global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
     prev_ms = get_current_ms()
-    sentry_sdk.init(
-        dsn=env_config["SENTRY_URL"],
-        # Add data like request headers and IP for users,
-        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-        send_default_pii=True,
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for tracing.
-        traces_sample_rate=1.0,
-        # Set profile_session_sample_rate to 1.0 to profile 100%
-        # of profile sessions.
-        profile_session_sample_rate=1.0,
-    )
-    if global_data.config['general']['send_diagnostic_data']:
-        profiler.start_profiler()
     while not ray.window_should_close():
         current_ms = get_current_ms()
         if current_ms >= prev_ms + 100:
@@ -164,7 +148,6 @@ def main():
         ray.end_drawing()
     ray.close_window()
     audio.close_audio_device()
-    profiler.stop_profiler()
 
 if __name__ == "__main__":
     main()

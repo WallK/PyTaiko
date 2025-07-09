@@ -6,6 +6,9 @@ This is a TJA player / Taiko simulator written in python and uses the [raylib](h
 
 ## Installation
 
+Windows 10, Mac OS X 10.14 and Ubuntu 20.04 and higher are supported.
+Any operating system below these requirements will not work.
+Any Linux distro not listed is up to your own discretion
 Download for OS of choice on releases page
 
 How to run:

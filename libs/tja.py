@@ -176,7 +176,6 @@ class TJAParser:
     DIFFS = {0: "easy", 1: "normal", 2: "hard", 3: "oni", 4: "edit", 5: "tower", 6: "dan"}
     def __init__(self, path: Path, start_delay: int = 0, distance: int = 866):
         self.file_path: Path = path
-        print(self.file_path)
 
         lines = self.file_path.read_text(encoding='utf-8-sig').splitlines()
         self.data = [cleaned for line in lines

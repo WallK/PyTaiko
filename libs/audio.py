@@ -727,6 +727,10 @@ class AudioEngine:
 
         self.running = False
         self.audio_device_ready = False
+        self.sounds = {}
+        self.music_streams = {}
+        self.sound_queue = queue.Queue()
+        self.music_queue = queue.Queue()
         print("Audio device closed")
         return
 

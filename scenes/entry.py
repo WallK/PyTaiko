@@ -279,12 +279,12 @@ class EntryScreen:
 
                     box_title = self.box_titles[i][1]
                     src = ray.Rectangle(0, 0, box_title.texture.width, box_title.texture.height)
-                    dest = ray.Rectangle(final_x + 12, y + 20, box_title.texture.width, box_title.texture.height)
+                    dest = ray.Rectangle(final_x + 25, y + 20, box_title.texture.width, box_title.texture.height)
                     box_title.draw(src, dest, ray.Vector2(0, 0), 0, color)
                 else:
                     box_title = self.box_titles[i][0]
                     src = ray.Rectangle(0, 0, box_title.texture.width, box_title.texture.height)
-                    dest = ray.Rectangle(final_x + 9, y + 20, box_title.texture.width, box_title.texture.height)
+                    dest = ray.Rectangle(final_x + 20, y + 20, box_title.texture.width, box_title.texture.height)
                     box_title.draw(src, dest, ray.Vector2(0, 0), 0, color)
 
     def draw(self):

@@ -18,6 +18,7 @@ from libs.utils import (
     global_data,
     load_all_textures_from_zip,
 )
+from scenes.devtest import DevScreen
 from scenes.entry import EntryScreen
 from scenes.game import GameScreen
 from scenes.result import ResultScreen
@@ -33,6 +34,7 @@ class Screens:
     GAME = "GAME"
     RESULT = "RESULT"
     SETTINGS = "SETTINGS"
+    DEV_MENU = "DEV_MENU"
 
 def create_song_db():
     with sqlite3.connect('scores.db') as con:
@@ -84,24 +86,26 @@ def main():
     if global_data.config["video"]["fullscreen"]:
         ray.maximize_window()
 
-    current_screen = Screens.TITLE
+    current_screen = Screens.DEV_MENU
 
     audio.init_audio_device()
 
     title_screen = TitleScreen(screen_width, screen_height)
     entry_screen = EntryScreen(screen_width, screen_height)
-    song_select_screen = SongSelectScreen(screen_width, screen_height)
+    #song_select_screen = SongSelectScreen(screen_width, screen_height)
     game_screen = GameScreen(screen_width, screen_height)
     result_screen = ResultScreen(screen_width, screen_height)
     settings_screen = SettingsScreen(screen_width, screen_height)
+    dev_screen = DevScreen(screen_width, screen_height)
 
     screen_mapping = {
         Screens.ENTRY: entry_screen,
         Screens.TITLE: title_screen,
-        Screens.SONG_SELECT: song_select_screen,
+        #Screens.SONG_SELECT: song_select_screen,
         Screens.GAME: game_screen,
         Screens.RESULT: result_screen,
-        Screens.SETTINGS: settings_screen
+        Screens.SETTINGS: settings_screen,
+        Screens.DEV_MENU: dev_screen
     }
     target = ray.load_render_texture(screen_width, screen_height)
     ray.set_texture_filter(target.texture, ray.TextureFilter.TEXTURE_FILTER_TRILINEAR)

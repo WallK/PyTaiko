@@ -400,7 +400,7 @@ class SongBox:
         self.tja_count = tja_count
         self.tja_count_text = None
         if self.tja_count is not None and self.tja_count != 0:
-            self.tja_count_text = OutlinedText(str(self.tja_count), 35, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5, horizontal_spacing=1.2)
+            self.tja_count_text = OutlinedText(str(self.tja_count), 35, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)#, horizontal_spacing=1.2)
         self.tja = tja
         self.hash = dict()
         self.update(False)
@@ -1007,6 +1007,8 @@ class SongFile(FileSystemItem):
     def __init__(self, path: Path, name: str, texture_index: int, tja=None, name_texture_index: Optional[int]=None):
         super().__init__(path, name)
         self.is_recent = (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)) <= timedelta(days=7)
+        if self.is_recent:
+            print(name, (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)))
         self.tja = tja or TJAParser(path)
         if self.is_recent:
             self.tja.ex_data.new = True

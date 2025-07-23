@@ -1,6 +1,7 @@
 import pyray as ray
 import sounddevice as sd
 
+from libs.audio import audio
 from libs.utils import (
     global_data,
     is_l_don_pressed,
@@ -34,6 +35,9 @@ class SettingsScreen:
         self.screen_init = False
         save_config(self.config)
         global_data.config = self.config
+        audio.close_audio_device()
+        audio.type = global_data.config["audio"]["device_type"]
+        audio.init_audio_device()
         return "ENTRY"
 
     def get_current_settings(self):

@@ -86,13 +86,13 @@ def main():
     if global_data.config["video"]["fullscreen"]:
         ray.maximize_window()
 
-    current_screen = Screens.DEV_MENU
+    current_screen = Screens.TITLE
 
     audio.init_audio_device()
 
     title_screen = TitleScreen(screen_width, screen_height)
     entry_screen = EntryScreen(screen_width, screen_height)
-    #song_select_screen = SongSelectScreen(screen_width, screen_height)
+    song_select_screen = SongSelectScreen(screen_width, screen_height)
     game_screen = GameScreen(screen_width, screen_height)
     result_screen = ResultScreen(screen_width, screen_height)
     settings_screen = SettingsScreen(screen_width, screen_height)
@@ -101,7 +101,7 @@ def main():
     screen_mapping = {
         Screens.ENTRY: entry_screen,
         Screens.TITLE: title_screen,
-        #Screens.SONG_SELECT: song_select_screen,
+        Screens.SONG_SELECT: song_select_screen,
         Screens.GAME: game_screen,
         Screens.RESULT: result_screen,
         Screens.SETTINGS: settings_screen,

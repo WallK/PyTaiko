@@ -5,7 +5,6 @@ from typing import Optional, Union
 
 import pyray as ray
 
-from libs import song_hash
 from libs.animation import Animation
 from libs.audio import audio
 from libs.tja import TJAParser
@@ -418,20 +417,8 @@ class SongBox:
     def get_scores(self):
         if self.tja is None:
             return
-
         with sqlite3.connect('scores.db') as con:
             cursor = con.cursor()
-
-            diffs_to_compute = []
-            for diff in self.tja.metadata.course_data:
-                if diff not in self.hash:
-                    diffs_to_compute.append(diff)
-
-            if diffs_to_compute:
-                for diff in diffs_to_compute:
-                    notes, _, bars = TJAParser.notes_to_position(TJAParser(self.tja.file_path), diff)
-                    self.hash[diff] = self.tja.hash_note_data(notes, bars)
-
             # Batch database query for all diffs at once
             if self.tja.metadata.course_data:
                 hash_values = [self.hash[diff] for diff in self.tja.metadata.course_data]
@@ -1004,17 +991,15 @@ class SongFile(FileSystemItem):
         if self.is_recent:
             self.tja.ex_data.new = True
         title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
+        self.hash = global_data.song_paths[path]
         self.box = SongBox(title, texture_index, False, tja=self.tja, name_texture_index=name_texture_index if name_texture_index is not None else texture_index)
+        self.box.hash = global_data.song_hashes[self.hash][0]["diff_hashes"]
         self.box.get_scores()
 
 class FileNavigator:
     """Manages navigation through pre-generated Directory and SongFile objects"""
     def __init__(self, root_dirs: list[str]):
-        # Handle both single path and list of paths
-        if isinstance(root_dirs, (list, tuple)):
-            self.root_dirs = [Path(p) if not isinstance(p, Path) else p for p in root_dirs]
-        else:
-            self.root_dirs = [Path(root_dirs) if not isinstance(root_dirs, Path) else root_dirs]
+        self.root_dirs = [Path(p) if not isinstance(p, Path) else p for p in root_dirs]
 
         # Pre-generated objects storage
         self.all_directories: dict[str, Directory] = {}  # path -> Directory
@@ -1118,14 +1103,10 @@ class FileNavigator:
             for i, tja_path in enumerate(sorted(tja_files)):
                 song_key = str(tja_path)
                 if song_key not in self.all_song_files:
-                    try:
-                        song_obj = SongFile(tja_path, tja_path.name, texture_index)
-                        if song_obj.is_recent:
-                            self.new_items.append(SongFile(tja_path, tja_path.name, 620, name_texture_index=texture_index))
-                        self.all_song_files[song_key] = song_obj
-                    except Exception as e:
-                        print(f"Error creating SongFile for {tja_path}: {e}")
-                        continue
+                    song_obj = SongFile(tja_path, tja_path.name, texture_index)
+                    if song_obj.is_recent:
+                        self.new_items.append(SongFile(tja_path, tja_path.name, 620, name_texture_index=texture_index))
+                    self.all_song_files[song_key] = song_obj
 
                 content_items.append(self.all_song_files[song_key])
 
@@ -1302,19 +1283,20 @@ class FileNavigator:
                 hash_val, title, subtitle = parts[0], parts[1], parts[2]
                 original_hash = hash_val
 
-                if song_hash.song_hashes is not None:
-                    if hash_val in song_hash.song_hashes:
-                        file_path = Path(song_hash.song_hashes[hash_val]["file_path"])
-                        if file_path.exists():
-                            tja_files.append(file_path)
-                    else:
-                        # Try to find by title and subtitle
-                        for key, value in song_hash.song_hashes.items():
-                            if (value["title"]["en"] == title and
-                                value["subtitle"]["en"][2:] == subtitle and
-                                Path(value["file_path"]).exists()):
+                if hash_val in global_data.song_hashes:
+                    file_path = Path(global_data.song_hashes[hash_val][0]["file_path"])
+                    if file_path.exists():
+                        tja_files.append(file_path)
+                else:
+                    # Try to find by title and subtitle
+                    for key, value in global_data.song_hashes.items():
+                        for i in range(len(value)):
+                            song = value[i]
+                            if (song["title"]["en"] == title and
+                                song["subtitle"]["en"][2:] == subtitle and
+                                Path(song["file_path"]).exists()):
                                 hash_val = key
-                                tja_files.append(Path(song_hash.song_hashes[hash_val]["file_path"]))
+                                tja_files.append(Path(global_data.song_hashes[hash_val][i]["file_path"]))
                                 break
 
                 if hash_val != original_hash:
@@ -1523,17 +1505,3 @@ class FileNavigator:
         self.current_root_dir = Path()
         self.history.clear()
         self.load_root_directories()
-
-    def get_stats(self):
-        """Get statistics about the pre-generated objects"""
-        song_count_by_dir = {}
-        for dir_path, items in self.directory_contents.items():
-            song_count_by_dir[dir_path] = len([item for item in items if isinstance(item, SongFile)])
-
-        return {
-            'total_directories': len(self.all_directories),
-            'total_songs': len(self.all_song_files),
-            'root_items': len(self.root_items),
-            'directories_with_content': len(self.directory_contents),
-            'songs_by_directory': song_count_by_dir
-        }

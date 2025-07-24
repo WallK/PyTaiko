@@ -232,9 +232,9 @@ class GlobalData:
     textures: dict[str, list[ray.Texture]] = field(default_factory=lambda: dict())
     songs_played: int = 0
     config: dict = field(default_factory=lambda: dict())
-
+    song_hashes: dict[str, list[dict]] = field(default_factory=lambda: dict()) #Hash to path
+    song_paths: dict[Path, str] = field(default_factory=lambda: dict()) #path to hash
 global_data = GlobalData()
-shader = ray.load_shader('', 'shader/outline.fs')
 
 class OutlinedText:
     def __init__(self, text: str, font_size: int, color: ray.Color, outline_color: ray.Color, outline_thickness=5.0, vertical=False):
@@ -260,7 +260,7 @@ class OutlinedText:
             ])
         texture_size = ray.ffi.new("float[2]", [self.texture.width, self.texture.height])
 
-        self.shader = shader
+        self.shader = ray.load_shader('shader/outline.vs', 'shader/outline.fs')
         outline_size_loc = ray.get_shader_location(self.shader, "outlineSize")
         outline_color_loc = ray.get_shader_location(self.shader, "outlineColor")
         texture_size_loc = ray.get_shader_location(self.shader, "textureSize")
@@ -279,7 +279,7 @@ class OutlinedText:
         rotate_chars = {'-', '‐', '|', '/', '\\', 'ー', '～', '~', '（', '）', '(', ')',
                         '「', '」', '[', ']', '［', '］', '【', '】', '…', '→', '→', ':', '：'}
         max_char_width = 0
-        total_height = padding * 2  # Top and bottom padding
+        total_height = padding * 2
 
         for char in text:
             if font:
@@ -288,22 +288,20 @@ class OutlinedText:
                 char_width = ray.measure_text(char, font_size)
                 char_size = ray.Vector2(char_width, font_size)
 
-            # If character should be rotated, swap width and height for measurements
             if char in rotate_chars:
-                effective_width = char_size.y  # Height becomes width when rotated 90°
+                effective_width = char_size.y
             else:
                 effective_width = char_size.x
 
             max_char_width = max(max_char_width, effective_width)
 
         total_height += len(text) * font_size
-        width = int(max_char_width + (padding * 2))  # Add left and right padding
+        width = int(max_char_width + (padding * 2))
         height = total_height
         image = ray.gen_image_color(width, height, bg_color)
 
         for i, char in enumerate(text):
-            char_y = i * ray.measure_text_ex(self.font, char, font_size, 0).y
-            char_y += padding
+            char_y = i * font_size + padding
 
             if font:
                 char_size = ray.measure_text_ex(font, char, font_size, 0)
@@ -313,26 +311,22 @@ class OutlinedText:
                 char_size = ray.Vector2(char_width, font_size)
                 char_image = ray.image_text(char, font_size, color)
 
-            # Rotate character if it's in the rotate_chars set
             if char in rotate_chars:
                 rotated_image = ray.gen_image_color(char_image.height, char_image.width, ray.BLANK)
 
-                # Manual 90-degree clockwise rotation
                 for y in range(char_image.height):
                     for x in range(char_image.width):
                         src_color = ray.get_image_color(char_image, x, y)
-                        # 90° clockwise: new_x = old_y, new_y = width - 1 - old_x
-                        new_x = y
-                        new_y = char_image.width - 1 - x
+                        new_x = char_image.height - 1 - y
+                        new_y = x
                         ray.image_draw_pixel(rotated_image, new_x, new_y, src_color)
 
                 ray.unload_image(char_image)
                 char_image = rotated_image
-                effective_width = char_size.y  # Height becomes width when rotated
+                effective_width = char_size.y
             else:
                 effective_width = char_size.x
 
-            # Center the character horizontally
             char_x = width // 2 - effective_width // 2
 
             ray.image_draw(image, char_image,

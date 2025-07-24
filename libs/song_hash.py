@@ -1,16 +1,138 @@
 import csv
 import json
 import sys
+import time
+from collections import deque
 from pathlib import Path
 from typing import Optional
 
 from git import Repo
 
 from libs.tja import TJAParser
-from libs.utils import get_config
+from libs.utils import get_config, global_data
 
-song_hashes: Optional[dict] = None
 
+class DiffHashesDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, obj):
+        if "diff_hashes" in obj:
+            obj["diff_hashes"] = {
+                int(key): value
+                for key, value in obj["diff_hashes"].items()
+            }
+        return obj
+
+def build_song_hashes(output_dir=Path("cache")):
+    song_hashes: dict[str, list[dict]] = dict()
+    path_to_hash: dict[str, str] = dict()  # New index for O(1) path lookups
+
+    output_path = Path(output_dir / "song_hashes.json")
+    index_path = Path(output_dir / "path_to_hash.json")
+
+    # Load existing data
+    if output_path.exists():
+        with open(output_path, "r", encoding="utf-8") as f:
+            song_hashes = json.load(f, cls=DiffHashesDecoder)
+
+    if index_path.exists():
+        with open(index_path, "r", encoding="utf-8") as f:
+            path_to_hash = json.load(f)
+
+    saved_timestamp = 0.0
+    current_timestamp = time.time()
+    if (output_dir / 'timestamp.txt').exists():
+        with open(output_dir / 'timestamp.txt', 'r') as f:
+            saved_timestamp = float(f.read())
+
+    tja_paths = get_config()["paths"]["tja_path"]
+    all_tja_files: list[Path] = []
+    for root_dir in tja_paths:
+        root_path = Path(root_dir)
+        if (root_path / '.git').exists():
+            repo = Repo(root_path)
+            origin = repo.remotes.origin
+            origin.pull()
+            print('Pulled latest from', root_path)
+        all_tja_files.extend(root_path.rglob("*.tja"))
+
+    files_to_process = []
+
+    # O(n) pass to identify which files need processing
+    for tja_path in all_tja_files:
+        tja_path_str = str(tja_path)
+        current_modified = tja_path.stat().st_mtime
+
+        # Skip files that haven't been modified since last run
+        if current_modified <= saved_timestamp:
+            # File hasn't changed, just restore to global_data if we have it
+            current_hash = path_to_hash.get(tja_path_str)
+            if current_hash is not None:
+                global_data.song_paths[tja_path] = current_hash
+            continue
+
+        # O(1) lookup instead of nested loops
+        current_hash = path_to_hash.get(tja_path_str)
+
+        if current_hash is None:
+            # New file (modified after saved_timestamp)
+            files_to_process.append(tja_path)
+        else:
+            # File was modified after saved_timestamp, need to reprocess
+            files_to_process.append(tja_path)
+            # Clean up old hash
+            if current_hash in song_hashes:
+                del song_hashes[current_hash]
+            del path_to_hash[tja_path_str]
+
+    # Process only files that need updating
+    for tja_path in files_to_process:
+        tja_path_str = str(tja_path)
+        current_modified = tja_path.stat().st_mtime
+
+        tja = TJAParser(tja_path)
+        all_notes = deque()
+        all_bars = deque()
+        diff_hashes = dict()
+
+        for diff in tja.metadata.course_data:
+            diff_notes, _, diff_bars = TJAParser.notes_to_position(TJAParser(tja.file_path), diff)
+            diff_hashes[diff] = tja.hash_note_data(diff_notes, diff_bars)
+            all_notes.extend(diff_notes)
+            all_bars.extend(diff_bars)
+
+        if all_notes == []:
+            continue
+
+        hash_val = tja.hash_note_data(all_notes, all_bars)
+
+        if hash_val not in song_hashes:
+            song_hashes[hash_val] = []
+
+        song_hashes[hash_val].append({
+            "file_path": tja_path_str,
+            "last_modified": current_modified,
+            "title": tja.metadata.title,
+            "subtitle": tja.metadata.subtitle,
+            "diff_hashes": diff_hashes
+        })
+
+        # Update both indexes
+        path_to_hash[tja_path_str] = hash_val
+        global_data.song_paths[tja_path] = hash_val
+
+    # Save both files
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(song_hashes, f, indent=2, ensure_ascii=False)
+
+    with open(index_path, "w", encoding="utf-8") as f:
+        json.dump(path_to_hash, f, indent=2, ensure_ascii=False)
+
+    with open(output_dir / 'timestamp.txt', 'w') as f:
+        f.write(str(current_timestamp))
+
+    return song_hashes
 
 def process_tja_file(tja_file):
     """Process a single TJA file and return hash or None if error"""
@@ -24,78 +146,6 @@ def process_tja_file(tja_file):
         return ''
     hash = tja.hash_note_data(all_notes[0], all_notes[2])
     return hash
-
-
-def build_song_hashes(output_file="cache/song_hashes.json"):
-    existing_hashes = {}
-    output_path = Path(output_file)
-    if output_path.exists():
-        try:
-            with open(output_file, "r", encoding="utf-8") as f:
-                existing_hashes = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            print(
-                f"Warning: Could not load existing hashes from {output_file}: {e}"
-            )
-            existing_hashes = {}
-
-    song_hashes = existing_hashes.copy()
-    tja_paths = get_config()["paths"]["tja_path"]
-    all_tja_files = []
-
-    for root_dir in tja_paths:
-        root_path = Path(root_dir)
-        if (root_path / '.git').exists():
-            repo = Repo(root_path)
-            origin = repo.remotes.origin
-            origin.pull()
-            print('Pulled latest from', root_path)
-        all_tja_files.extend(root_path.rglob("*.tja"))
-
-    updated_count = 0
-    for tja_file in all_tja_files:
-        current_modified = tja_file.stat().st_mtime
-
-        should_update = False
-        hash_val = None
-
-        existing_hash = None
-        for h, data in song_hashes.items():
-            if data["file_path"] == str(tja_file):
-                existing_hash = h
-                break
-
-        if existing_hash is None:
-            should_update = True
-        else:
-            stored_modified = song_hashes[existing_hash].get("last_modified", 0)
-            if current_modified > stored_modified:
-                should_update = True
-                del song_hashes[existing_hash]
-
-        if should_update:
-            tja = TJAParser(tja_file)
-            all_notes = []
-            for diff in tja.metadata.course_data:
-                all_notes.extend(
-                    TJAParser.notes_to_position(TJAParser(tja.file_path), diff)
-                )
-            if all_notes == []:
-                continue
-            hash_val = tja.hash_note_data(all_notes[0], all_notes[2])
-            song_hashes[hash_val] = {
-                "file_path": str(tja_file),
-                "last_modified": current_modified,
-                "title": tja.metadata.title,
-                "subtitle": tja.metadata.subtitle,
-            }
-            updated_count += 1
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(song_hashes, f, indent=2, ensure_ascii=False)
-
-    print(f"Song hashes saved to {output_file}. Updated {updated_count} files.")
-    return song_hashes
 
 def get_japanese_songs_for_version(csv_file_path, version_column):
     # Read CSV file and filter rows where the specified version column has 'YES'

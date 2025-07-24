@@ -105,7 +105,7 @@ class EntryScreen:
                 self.selected_box = max(0, self.selected_box - 1)
             if is_r_kat_pressed():
                 audio.play_sound(self.sound_kat)
-                self.selected_box = min(self.num_boxes, self.selected_box + 1)
+                self.selected_box = min(self.num_boxes - 1, self.selected_box + 1)
 
     def update(self):
         self.on_screen_start()

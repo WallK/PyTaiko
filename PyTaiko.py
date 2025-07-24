@@ -2,7 +2,6 @@ import sqlite3
 from pathlib import Path
 
 import pyray as ray
-from dotenv import dotenv_values
 from raylib.defines import (
     RL_FUNC_ADD,
     RL_ONE,
@@ -56,24 +55,14 @@ def create_song_db():
         '''
         cursor.execute(create_table_query)
         con.commit()
-    print("Scores database created successfully")
+        print("Scores database created successfully")
 
 def main():
-    env_config = dotenv_values(".env")
     create_song_db()
-    song_hash.song_hashes = song_hash.build_song_hashes()
+    global_data.song_hashes = song_hash.build_song_hashes()
     global_data.config = get_config()
     screen_width: int = global_data.config["video"]["screen_width"]
     screen_height: int = global_data.config["video"]["screen_height"]
-    '''
-    render_width, render_height = ray.get_render_width(), ray.get_render_height()
-    dpi_scale = ray.get_window_scale_dpi()
-    if dpi_scale.x == 0:
-        dpi_scale = (ray.get_render_width(), ray.get_render_height())
-        dpi_scale = screen_width, screen_height
-    else:
-        dpi_scale = int(render_width/dpi_scale.x), int(render_height/dpi_scale.y)
-    '''
 
     if global_data.config["video"]["vsync"]:
         ray.set_config_flags(ray.ConfigFlags.FLAG_VSYNC_HINT)
@@ -113,12 +102,7 @@ def main():
     ray.rl_set_blend_factors_separate(RL_SRC_ALPHA, RL_ONE_MINUS_SRC_ALPHA, RL_ONE, RL_ONE_MINUS_SRC_ALPHA, RL_FUNC_ADD, RL_FUNC_ADD)
     ray.set_exit_key(ray.KeyboardKey.KEY_A)
     global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
-    prev_ms = get_current_ms()
     while not ray.window_should_close():
-        current_ms = get_current_ms()
-        if current_ms >= prev_ms + 100:
-            print("LAG SPIKE DETECTED")
-        prev_ms = current_ms
 
         ray.begin_texture_mode(target)
         ray.begin_blend_mode(ray.BlendMode.BLEND_CUSTOM_SEPARATE)
@@ -140,7 +124,6 @@ def main():
         ray.end_texture_mode()
         ray.begin_drawing()
         ray.clear_background(ray.WHITE)
-        #Thanks to rnoiz proper render height
         ray.draw_texture_pro(
              target.texture,
              ray.Rectangle(0, 0, target.texture.width, -target.texture.height),

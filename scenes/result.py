@@ -40,9 +40,9 @@ class ResultScreen:
             self.load_textures()
             self.load_sounds()
             self.screen_init = True
-            self.song_info = FontText(session_data.song_title, 40).texture
+            self.song_info = OutlinedText(session_data.song_title, 40, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)
             audio.play_sound(self.bgm)
-            self.fade_in = FadeIn(get_current_ms())
+            self.fade_in = FadeIn()
             self.fade_out = None
             self.gauge = None
             self.score_delay = None
@@ -165,7 +165,9 @@ class ResultScreen:
 
         ray.draw_texture(self.textures['result'][330], -5, 3, ray.WHITE)
         ray.draw_texture(self.textures['result'][(global_data.songs_played % 4) + 331], 232, 4, ray.WHITE)
-        ray.draw_texture(self.song_info, 1252 - self.song_info.width, int(35 - self.song_info.height / 2), ray.WHITE)
+        src = ray.Rectangle(0, 0, self.song_info.texture.width, self.song_info.texture.height)
+        dest = ray.Rectangle(1252 - self.song_info.texture.width, 35 - self.song_info.texture.height / 2, self.song_info.texture.width, self.song_info.texture.height)
+        self.song_info.draw(src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
 
         ray.draw_texture(self.textures['result'][175], 532, 98, ray.fade(ray.WHITE, 0.75))
 
@@ -189,7 +191,7 @@ class ResultScreen:
 
 
 class FadeIn:
-    def __init__(self, current_ms: float):
+    def __init__(self):
         self.fadein = Animation.create_fade(450, initial_opacity=1.0, final_opacity=0.0, delay=100)
         self.fade = ray.fade(ray.WHITE, self.fadein.attribute)
 
@@ -211,12 +213,6 @@ class FadeIn:
             ray.draw_texture(texture_2, x, 0 - texture_2.height//2, self.fade)
             ray.draw_texture(texture_2, x, screen_height - texture_2.height + texture_2.height//2, self.fade)
             x += texture_2.width
-
-class FontText:
-    def __init__(self, text, font_size):
-        self.text = OutlinedText(str(text), font_size, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)
-
-        self.texture = self.text.texture
 
 class ScoreAnimator:
     def __init__(self, target_score):

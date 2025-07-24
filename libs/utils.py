@@ -234,6 +234,7 @@ class GlobalData:
     config: dict = field(default_factory=lambda: dict())
 
 global_data = GlobalData()
+shader = ray.load_shader('', 'shader/outline.fs')
 
 class OutlinedText:
     def __init__(self, text: str, font_size: int, color: ray.Color, outline_color: ray.Color, outline_thickness=5.0, vertical=False):
@@ -259,7 +260,7 @@ class OutlinedText:
             ])
         texture_size = ray.ffi.new("float[2]", [self.texture.width, self.texture.height])
 
-        self.shader = ray.load_shader('', 'shader/outline.fs')
+        self.shader = shader
         outline_size_loc = ray.get_shader_location(self.shader, "outlineSize")
         outline_color_loc = ray.get_shader_location(self.shader, "outlineColor")
         texture_size_loc = ray.get_shader_location(self.shader, "textureSize")

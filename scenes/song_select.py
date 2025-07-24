@@ -572,7 +572,7 @@ class SongBox:
 
                 src = ray.Rectangle(0, 0, self.hori_name.texture.width, self.hori_name.texture.height)
                 dest_width = min(300, self.hori_name.texture.width)
-                dest = ray.Rectangle((x + 48) - (dest_width//2), y-45 + 150 - int(self.open_anim.attribute), dest_width, self.hori_name.texture.height)
+                dest = ray.Rectangle((x + 48) - (dest_width//2), y-43 + 150 - int(self.open_anim.attribute), dest_width, self.hori_name.texture.height)
                 self.hori_name.draw(src, dest, ray.Vector2(0, 0), 0, color)
 
 
@@ -1000,8 +1000,6 @@ class SongFile(FileSystemItem):
     def __init__(self, path: Path, name: str, texture_index: int, tja=None, name_texture_index: Optional[int]=None):
         super().__init__(path, name)
         self.is_recent = (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)) <= timedelta(days=7)
-        if self.is_recent:
-            print(name, (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)))
         self.tja = tja or TJAParser(path)
         if self.is_recent:
             self.tja.ex_data.new = True

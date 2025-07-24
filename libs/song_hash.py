@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from git import Repo
+
 from libs.tja import TJAParser
 from libs.utils import get_config
 
@@ -43,6 +45,11 @@ def build_song_hashes(output_file="cache/song_hashes.json"):
 
     for root_dir in tja_paths:
         root_path = Path(root_dir)
+        if (root_path / '.git').exists():
+            repo = Repo(root_path)
+            origin = repo.remotes.origin
+            origin.pull()
+            print('Pulled latest from', root_path)
         all_tja_files.extend(root_path.rglob("*.tja"))
 
     updated_count = 0

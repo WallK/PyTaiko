@@ -1396,11 +1396,11 @@ class FileNavigator:
                     self.items.append(item)
                 i += 1
 
-        if not has_children:
-            self.box_open = True
-            end_box = content_items[-1].box
-            if selected_item in self.items:
-                self.items.remove(selected_item)
+            if not has_children:
+                self.box_open = True
+                end_box = content_items[-1].box
+                if selected_item in self.items:
+                    self.items.remove(selected_item)
         # OPTIMIZED: Use cached crowns (calculated on-demand)
         for item in self.items:
             if isinstance(item, Directory):

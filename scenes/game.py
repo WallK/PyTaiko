@@ -136,7 +136,8 @@ class GameScreen:
         for zip in self.textures:
             for texture in self.textures[zip]:
                 ray.unload_texture(texture)
-        audio.unload_sound(self.song_music)
+        if self.song_music is not None:
+            audio.unload_sound(self.song_music)
         del self.song_music
         self.song_started = False
         self.end_ms = 0

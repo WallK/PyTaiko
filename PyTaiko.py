@@ -13,7 +13,6 @@ from libs import song_hash
 from libs.audio import audio
 from libs.utils import (
     get_config,
-    get_current_ms,
     global_data,
     load_all_textures_from_zip,
 )

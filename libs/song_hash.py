@@ -4,7 +4,6 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-from typing import Optional
 
 from git import Repo
 
@@ -12,17 +11,17 @@ from libs.tja import TJAParser
 from libs.utils import get_config, global_data
 
 
+def diff_hashes_object_hook(obj):
+    if "diff_hashes" in obj:
+        obj["diff_hashes"] = {
+            int(key): value
+            for key, value in obj["diff_hashes"].items()
+        }
+    return obj
+
 class DiffHashesDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
-        super().__init__(object_hook=self.object_hook, *args, **kwargs)
-
-    def object_hook(self, obj):
-        if "diff_hashes" in obj:
-            obj["diff_hashes"] = {
-                int(key): value
-                for key, value in obj["diff_hashes"].items()
-            }
-        return obj
+        super().__init__(object_hook=diff_hashes_object_hook, *args, **kwargs)
 
 def build_song_hashes(output_dir=Path("cache")):
     song_hashes: dict[str, list[dict]] = dict()

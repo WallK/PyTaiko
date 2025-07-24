@@ -33,6 +33,7 @@ class SongSelectScreen:
         self.screen_width = screen_width
         self.screen_height = screen_height
 
+    def load_navigator(self):
         self.navigator = FileNavigator(self.root_dir)
 
     def load_textures(self):
@@ -47,7 +48,6 @@ class SongSelectScreen:
         self.sound_ura_switch = audio.load_sound(sounds_dir / 'song_select' / 'SE_SELECT [4].ogg')
         audio.set_sound_volume(self.sound_ura_switch, 0.25)
         self.sound_bgm = audio.load_sound(sounds_dir / "song_select" / "JINGLE_GENRE [1].ogg")
-        #self.sound_cancel = audio.load_sound(sounds_dir / "cancel.wav")
 
     def on_screen_start(self):
         if not self.screen_init:
@@ -369,14 +369,15 @@ class SongBox:
         615: 532,
     }
     def __init__(self, name: str, texture_index: int, is_dir: bool, tja: Optional[TJAParser] = None,
-        tja_count: Optional[int] = None, box_texture: Optional[ray.Texture] = None, name_texture_index: Optional[int] = None):
+        tja_count: Optional[int] = None, box_texture: Optional[str] = None, name_texture_index: Optional[int] = None):
         self.text_name = name
         self.texture_index = texture_index
         if name_texture_index is None:
             self.name_texture_index = texture_index
         else:
             self.name_texture_index = name_texture_index
-        self.box_texture = box_texture
+        self.box_texture_path = box_texture
+        self.box_texture = None
         self.scores = dict()
         self.crown = dict()
         self.position = -11111
@@ -398,11 +399,8 @@ class SongBox:
         self.genre_distance = 0
         self.tja_count = tja_count
         self.tja_count_text = None
-        if self.tja_count is not None and self.tja_count != 0:
-            self.tja_count_text = OutlinedText(str(self.tja_count), 35, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)#, horizontal_spacing=1.2)
         self.tja = tja
         self.hash = dict()
-        self.update(False)
 
     def reset(self):
         if self.black_name is not None:
@@ -477,6 +475,10 @@ class SongBox:
                 self.open_anim = Animation.create_move(133, start_position=0, total_distance=150, delay=83.33)
                 self.open_fade = Animation.create_fade(200, initial_opacity=0, final_opacity=1.0)
             self.wait = get_current_ms()
+        if self.tja_count is not None and self.tja_count > 0 and self.tja_count_text is None:
+            self.tja_count_text = OutlinedText(str(self.tja_count), 35, ray.Color(255, 255, 255, 255), ray.Color(0, 0, 0, 255), outline_thickness=5)#, horizontal_spacing=1.2)
+        if self.box_texture is None and self.box_texture_path is not None:
+            self.box_texture = ray.load_texture(self.box_texture_path)
 
         elif not self.is_open:
             if self.black_name is not None:
@@ -1021,6 +1023,7 @@ class FileNavigator:
         self.history = []
         self.box_open = False
         self.genre_bg = None
+        self.song_count = 0
 
         # Generate all objects upfront
         self._generate_all_objects()
@@ -1062,7 +1065,7 @@ class FileNavigator:
                 name, texture_index, collection = self._parse_box_def(dir_path)
                 box_png_path = dir_path / "box.png"
                 if box_png_path.exists():
-                    box_texture = ray.load_texture(str(box_png_path))
+                    box_texture = str(box_png_path)
 
             # Count TJA files for this directory
             tja_count = self._count_tja_files(dir_path)
@@ -1104,6 +1107,8 @@ class FileNavigator:
                 song_key = str(tja_path)
                 if song_key not in self.all_song_files:
                     song_obj = SongFile(tja_path, tja_path.name, texture_index)
+                    self.song_count += 1
+                    global_data.song_progress = self.song_count / global_data.total_songs
                     if song_obj.is_recent:
                         self.new_items.append(SongFile(tja_path, tja_path.name, 620, name_texture_index=texture_index))
                     self.all_song_files[song_key] = song_obj
@@ -1128,6 +1133,8 @@ class FileNavigator:
                         if song_key not in self.all_song_files:
                             try:
                                 song_obj = SongFile(tja_path, tja_path.name, 620)
+                                self.song_count += 1
+                                global_data.song_progress = self.song_count / global_data.total_songs
                                 self.all_song_files[song_key] = song_obj
                             except Exception as e:
                                 print(f"Error creating SongFile for {tja_path}: {e}")

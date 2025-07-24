@@ -28,6 +28,12 @@ class Background:
         self.footer.draw()
         self.donbg.draw()
 
+    def unload(self):
+        self.donbg.unload()
+        self.bg_normal.unload()
+        self.bg_fever.unload()
+        self.footer.unload()
+
 class DonBG:
 
     @staticmethod
@@ -51,6 +57,11 @@ class DonBGBase:
         self.move.update(current_time_ms)
         if self.move.is_finished:
             self.move.restart()
+
+    def unload(self):
+        for texture_group in self.textures:
+            for texture in self.textures[texture_group]:
+                ray.unload_texture(texture)
 
 class DonBG1(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -113,6 +124,11 @@ class BGNormalBase:
         self.screen_height = screen_height
         self.name = 'bg_nomal_a_' + str(index).zfill(2)
         self.textures = (load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.name}.zip')))
+
+    def unload(self):
+        for texture_group in self.textures:
+            for texture in self.textures[texture_group]:
+                ray.unload_texture(texture)
 
 class BGNormal1(BGNormalBase):
     def __init__(self, index: int, screen_width: int, screen_height: int):
@@ -284,6 +300,11 @@ class BGFeverBase:
         self.vertical_move = Animation.create_move(1300, start_position=0, total_distance=50, reverse_delay=0)
         self.horizontal_move = Animation.create_move(5000, start_position=0, total_distance=self.textures[self.name][2].width)
 
+    def unload(self):
+        for texture_group in self.textures:
+            for texture in self.textures[texture_group]:
+                ray.unload_texture(texture)
+
 class BGFever4(BGFeverBase):
     def __init__(self, index: int, screen_width: int, screen_height: int):
         super().__init__(index, screen_width, screen_height)
@@ -308,5 +329,9 @@ class Footer:
         self.screen_height = screen_height
         self.name = 'dodai_a_' + str(index).zfill(2)
         self.textures = (load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.name}.zip')))
+    def unload(self):
+        for texture_group in self.textures:
+            for texture in self.textures[texture_group]:
+                ray.unload_texture(texture)
     def draw(self):
         ray.draw_texture(self.textures[self.name][0], 0, self.screen_height - self.textures[self.name][0].height + 20, ray.WHITE)

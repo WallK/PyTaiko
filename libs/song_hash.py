@@ -56,6 +56,8 @@ def build_song_hashes(output_dir=Path("cache")):
             print('Pulled latest from', root_path)
         all_tja_files.extend(root_path.rglob("*.tja"))
 
+    global_data.total_songs = len(all_tja_files)
+
     files_to_process = []
 
     # O(n) pass to identify which files need processing
@@ -86,6 +88,10 @@ def build_song_hashes(output_dir=Path("cache")):
             del path_to_hash[tja_path_str]
 
     # Process only files that need updating
+    song_count = 0
+    total_songs = len(files_to_process)
+    if total_songs > 0:
+        global_data.total_songs = total_songs
     for tja_path in files_to_process:
         tja_path_str = str(tja_path)
         current_modified = tja_path.stat().st_mtime
@@ -120,6 +126,8 @@ def build_song_hashes(output_dir=Path("cache")):
         # Update both indexes
         path_to_hash[tja_path_str] = hash_val
         global_data.song_paths[tja_path] = hash_val
+        song_count += 1
+        global_data.song_progress = song_count / total_songs
 
     # Save both files
     with open(output_path, "w", encoding="utf-8") as f:

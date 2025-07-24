@@ -142,6 +142,7 @@ class GameScreen:
         self.song_started = False
         self.end_ms = 0
         self.movie = None
+        self.background.unload()
         return next_screen
 
     def write_score(self):

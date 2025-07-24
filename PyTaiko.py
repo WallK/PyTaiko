@@ -9,7 +9,6 @@ from raylib.defines import (
     RL_SRC_ALPHA,
 )
 
-from libs import song_hash
 from libs.audio import audio
 from libs.utils import (
     get_config,
@@ -19,6 +18,7 @@ from libs.utils import (
 from scenes.devtest import DevScreen
 from scenes.entry import EntryScreen
 from scenes.game import GameScreen
+from scenes.loading import LoadScreen
 from scenes.result import ResultScreen
 from scenes.settings import SettingsScreen
 from scenes.song_select import SongSelectScreen
@@ -33,6 +33,7 @@ class Screens:
     RESULT = "RESULT"
     SETTINGS = "SETTINGS"
     DEV_MENU = "DEV_MENU"
+    LOADING = "LOADING"
 
 def create_song_db():
     with sqlite3.connect('scores.db') as con:
@@ -57,8 +58,6 @@ def create_song_db():
         print("Scores database created successfully")
 
 def main():
-    create_song_db()
-    global_data.song_hashes = song_hash.build_song_hashes()
     global_data.config = get_config()
     screen_width: int = global_data.config["video"]["screen_width"]
     screen_height: int = global_data.config["video"]["screen_height"]
@@ -74,13 +73,16 @@ def main():
     if global_data.config["video"]["fullscreen"]:
         ray.maximize_window()
 
-    current_screen = Screens.TITLE
+    current_screen = Screens.LOADING
 
     audio.init_audio_device()
+
+    create_song_db()
 
     title_screen = TitleScreen(screen_width, screen_height)
     entry_screen = EntryScreen(screen_width, screen_height)
     song_select_screen = SongSelectScreen(screen_width, screen_height)
+    load_screen = LoadScreen(screen_width, screen_height, song_select_screen)
     game_screen = GameScreen(screen_width, screen_height)
     result_screen = ResultScreen(screen_width, screen_height)
     settings_screen = SettingsScreen(screen_width, screen_height)
@@ -93,7 +95,8 @@ def main():
         Screens.GAME: game_screen,
         Screens.RESULT: result_screen,
         Screens.SETTINGS: settings_screen,
-        Screens.DEV_MENU: dev_screen
+        Screens.DEV_MENU: dev_screen,
+        Screens.LOADING: load_screen
     }
     target = ray.load_render_texture(screen_width, screen_height)
     ray.set_texture_filter(target.texture, ray.TextureFilter.TEXTURE_FILTER_TRILINEAR)

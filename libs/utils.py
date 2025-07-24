@@ -234,6 +234,9 @@ class GlobalData:
     config: dict = field(default_factory=lambda: dict())
     song_hashes: dict[str, list[dict]] = field(default_factory=lambda: dict()) #Hash to path
     song_paths: dict[Path, str] = field(default_factory=lambda: dict()) #path to hash
+    song_progress: float = 0.0
+    total_songs: int = 0
+
 global_data = GlobalData()
 
 class OutlinedText:

@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 import pyray as ray
+from raylib import CAMERA_ORTHOGRAPHIC
 from raylib.defines import (
     RL_FUNC_ADD,
     RL_ONE,
@@ -67,11 +68,18 @@ def main():
     ray.set_config_flags(ray.ConfigFlags.FLAG_MSAA_4X_HINT)
     ray.set_trace_log_level(ray.TraceLogLevel.LOG_WARNING)
 
+    camera = ray.Camera3D()
+    camera.position = ray.Vector3(0.0, 0.0, 10.0)  # Camera position
+    camera.target = ray.Vector3(0.0, 0.0, 0.0)     # Camera looking at point
+    camera.up = ray.Vector3(0.0, 1.0, 0.0)         # Camera up vector
+    camera.fovy = screen_height  # For orthographic, this acts as the view height
+    camera.projection = CAMERA_ORTHOGRAPHIC
+
     ray.init_window(screen_width, screen_height, "PyTaiko")
     if global_data.config["video"]["borderless"]:
         ray.toggle_borderless_windowed()
     if global_data.config["video"]["fullscreen"]:
-        ray.maximize_window()
+        ray.toggle_fullscreen()
 
     current_screen = Screens.LOADING
 
@@ -104,18 +112,23 @@ def main():
     ray.rl_set_blend_factors_separate(RL_SRC_ALPHA, RL_ONE_MINUS_SRC_ALPHA, RL_ONE, RL_ONE_MINUS_SRC_ALPHA, RL_FUNC_ADD, RL_FUNC_ADD)
     ray.set_exit_key(ray.KeyboardKey.KEY_A)
     global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
-    while not ray.window_should_close():
 
+    while not ray.window_should_close():
         ray.begin_texture_mode(target)
         ray.begin_blend_mode(ray.BlendMode.BLEND_CUSTOM_SEPARATE)
+
         screen = screen_mapping[current_screen]
+        # Begin 3D mode with orthographic camera
 
         if ray.is_key_pressed(ray.KeyboardKey.KEY_F11):
-            ray.toggle_fullscreen()
+            ray.toggle_borderless_windowed()
 
         next_screen = screen.update()
         ray.clear_background(ray.BLACK)
         screen.draw()
+        ray.begin_mode_3d(camera)
+        screen.draw_3d()
+        ray.end_mode_3d()
 
         if next_screen is not None:
             current_screen = next_screen
@@ -129,7 +142,7 @@ def main():
         ray.draw_texture_pro(
              target.texture,
              ray.Rectangle(0, 0, target.texture.width, -target.texture.height),
-             ray.Rectangle(0, 0, screen_width, screen_height),
+             ray.Rectangle(0, 0, ray.get_screen_width(), ray.get_screen_height()),
              ray.Vector2(0,0),
              0,
              ray.WHITE

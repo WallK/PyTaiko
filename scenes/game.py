@@ -1,6 +1,7 @@
 import bisect
 import math
 import sqlite3
+from collections import deque
 from pathlib import Path
 from typing import Optional
 
@@ -103,22 +104,26 @@ class GameScreen:
             self.textures['onp_renda_dai'][0], self.textures['onp_renda_dai'][1],
             self.textures['onp_fusen'][0]]
 
-        self.tja = TJAParser(song, start_delay=self.start_delay, distance=self.width - GameScreen.JUDGE_X)
-        if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
-            self.movie = VideoPlayer(self.tja.metadata.bgmovie)
-            self.movie.set_volume(0.0)
+        if song == Path(''):
+            self.start_ms = get_current_ms()
+            self.tja = None
         else:
-            self.movie = None
-        session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
+            self.tja = TJAParser(song, start_delay=self.start_delay, distance=self.width - GameScreen.JUDGE_X)
+            if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
+                self.movie = VideoPlayer(self.tja.metadata.bgmovie)
+                self.movie.set_volume(0.0)
+            else:
+                self.movie = None
+            session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
+            if not hasattr(self, 'song_music'):
+                if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file():
+                    self.song_music = audio.load_sound(self.tja.metadata.wave)
+                    audio.normalize_sound(self.song_music, 0.1935)
+                else:
+                    self.song_music = None
+            self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
         self.player_1 = Player(self, 1, difficulty)
-        if not hasattr(self, 'song_music'):
-            if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file():
-                self.song_music = audio.load_sound(self.tja.metadata.wave)
-                audio.normalize_sound(self.song_music, 0.1935)
-            else:
-                self.song_music = None
-        self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
     def on_screen_start(self):
         if not self.screen_init:
@@ -146,6 +151,8 @@ class GameScreen:
         return next_screen
 
     def write_score(self):
+        if self.tja is None:
+            return
         if global_data.config['general']['autoplay']:
             return
         with sqlite3.connect('scores.db') as con:
@@ -173,14 +180,15 @@ class GameScreen:
         if self.transition is not None:
             self.transition.update(get_current_ms())
         self.current_ms = get_current_ms() - self.start_ms
-        if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
-            if self.song_music is not None:
-                if not audio.is_sound_playing(self.song_music):
-                    audio.play_sound(self.song_music)
-                    print(f"Song started at {self.current_ms}")
-            if self.movie is not None:
-                self.movie.start(get_current_ms())
-            self.song_started = True
+        if self.tja is not None:
+            if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
+                if self.song_music is not None:
+                    if not audio.is_sound_playing(self.song_music):
+                        audio.play_sound(self.song_music)
+                        print(f"Song started at {self.current_ms}")
+                if self.movie is not None:
+                    self.movie.start(get_current_ms())
+                self.song_started = True
         if self.movie is not None:
             self.movie.update()
         else:
@@ -228,6 +236,9 @@ class GameScreen:
         if self.result_transition is not None:
             self.result_transition.draw(self.width, self.height, global_data.textures['shutter'][0], global_data.textures['shutter'][1])
 
+    def draw_3d(self):
+        self.player_1.draw_3d(self)
+
 class Player:
     TIMING_GOOD = 25.0250015258789
     TIMING_OK = 75.0750045776367
@@ -239,7 +250,10 @@ class Player:
         self.difficulty = difficulty
         self.visual_offset = global_data.config["general"]["visual_offset"]
 
-        self.play_notes, self.draw_note_list, self.draw_bar_list = game_screen.tja.notes_to_position(self.difficulty)
+        if game_screen.tja is not None:
+            self.play_notes, self.draw_note_list, self.draw_bar_list = game_screen.tja.notes_to_position(self.difficulty)
+        else:
+            self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
         self.total_notes = len([note for note in self.play_notes if 0 < note.type < 5])
         self.base_score = calculate_base_score(self.play_notes)
 
@@ -275,11 +289,22 @@ class Player:
 
         self.input_log: dict[float, tuple] = dict()
 
-        self.gauge = Gauge(self.difficulty, game_screen.tja.metadata.course_data[self.difficulty].level, self.total_notes)
+        if game_screen.tja is not None:
+            stars = game_screen.tja.metadata.course_data[self.difficulty].level
+        else:
+            stars = 0
+        self.gauge = Gauge(self.difficulty, stars, self.total_notes)
         self.gauge_hit_effect: list[GaugeHitEffect] = []
 
         self.autoplay_hit_side = 'L'
         self.last_subdivision = -1
+
+        self.model = ray.load_model("model/mikudon.obj")
+        self.model_position = ray.Vector3(-475.0, 160.0, -180.0)
+        self.model_scale = 850.0
+        self.model_rotation_y = 30.0  # Face towards camera (rotate 180 degrees on Y-axis)
+        self.model_rotation_x = 0.0    # No up/down tilt
+        self.model_rotation_z = 0.0
 
     def get_result_score(self):
         return self.score, self.good_count, self.ok_count, self.bad_count, self.total_drumroll, self.max_combo
@@ -383,9 +408,10 @@ class Player:
         else:
             note_type = game_screen.note_type_list[note.type][0]
 
-        self.combo += 1
-        if self.combo > self.max_combo:
-            self.max_combo = self.combo
+        if note.type < 7:
+            self.combo += 1
+            if self.combo > self.max_combo:
+                self.max_combo = self.combo
 
         self.draw_arc_list.append(NoteArc(note_type, get_current_ms(), self.player_number, note.type == 3 or note.type == 4) or note.type == 7)
         #game_screen.background.chibis.append(game_screen.background.Chibi())
@@ -709,6 +735,20 @@ class Player:
         for anim in self.base_score_list:
             anim.draw(game_screen)
         #ray.draw_circle(game_screen.width//2, game_screen.height, 300, ray.ORANGE)
+
+    def draw_3d(self):
+        '''
+        rotation_axis = ray.Vector3(0.0, 1.0, 0.0)  # Y-axis for horizontal rotation
+        ray.draw_model_ex(
+            self.model,
+            self.model_position,
+            rotation_axis,
+            self.model_rotation_y,
+            ray.Vector3(self.model_scale, self.model_scale, self.model_scale),
+            ray.WHITE
+        )
+        '''
+        pass
 
 class Judgement:
     def __init__(self, type: str, big: bool, ms_display: Optional[float]=None):

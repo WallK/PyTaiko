@@ -314,6 +314,9 @@ class SongSelectScreen:
         if self.game_transition is not None:
             self.game_transition.draw(self.screen_height)
 
+    def draw_3d(self):
+        pass
+
 class SongBox:
     OUTLINE_MAP = {
         555: ray.Color(0, 77, 104, 255),

@@ -264,3 +264,5 @@ class SettingsScreen:
         else:
             # Draw exit instruction
             ray.draw_text("Press Don to exit settings", 250, 100, 20, ray.GREEN)
+    def draw_3d(self):
+        pass

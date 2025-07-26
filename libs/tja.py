@@ -169,6 +169,8 @@ def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> in
             balloon_count += note.count
         else:
             total_notes += 1
+    if total_notes == 0:
+        return 0
     total_score = (1000000 - (balloon_count * 100) - (drumroll_sec * 1692.0079999994086)) / total_notes
     return math.ceil(total_score / 10) * 10
 

@@ -304,3 +304,6 @@ class EntryScreen:
             src = ray.Rectangle(0, 0, self.texture_black.width, self.texture_black.height)
             dest = ray.Rectangle(0, 0, self.width, self.height)
             ray.draw_texture_pro(self.texture_black, src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+
+    def draw_3d(self):
+        pass

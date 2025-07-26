@@ -127,6 +127,9 @@ class TitleScreen:
             dest = ray.Rectangle(0, 0, self.width, self.height)
             ray.draw_texture_pro(self.texture_black, src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, self.fade_out.attribute))
 
+    def draw_3d(self):
+        pass
+
 class WarningScreen:
     class X:
         DELAY = 4250

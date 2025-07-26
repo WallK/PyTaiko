@@ -11,14 +11,14 @@ class Background:
     def __init__(self, screen_width: int, screen_height: int):
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.donbg = DonBG.create(self.screen_width, self.screen_height, random.randint(6, 6), 1)
+        self.donbg = DonBG.create(self.screen_width, self.screen_height, random.randint(1, 6), 1)
         self.bg_normal = BGNormal.create(self.screen_width, self.screen_height, random.randint(1, 5))
         self.bg_fever = BGFever.create(self.screen_width, self.screen_height, 4)
         self.footer = Footer(self.screen_width, self.screen_height, random.randint(1, 3))
         self.is_clear = False
     def update(self, current_time_ms: float, is_clear: bool):
         self.is_clear = is_clear
-        self.donbg.update(current_time_ms, is_clear)
+        self.donbg.update(current_time_ms, self.is_clear)
         self.bg_normal.update(current_time_ms)
         self.bg_fever.update(current_time_ms)
     def draw(self):
@@ -38,7 +38,7 @@ class DonBG:
 
     @staticmethod
     def create(screen_width: int, screen_height: int, index: int, player_num: int):
-        map = [None, DonBG1, DonBG1, DonBG1, DonBG1, DonBG1, DonBG6]
+        map = [None, DonBG1, DonBG2, DonBG3, DonBG4, DonBG5, DonBG6]
         selected_obj = map[index]
         return selected_obj(index, screen_width, screen_height, player_num)
 
@@ -75,14 +75,123 @@ class DonBG1(DonBGBase):
     def draw(self):
         texture_index = 0
         if self.is_clear:
-            texture_index = 2
+            texture_index = 3
         top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
+        for i in range(0, self.screen_width + top_texture.width, top_texture.width):
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+
+        wave_texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
+        for i in range(0, self.screen_width + (wave_texture.width+80), wave_texture.width+80):
+            ray.draw_texture(wave_texture, i + int(self.move.attribute * ((wave_texture.width+80)/top_texture.width)) + 100, int(self.overlay_move.attribute), ray.WHITE)
+
+        texture = self.textures[self.name + f'_{self.player_num}p'][2 + texture_index]
+        for i in range(0, self.screen_width + texture.width + texture.width*5, texture.width):
+            ray.draw_texture(texture, i + int(self.move.attribute * (texture.width/top_texture.width)*3), int(self.overlay_move.attribute) + 105, ray.WHITE)
+
+class DonBG2(DonBGBase):
+    def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
+        super().__init__(index, screen_width, screen_height, player_num)
+        self.overlay_move = Animation.create_move(1500, start_position=0, total_distance=20, reverse_delay=0)
+    def update(self, current_time_ms: float, is_clear: bool):
+        super().update(current_time_ms, is_clear)
+        self.overlay_move.update(current_time_ms)
+        if self.overlay_move.is_finished:
+            self.overlay_move.restart()
+    def draw(self):
+        texture_index = 0
+        if self.is_clear:
+            texture_index = 2
+        top_texture = self.textures[self.name + f'_{self.player_num}p'][texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
             ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
 
         texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 50, ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, ray.WHITE)
+
+class DonBG3(DonBGBase):
+    def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
+        super().__init__(index, screen_width, screen_height, player_num)
+        duration = 266
+        bounce_distance = 40
+        self.bounce_up = Animation.create_move(duration, total_distance=-bounce_distance, ease_out='quadratic')
+        self.bounce_down = Animation.create_move(duration, total_distance=-bounce_distance, ease_in='quadratic', delay=self.bounce_up.duration)
+        self.overlay_move = Animation.create_move(duration*3, total_distance=20, reverse_delay=0, ease_in='quadratic', ease_out='quadratic', delay=self.bounce_up.duration+self.bounce_down.duration)
+        self.overlay_move_2 = Animation.create_move(duration*3, total_distance=20, reverse_delay=0, ease_in='quadratic', ease_out='quadratic', delay=self.bounce_up.duration+self.bounce_down.duration+self.overlay_move.duration)
+
+    def update(self, current_time_ms: float, is_clear: bool):
+        super().update(current_time_ms, is_clear)
+        self.bounce_up.update(current_time_ms)
+        self.bounce_down.update(current_time_ms)
+        self.overlay_move.update(current_time_ms)
+        self.overlay_move_2.update(current_time_ms)
+        if self.overlay_move_2.is_finished:
+            self.bounce_up.restart()
+            self.bounce_down.restart()
+            self.overlay_move.restart()
+            self.overlay_move_2.restart()
+
+    def draw(self):
+        texture_index = 0
+        if self.is_clear:
+            texture_index = 2
+        top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
+        for i in range(0, self.screen_width + top_texture.width, top_texture.width):
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+        texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
+        for i in range(0, self.screen_width + texture.width, texture.width):
+            ray.draw_texture(texture, i + int(self.move.attribute*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - 25 + int(self.overlay_move.attribute) + int(self.overlay_move_2.attribute), ray.WHITE)
+
+class DonBG4(DonBGBase):
+    def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
+        super().__init__(index, screen_width, screen_height, player_num)
+        self.overlay_move = Animation.create_move(1500, start_position=0, total_distance=20, reverse_delay=0)
+    def update(self, current_time_ms: float, is_clear: bool):
+        super().update(current_time_ms, is_clear)
+        self.overlay_move.update(current_time_ms)
+        if self.overlay_move.is_finished:
+            self.overlay_move.restart()
+    def draw(self):
+        texture_index = 0
+        if self.is_clear:
+            texture_index = 2
+        top_texture = self.textures[self.name + f'_{self.player_num}p'][texture_index]
+        for i in range(0, self.screen_width + top_texture.width, top_texture.width):
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+
+        texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
+        for i in range(0, self.screen_width + texture.width, texture.width):
+            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, ray.WHITE)
+
+class DonBG5(DonBGBase):
+    def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
+        super().__init__(index, screen_width, screen_height, player_num)
+        duration = 266
+        bounce_distance = 40
+        self.bounce_up = Animation.create_move(duration, total_distance=-bounce_distance, ease_out='quadratic')
+        self.bounce_down = Animation.create_move(duration, total_distance=-bounce_distance, ease_in='quadratic', delay=self.bounce_up.duration)
+        self.adjust = Animation.create_move(1000, total_distance=10, reverse_delay=0, delay=self.bounce_up.duration+self.bounce_down.duration)
+
+    def update(self, current_time_ms: float, is_clear: bool):
+        super().update(current_time_ms, is_clear)
+        self.bounce_up.update(current_time_ms)
+        self.bounce_down.update(current_time_ms)
+        self.adjust.update(current_time_ms)
+        if self.adjust.is_finished:
+            self.bounce_up.restart()
+            self.bounce_down.restart()
+            self.adjust.restart()
+
+    def draw(self):
+        texture_index = 0
+        if self.is_clear:
+            texture_index = 2
+        top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
+        for i in range(0, self.screen_width + top_texture.width, top_texture.width):
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+        texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
+        for i in range(0, self.screen_width + texture.width + texture.width*2, texture.width*2):
+            ray.draw_texture(texture, i + int((self.move.attribute * (texture.width/top_texture.width))*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - int(self.adjust.attribute), ray.WHITE)
 
 class DonBG6(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):

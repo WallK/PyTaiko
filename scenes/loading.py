@@ -112,3 +112,5 @@ class LoadScreen:
 
         if self.fade_in is not None:
             ray.draw_rectangle(0, 0, self.width, self.height, ray.fade(ray.WHITE, self.fade_in.attribute))
+    def draw_3d(self):
+        pass

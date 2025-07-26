@@ -1,4 +1,3 @@
-import math
 from pathlib import Path
 
 import pyray as ray
@@ -251,6 +250,9 @@ class ResultScreen:
 
         if self.fade_out is not None:
             self.fade_out.draw(self.width, self.height)
+
+    def draw_3d(self):
+        pass
 
 class Crown:
     def __init__(self):

@@ -237,7 +237,7 @@ class GameScreen:
             self.result_transition.draw(self.width, self.height, global_data.textures['shutter'][0], global_data.textures['shutter'][1])
 
     def draw_3d(self):
-        self.player_1.draw_3d(self)
+        self.player_1.draw_3d()
 
 class Player:
     TIMING_GOOD = 25.0250015258789

@@ -1,5 +1,6 @@
 import pyray as ray
 
+
 class DevScreen:
     def __init__(self, width: int, height: int):
         self.width = width

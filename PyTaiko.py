@@ -76,6 +76,7 @@ def main():
     camera.projection = CAMERA_ORTHOGRAPHIC
 
     ray.init_window(screen_width, screen_height, "PyTaiko")
+    global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
     if global_data.config["video"]["borderless"]:
         ray.toggle_borderless_windowed()
     if global_data.config["video"]["fullscreen"]:
@@ -111,7 +112,6 @@ def main():
     ray.gen_texture_mipmaps(target.texture)
     ray.rl_set_blend_factors_separate(RL_SRC_ALPHA, RL_ONE_MINUS_SRC_ALPHA, RL_ONE, RL_ONE_MINUS_SRC_ALPHA, RL_FUNC_ADD, RL_FUNC_ADD)
     ray.set_exit_key(ray.KeyboardKey.KEY_A)
-    global_data.textures = load_all_textures_from_zip(Path('Graphics/lumendata/intermission.zip'))
 
     while not ray.window_should_close():
         ray.begin_texture_mode(target)

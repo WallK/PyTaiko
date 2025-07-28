@@ -17,6 +17,8 @@ class Background:
         self.footer = Footer(self.screen_width, self.screen_height, random.randint(1, 3))
         self.is_clear = False
     def update(self, current_time_ms: float, is_clear: bool):
+        if not self.is_clear and is_clear:
+            self.bg_fever.start()
         self.is_clear = is_clear
         self.donbg.update(current_time_ms, self.is_clear)
         self.bg_normal.update(current_time_ms)
@@ -51,10 +53,15 @@ class DonBGBase:
         self.textures = (load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.name}_{self.player_num}p.zip')))
         self.move = Animation.create_move(3000, start_position=0, total_distance=-self.textures[self.name + f'_{self.player_num}p'][0].width)
         self.is_clear = False
+        self.clear_fade = None
 
     def update(self, current_time_ms: float, is_clear: bool):
+        if not self.is_clear and is_clear:
+            self.clear_fade = Animation.create_fade(150, initial_opacity=0.0, final_opacity=1.0)
         self.is_clear = is_clear
         self.move.update(current_time_ms)
+        if self.clear_fade is not None:
+            self.clear_fade.update(current_time_ms)
         if self.move.is_finished:
             self.move.restart()
 
@@ -73,20 +80,21 @@ class DonBG1(DonBGBase):
         if self.overlay_move.is_finished:
             self.overlay_move.restart()
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 3
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(3, ray.fade(ray.WHITE, self.clear_fade.attribute))
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
 
         wave_texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + (wave_texture.width+80), wave_texture.width+80):
-            ray.draw_texture(wave_texture, i + int(self.move.attribute * ((wave_texture.width+80)/top_texture.width)) + 100, int(self.overlay_move.attribute), ray.WHITE)
+            ray.draw_texture(wave_texture, i + int(self.move.attribute * ((wave_texture.width+80)/top_texture.width)) + 100, int(self.overlay_move.attribute), color)
 
         texture = self.textures[self.name + f'_{self.player_num}p'][2 + texture_index]
         for i in range(0, self.screen_width + texture.width + texture.width*5, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute * (texture.width/top_texture.width)*3), int(self.overlay_move.attribute) + 105, ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute * (texture.width/top_texture.width)*3), int(self.overlay_move.attribute) + 105, color)
 
 class DonBG2(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -98,16 +106,17 @@ class DonBG2(DonBGBase):
         if self.overlay_move.is_finished:
             self.overlay_move.restart()
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 2
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(2, ray.fade(ray.WHITE, self.clear_fade.attribute))
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
 
         texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, color)
 
 class DonBG3(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -132,15 +141,17 @@ class DonBG3(DonBGBase):
             self.overlay_move_2.restart()
 
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 2
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(2, ray.fade(ray.WHITE, self.clear_fade.attribute))
+
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
         texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - 25 + int(self.overlay_move.attribute) + int(self.overlay_move_2.attribute), ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - 25 + int(self.overlay_move.attribute) + int(self.overlay_move_2.attribute), color)
 
 class DonBG4(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -152,16 +163,18 @@ class DonBG4(DonBGBase):
         if self.overlay_move.is_finished:
             self.overlay_move.restart()
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 2
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(2, ray.fade(ray.WHITE, self.clear_fade.attribute))
+
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
 
         texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 25, color)
 
 class DonBG5(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -183,15 +196,17 @@ class DonBG5(DonBGBase):
             self.adjust.restart()
 
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 2
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(2, ray.fade(ray.WHITE, self.clear_fade.attribute))
+
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
         texture = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width + texture.width + texture.width*2, texture.width*2):
-            ray.draw_texture(texture, i + int((self.move.attribute * (texture.width/top_texture.width))*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - int(self.adjust.attribute), ray.WHITE)
+            ray.draw_texture(texture, i + int((self.move.attribute * (texture.width/top_texture.width))*2), int(self.bounce_up.attribute) - int(self.bounce_down.attribute) - int(self.adjust.attribute), color)
 
 class DonBG6(DonBGBase):
     def __init__(self, index: int, screen_width: int, screen_height: int, player_num: int):
@@ -203,21 +218,23 @@ class DonBG6(DonBGBase):
         if self.overlay_move.is_finished:
             self.overlay_move.restart()
     def draw(self):
-        texture_index = 0
-        if self.is_clear:
-            texture_index = 3
+        self._draw_textures(0, ray.WHITE)
+        if self.is_clear and self.clear_fade is not None:
+            self._draw_textures(3, ray.fade(ray.WHITE, self.clear_fade.attribute))
+
+    def _draw_textures(self, texture_index: int, color: ray.Color):
         top_texture = self.textures[self.name + f'_{self.player_num}p'][0 + texture_index]
         for i in range(0, self.screen_width + top_texture.width, top_texture.width):
-            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, ray.WHITE)
+            ray.draw_texture(top_texture, i + int(self.move.attribute), 0, color)
 
         texture_flowers = self.textures[self.name + f'_{self.player_num}p'][1 + texture_index]
         for i in range(0, self.screen_width, texture_flowers.width):
             if i % (2 * texture_flowers.width) != 0:
-                ray.draw_texture(texture_flowers, i + int(self.move.attribute*3) + 100, -int(self.move.attribute*0.85)-100, ray.WHITE)
+                ray.draw_texture(texture_flowers, i + int(self.move.attribute*3) + 100, -int(self.move.attribute*0.85)-100, color)
 
         texture = self.textures[self.name + f'_{self.player_num}p'][2 + texture_index]
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 50, ray.WHITE)
+            ray.draw_texture(texture, i + int(self.move.attribute), int(self.overlay_move.attribute) - 50, color)
 
 class BGNormal:
 
@@ -406,8 +423,7 @@ class BGFeverBase:
         self.screen_height = screen_height
         self.name = 'bg_fever_a_' + str(index).zfill(2)
         self.textures = (load_all_textures_from_zip(Path(f'Graphics/lumendata/enso_original/{self.name}.zip')))
-        self.vertical_move = Animation.create_move(1300, start_position=0, total_distance=50, reverse_delay=0)
-        self.horizontal_move = Animation.create_move(5000, start_position=0, total_distance=self.textures[self.name][2].width)
+        self.transitioned = False
 
     def unload(self):
         for texture_group in self.textures:
@@ -417,20 +433,43 @@ class BGFeverBase:
 class BGFever4(BGFeverBase):
     def __init__(self, index: int, screen_width: int, screen_height: int):
         super().__init__(index, screen_width, screen_height)
+        self.vertical_move = Animation.create_move(1300, start_position=0, total_distance=50, reverse_delay=0)
+        self.horizontal_move = Animation.create_move(5000, start_position=0, total_distance=self.textures[self.name][2].width)
+        self.bg_texture_move_down = None
+        self.bg_texture_move_up = None
+
+    def start(self):
+        self.bg_texture_move_down = Animation.create_move(516, total_distance=400, ease_in='cubic')
+        self.bg_texture_move_up = Animation.create_move(200, total_distance=40, delay=self.bg_texture_move_down.duration, ease_out='quadratic')
+
     def update(self, current_time_ms: float):
-        self.vertical_move.update(current_time_ms)
-        if self.vertical_move.is_finished:
-            self.vertical_move.restart()
-        self.horizontal_move.update(current_time_ms)
-        if self.horizontal_move.is_finished:
-            self.horizontal_move.restart()
+        if self.bg_texture_move_down is not None:
+            self.bg_texture_move_down.update(current_time_ms)
+
+        if self.bg_texture_move_up is not None:
+            self.bg_texture_move_up.update(current_time_ms)
+            if self.bg_texture_move_up.is_finished and not self.transitioned:
+                self.transitioned = True
+                self.vertical_move.restart()
+                self.horizontal_move.restart()
+
+        if self.transitioned:
+            self.vertical_move.update(current_time_ms)
+            if self.vertical_move.is_finished:
+                self.vertical_move.restart()
+            self.horizontal_move.update(current_time_ms)
+            if self.horizontal_move.is_finished:
+                self.horizontal_move.restart()
     def draw(self):
+        if self.bg_texture_move_down is None or self.bg_texture_move_up is None:
+            return
         texture = self.textures[self.name][0]
+        y = int(self.bg_texture_move_down.attribute) - int(self.bg_texture_move_up.attribute)
         for i in range(0, self.screen_width + texture.width, texture.width):
-            ray.draw_texture(texture, i, 360, ray.WHITE)
-        ray.draw_texture(self.textures[self.name][1], 0, 360 + 50 - int(self.vertical_move.attribute), ray.WHITE)
-        ray.draw_texture(self.textures[self.name][2], -int(self.horizontal_move.attribute), 360, ray.WHITE)
-        ray.draw_texture(self.textures[self.name][2], self.textures[self.name][2].width -int(self.horizontal_move.attribute), 360, ray.WHITE)
+            ray.draw_texture(texture, i, y, ray.WHITE)
+        ray.draw_texture(self.textures[self.name][1], 0, (720 + 50 - int(self.vertical_move.attribute)) - y, ray.WHITE)
+        ray.draw_texture(self.textures[self.name][2], -int(self.horizontal_move.attribute), y, ray.WHITE)
+        ray.draw_texture(self.textures[self.name][2], self.textures[self.name][2].width -int(self.horizontal_move.attribute), y, ray.WHITE)
 
 class Footer:
     def __init__(self, screen_width: int, screen_height: int, index: int):

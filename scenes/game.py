@@ -134,7 +134,11 @@ class GameScreen:
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
             self.song_info = SongInfo(session_data.song_title, 'TEST')
             self.result_transition = None
-            self.transition = Transition(self.height)
+            if self.tja is not None:
+                subtitle = self.tja.metadata.subtitle.get(global_data.config['general']['language'].lower(), '')
+            else:
+                subtitle = ''
+            self.transition = Transition(self.height, session_data.song_title, subtitle)
 
     def on_screen_end(self, next_screen):
         self.screen_init = False
@@ -1270,18 +1274,41 @@ class SongInfo:
         self.song_title.draw(src, dest, ray.Vector2(0, 0), 0, self.song_name_fade)
 
 class Transition:
-    def __init__(self, screen_height: int) -> None:
+    def __init__(self, screen_height: int, title: str, subtitle: str) -> None:
+        duration = 266
         self.is_finished = False
-        self.rainbow_up = Animation.create_move(266, start_position=0, total_distance=screen_height + global_data.textures['scene_change_rainbow'][2].height, ease_in='cubic')
+        self.rainbow_up = Animation.create_move(duration, start_position=0, total_distance=screen_height + global_data.textures['scene_change_rainbow'][2].height, ease_in='cubic')
         self.chara_down = None
+        self.title = OutlinedText(title, 40, ray.WHITE, ray.BLACK, outline_thickness=5)
+        self.subtitle = OutlinedText(subtitle, 30, ray.WHITE, ray.BLACK, outline_thickness=5)
+        self.song_info_fade = Animation.create_fade(duration/2)
     def update(self, current_time_ms: float):
         self.rainbow_up.update(current_time_ms)
+        self.song_info_fade.update(current_time_ms)
         if self.rainbow_up.is_finished and self.chara_down is None:
             self.chara_down = Animation.create_move(33, start_position=0, total_distance=30)
 
         if self.chara_down is not None:
             self.chara_down.update(current_time_ms)
             self.is_finished = self.chara_down.is_finished
+
+    def draw_song_info(self):
+        texture = global_data.textures['scene_change_rainbow'][6]
+        y = 720//2 - texture.height
+        src = ray.Rectangle(0, 0, texture.width, texture.height)
+        dest = ray.Rectangle(1280//2 - (texture.width*3)//2, y, texture.width*3, texture.height*2)
+        ray.draw_texture_pro(texture, src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, min(0.70, self.song_info_fade.attribute)))
+
+        texture = self.title.texture
+        y = 720//2 - texture.height//2 - 20
+        src = ray.Rectangle(0, 0, texture.width, texture.height)
+        dest = ray.Rectangle(1280//2 - texture.width//2, y, texture.width, texture.height)
+        self.title.draw(src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, self.song_info_fade.attribute))
+
+        texture = self.subtitle.texture
+        src = ray.Rectangle(0, 0, texture.width, texture.height)
+        dest = ray.Rectangle(1280//2 - texture.width//2, y + 50, texture.width, texture.height)
+        self.subtitle.draw(src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, self.song_info_fade.attribute))
 
     def draw(self, screen_height: int):
         ray.draw_texture(global_data.textures['scene_change_rainbow'][1], 0, screen_height - int(self.rainbow_up.attribute), ray.WHITE)
@@ -1293,7 +1320,11 @@ class Transition:
         offset = 0
         if self.chara_down is not None:
             offset = int(self.chara_down.attribute)
+        ray.draw_texture(global_data.textures['scene_change_rainbow'][4], 142, 14 -int(self.rainbow_up.attribute*3) - offset, ray.WHITE)
+        ray.draw_texture(global_data.textures['scene_change_rainbow'][5], 958, 144 -int(self.rainbow_up.attribute*3) - offset, ray.WHITE)
         ray.draw_texture(texture, 76, -int(self.rainbow_up.attribute*3) - offset, ray.WHITE)
+
+        self.draw_song_info()
 
 class ResultTransition:
     def __init__(self, screen_height: int):

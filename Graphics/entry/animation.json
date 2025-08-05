@@ -1,0 +1,132 @@
+[
+    {
+        "id": 0,
+        "type": "fade",
+        "duration": 100,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": 20,
+        "comment": "fade in the side select box"
+    },
+    {
+        "id": 1,
+        "type": "fade",
+        "duration": 500,
+        "initial_opacity": 0.5,
+        "final_opacity": 0.4,
+        "reverse_delay": 0,
+        "comment": "background lights flicker"
+    },
+    {
+        "id": 2,
+        "type": "move",
+        "duration": 350,
+        "total_distance": -295,
+        "ease_out": "quadratic",
+        "comment": "move donchan's drum up"
+    },
+    {
+        "id": 3,
+        "type": "move",
+        "duration": 200,
+        "total_distance": 50,
+        "delay": {
+            "reference_id": 2,
+            "property": "duration"
+        },
+        "ease_in": "quadratic",
+        "comment": "move donchan's drum a little down"
+    },
+    {
+        "id": 4,
+        "type": "move",
+        "duration": 350,
+        "total_distance": -170,
+        "delay": {
+            "init_val": {
+                "reference_id": 2,
+                "property": "duration"
+            },
+            "reference_id": 3,
+            "property": "duration"
+        },
+        "ease_out": "quadratic",
+        "comment": "move donchan's drum to the left/right"
+    },
+    {
+        "id": 5,
+        "type": "texture_resize",
+        "duration": 350,
+        "initial_size": 0.75,
+        "final_size": 1.0,
+        "comment": "initial cloud resize, larger than loop"
+    },
+    {
+        "id": 6,
+        "type": "texture_resize",
+        "duration": 200,
+        "initial_size": 1.0,
+        "final_size": 1.2,
+        "reverse_delay": 200,
+        "delay": {
+            "reference_id": 5,
+            "property": "duration"
+        },
+        "comment": "loop resize donchan cloud back and forth"
+    },
+    {
+        "id": 7,
+        "type": "texture_change",
+        "duration": 333,
+        "delay": {
+            "init_val": {
+                "reference_id": 4,
+                "property": "duration"
+            },
+            "reference_id": 4,
+            "property": "delay"
+        },
+        "textures": [
+            [0, 83.35, 0],
+            [83.35, 166.7, 1],
+            [166.7, 250, 2],
+            [250, 333, 3]
+        ],
+        "comment": "cloud keyframes"
+    },
+    {
+        "id": 8,
+        "type": "fade",
+        "duration": 83.35,
+        "delay": {
+            "init_val": {
+                "reference_id": 7,
+                "property": "delay"
+            },
+            "reference_id": 7,
+            "property": "duration"
+        },
+        "comment": "fade out the cloud"
+    },
+    {
+        "id": 9,
+        "type": "fade",
+        "duration": 160,
+        "comment": "fade out the mode select boxes"
+    },
+    {
+        "id": 10,
+        "type": "move",
+        "duration": 166.67,
+        "total_distance": 50,
+        "comment": "box movement"
+    },
+    {
+        "id": 11,
+        "type": "move",
+        "duration": 133.34,
+        "total_distance": 54,
+        "delay": 200,
+        "comment": "box opening"
+    }
+]

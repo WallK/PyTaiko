@@ -1,0 +1,185 @@
+[
+    {
+        "id": 0,
+        "type": "move",
+        "duration": 15000,
+        "total_distance": 1280,
+        "comment": "move the background"
+    },
+    {
+        "id": 1,
+        "type": "move",
+        "duration": 233,
+        "total_distance": 500,
+        "comment": "move song select boxes out of view on select"
+    },
+    {
+        "id": 2,
+        "type": "fade",
+        "duration": 83,
+        "comment": "fade out difficulties from box on select"
+    },
+    {
+        "id": 3,
+        "type": "fade",
+        "duration": 33,
+        "delay": {
+            "reference_id": 1,
+            "property": "duration"
+        },
+        "comment": "fade out the top left text on select"
+    },
+    {
+        "id": 4,
+        "type": "fade",
+        "duration": 33,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": {
+            "reference_id": 3,
+            "property": "duration"
+        },
+        "comment": "fade in the new text for diff select"
+    },
+    {
+        "id": 5,
+        "type": "fade",
+        "duration": 200,
+        "comment": "fade in/out the genre background when changed"
+    },
+    {
+        "id": 6,
+        "type": "texture_change",
+        "duration": 133,
+        "textures": [
+            [0, 32, 0],
+            [32, 80, 1],
+            [80, 112, 2],
+            [112, 133, 3]
+        ],
+        "comment": "ura switch forwards"
+    },
+    {
+        "id": 7,
+        "type": "texture_change",
+        "duration": 133,
+        "textures": [
+            [0, 32, 3],
+            [32, 80, 2],
+            [80, 112, 1],
+            [112, 133, 0]
+        ],
+        "comment": "ura switch backwards"
+    },
+    {
+        "id": 8,
+        "type": "fade",
+        "duration": 166,
+        "delay": {
+            "reference_id": 6,
+            "property": "duration"
+        },
+        "comment": "ura switch fade out"
+    },
+    {
+        "id": 9,
+        "type": "move",
+        "duration": 83.33,
+        "start_position": 595,
+        "total_distance": -152,
+        "delay": 83.33,
+        "comment": "yellow box left out"
+    },
+    {
+        "id": 10,
+        "type": "move",
+        "duration": 83.33,
+        "start_position": 658,
+        "total_distance": 145,
+        "delay": 83.33,
+        "comment": "yellow box right out"
+    },
+    {
+        "id": 11,
+        "type": "move",
+        "duration": 83.33,
+        "start_position": 32,
+        "total_distance": 300,
+        "delay": 83.33,
+        "comment": "yellow box center out"
+    },
+    {
+        "id": 12,
+        "type": "fade",
+        "duration": 83.33,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": 83.33,
+        "comment": "yellow box fade in"
+    },
+    {
+        "id": 13,
+        "type": "move",
+        "duration": 116.67,
+        "start_position": 443,
+        "total_distance": -213,
+        "comment": "yellow box left out 2"
+    },
+    {
+        "id": 14,
+        "type": "move",
+        "duration": 116.67,
+        "start_position": 803,
+        "total_distance": 211,
+        "comment": "yellow box right out 2"
+    },
+    {
+        "id": 15,
+        "type": "move",
+        "duration": 116.67,
+        "start_position": 322,
+        "total_distance": 423,
+        "comment": "yellow box center out 2"
+    },
+    {
+        "id": 16,
+        "type": "move",
+        "duration": 133.33,
+        "start_position": 96,
+        "total_distance": -62,
+        "delay": {
+            "reference_id": 13,
+            "property": "duration"
+        },
+        "comment": "yellow box top out"
+    },
+    {
+        "id": 17,
+        "type": "move",
+        "duration": 133.33,
+        "start_position": 422,
+        "total_distance": 60,
+        "delay": {
+            "reference_id": 13,
+            "property": "duration"
+        },
+        "comment": "yellow box center h out"
+    },
+    {
+        "id": 18,
+        "type": "fade",
+        "duration": 116.67,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": {
+            "init_val": {
+                "init_val": 16.67,
+                "reference_id": 16,
+                "property": "duration"
+            },
+            "reference_id": 13,
+            "property": "duration"
+        },
+        "comment": "yellow box fade in 2"
+    }
+]

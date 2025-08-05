@@ -1,0 +1,58 @@
+[
+    {
+        "id": 0,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 816,
+        "ease_in": "cubic",
+        "comment": "rainbow transition up"
+    },
+    {
+        "id": 1,
+        "type": "move",
+        "duration": 300,
+        "total_distance": {
+            "reference_id": 0,
+            "property": "total_distance"
+        },
+        "ease_in": "cubic",
+        "ease_out": "exponential",
+        "comment": "chara left/right up"
+    },
+    {
+        "id": 2,
+        "type": "move",
+        "duration": 33,
+        "total_distance": 30,
+        "delay": {
+            "reference_id": 1,
+            "property": "duration"
+        },
+        "comment": "chara left/right down"
+    },
+    {
+        "id": 3,
+        "type": "fade",
+        "duration": {
+            "reference_id": 0,
+            "property": "duration"
+        },
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": {
+            "init_val": {
+                "reference_id": 0,
+                "property": "duration"
+            },
+            "reference_id": 0,
+            "property": "duration"
+        },
+        "comment": "song text fade in"
+    },
+    {
+        "id": 4,
+        "type": "fade",
+        "duration": 133,
+        "comment": "song text fade out"
+    }
+]

@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import tempfile
@@ -44,7 +45,11 @@ class TextureWrapper:
                 else:
                     ray.unload_texture(tex_object.texture)
 
-    def get_animation(self, index: int):
+    def get_animation(self, index: int, is_copy: bool = False):
+        if index not in self.animations:
+            raise Exception(f"Unable to find id {index} in loaded animations")
+        if is_copy:
+            return copy.deepcopy(self.animations[index])
         return self.animations[index]
 
     def update_attr(self, subset: str, texture: str, attr: str, value: float | int):
@@ -121,6 +126,8 @@ class TextureWrapper:
         if tex_object.is_frames:
             if not isinstance(tex_object.texture, list):
                 raise Exception("Texture was marked as multiframe but is only 1 texture")
+            if frame >= len(tex_object.texture):
+                raise Exception(f"Frame {frame} not available in iterable texture {tex_object.name}")
             ray.draw_texture_pro(tex_object.texture[frame], source_rect, dest_rect, ray.Vector2(0, 0), 0, color)
         else:
             if isinstance(tex_object.texture, list):

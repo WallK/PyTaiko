@@ -263,6 +263,8 @@ global_data = GlobalData()
 
 text_cache = set()
 if not Path('cache/image').exists():
+    if not Path('cache').exists():
+        Path('cache').mkdir()
     Path('cache/image').mkdir()
 
 for file in Path('cache/image').iterdir():

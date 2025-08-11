@@ -54,5 +54,13 @@
         "type": "fade",
         "duration": 133,
         "comment": "song text fade out"
+    },
+    {
+        "id": 5,
+        "type": "move",
+        "duration": 983.33,
+        "total_distance": 360,
+        "ease_out": "quadratic",
+        "comment": "result shutter move in"
     }
 ]

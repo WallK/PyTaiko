@@ -1,0 +1,73 @@
+[
+    {
+        "id": 0,
+        "type": "fade",
+        "duration": 150,
+        "delay": 83,
+        "initial_opacity": 0.5,
+        "comment": "lane hit effect fade out"
+    },
+    {
+        "id": 1,
+        "type": "fade",
+        "duration": 100,
+        "delay": 67,
+        "comment": "drum hit effect fade out"
+    },
+    {
+        "id": 2,
+        "type": "texture_change",
+        "duration": 116.67,
+        "textures": [
+            [0, 33.33, 0],
+            [33.33, 66.66, 1],
+            [66.66, 116.67, 2]
+        ],
+        "comment": "gauge hit effect texture change"
+    },
+    {
+        "id": 3,
+        "type": "fade",
+        "duration": 366,
+        "delay": 3332,
+        "reverse_delay": 3332,
+        "comment": "song name/number fade in/out"
+    },
+    {
+        "id": 4,
+        "type": "text_stretch",
+        "duration": 50,
+        "comment": "score counter text stretch"
+    },
+    {
+        "id": 5,
+        "type": "text_stretch",
+        "duration": 50,
+        "comment": "combo text stretch"
+    },
+    {
+        "id": 6,
+        "type": "text_stretch",
+        "duration": 50,
+        "comment": "balloon counter text stretch"
+    },
+    {
+        "id": 7,
+        "type": "fade",
+        "duration": 166,
+        "comment": "balloon counter fade out"
+    },
+    {
+        "id": 8,
+        "type": "fade",
+        "duration": 166,
+        "delay": 1183,
+        "comment": "drumroll counter fade out"
+    },
+    {
+        "id": 9,
+        "type": "text_stretch",
+        "duration": 50,
+        "comment": "drumroll counter text stretch"
+    }
+]

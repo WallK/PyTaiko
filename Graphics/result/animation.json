@@ -1,0 +1,209 @@
+[
+    {
+        "id": 0,
+        "type": "fade",
+        "duration": 1000,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "comment": "screen fade out"
+    },
+    {
+        "id": 1,
+        "type": "fade",
+        "duration": 333,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "comment": "bottom fade in"
+    },
+    {
+        "id": 2,
+        "type": "texture_resize",
+        "duration": 466,
+        "initial_size": 3.5,
+        "final_size": 0.9,
+        "ease_in": "quadratic",
+        "comment": "crown resize"
+    },
+    {
+        "id": 3,
+        "type": "texture_resize",
+        "duration": 216,
+        "initial_size": {
+            "reference_id": 2,
+            "property": "final_size"
+        },
+        "final_size": 1.0,
+        "delay": {
+            "reference_id": 2,
+            "property": "duration"
+        },
+        "comment": "crown resize fix"
+    },
+    {
+        "id": 4,
+        "type": "fade",
+        "duration": 133,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "delay": {
+            "init_val": {
+                "reference_id": 2,
+                "property": "duration"
+            },
+            "reference_id": 3,
+            "property": "duration"
+        },
+        "reverse_delay": 0,
+        "comment": "crown highlight fadein/out"
+    },
+    {
+        "id": 5,
+        "type": "texture_change",
+        "duration": 400,
+        "textures": [
+            [0, 200, -1],
+            [200, 250, 0],
+            [250, 300, 1],
+            [300, 350, 2],
+            [350, 400, -1]
+        ],
+        "delay": {
+            "init_val": {
+                "init_val": {
+                    "reference_id": 2,
+                    "property": "duration"
+                },
+                "reference_id": 3,
+                "property": "duration"
+            },
+            "reference_id": 4,
+            "property": "duration"
+        },
+        "comment": "crown gleam"
+    },
+    {
+        "id": 6,
+        "type": "fade",
+        "duration": 466,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "ease_in": "quadratic",
+        "comment": "crown fade in"
+    },
+    {
+        "id": 7,
+        "type": "move",
+        "duration": 366,
+        "total_distance": 380,
+        "ease_out": "cubic",
+        "comment": "bottom characters move up"
+    },
+    {
+        "id": 8,
+        "type": "move",
+        "duration": 133,
+        "total_distance": 30,
+        "ease_out": "cubic",
+        "delay": {
+            "init_val": -5,
+            "reference_id": 7,
+            "property": "duration"
+        },
+        "comment": "bottom characters move down"
+    },
+    {
+        "id": 9,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 40,
+        "ease_in": "quadratic",
+        "comment": "bottom characters bounce up"
+    },
+    {
+        "id": 10,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 40,
+        "ease_out": "quadratic",
+        "delay": {
+            "reference_id": 9,
+            "property": "duration"
+        },
+        "comment": "bottom characters bounce down"
+    },
+    {
+        "id": 11,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 450,
+        "ease_out": "quadratic",
+        "delay": {
+            "init_val": {
+                "reference_id": 9,
+                "property": "duration"
+            },
+            "reference_id": 10,
+            "property": "duration"
+        },
+        "comment": "center chara move up"
+    },
+    {
+        "id": 12,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 40,
+        "ease_in": "quadratic",
+        "comment": "center chara bounce up"
+    },
+    {
+        "id": 13,
+        "type": "move",
+        "duration": 266,
+        "total_distance": 40,
+        "delay": {
+            "reference_id": 12,
+            "property": "duration"
+        },
+        "ease_out": "quadratic",
+        "comment": "center chara bounce down"
+    },
+    {
+        "id": 14,
+        "type": "move",
+        "duration": 333,
+        "total_distance": 365,
+        "ease_out": "quadratic",
+        "comment": "flowers move up"
+    },
+    {
+        "id": 15,
+        "type": "fade",
+        "duration": 450,
+        "delay": 100,
+        "comment": "score fade in"
+    },
+    {
+        "id": 16,
+        "type": "texture_change",
+        "duration": 133.36,
+        "textures": [
+            [0.0, 50, 0],
+            [50, 100, 1],
+            [100, 150, 2],
+            [150, 200, 3],
+            [200, 250, 4],
+            [250, 300, 5],
+            [300, 350, 6],
+            [350, 400, 7]
+        ],
+        "comment": "rainbow gauge animation"
+    },
+    {
+        "id": 17,
+        "type": "fade",
+        "duration": 366,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "comment": "gauge fade in"
+    }
+]

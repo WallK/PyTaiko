@@ -69,5 +69,11 @@
         "type": "text_stretch",
         "duration": 50,
         "comment": "drumroll counter text stretch"
+    },
+    {
+        "id": 10,
+        "type": "fade",
+        "duration": 450,
+        "comment": "gauge up fade effect"
     }
 ]

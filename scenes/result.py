@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 
 import pyray as ray
 from raylib import SHADER_UNIFORM_FLOAT
@@ -53,6 +54,7 @@ class ResultScreen:
             self.bottom_characters = BottomCharacters()
             self.crown = None
             self.state = None
+            self.high_score_indicator = None
             self.score_animator = ScoreAnimator(session_data.result_score)
             self.score = -1
             self.good = -1
@@ -104,6 +106,9 @@ class ResultScreen:
                         self.update_index += 1
                         self.score_animator = ScoreAnimator(self.update_list[self.update_index][1])
                     self.score_delay += 16.67 * 3
+        if self.update_index > 0 and self.high_score_indicator is None:
+            if session_data.result_score > session_data.prev_score:
+                self.high_score_indicator = HighScoreIndicator(session_data.prev_score, session_data.result_score)
 
     def handle_input(self):
         if is_r_don_pressed() or is_l_don_pressed():
@@ -137,6 +142,9 @@ class ResultScreen:
                 self.fade_in_bottom.start()
                 if self.gauge is not None:
                     self.state = self.gauge.state
+
+        if self.high_score_indicator is not None:
+            self.high_score_indicator.update(get_current_ms())
 
         self.fade_in_bottom.update(get_current_ms())
         alpha_loc = ray.get_shader_location(self.alpha_shader, "ext_alpha")
@@ -222,6 +230,9 @@ class ResultScreen:
 
         if self.crown is not None:
             self.crown.draw(self.crown_type)
+
+        if self.high_score_indicator is not None:
+            self.high_score_indicator.draw()
 
         self.fade_in.draw()
         ray.draw_rectangle(0, 0, self.width, self.height, ray.fade(ray.BLACK, self.fade_out.attribute))
@@ -378,6 +389,24 @@ class ScoreAnimator:
             self.current_score_list[self.digit_index][0] = int(self.target_score[self.digit_index])
             self.digit_index -= 1
         return int(''.join([str(item[0]) for item in self.current_score_list]))
+
+class HighScoreIndicator:
+    def __init__(self, old_score: int, new_score: int):
+        self.score_diff = new_score - old_score
+        self.move = tex.get_animation(18)
+        self.fade = tex.get_animation(19)
+        self.move.start()
+        self.fade.start()
+
+    def update(self, current_ms):
+        self.move.update(current_ms)
+        self.fade.update(current_ms)
+
+    def draw(self):
+        tex.draw_texture('score', 'high_score', y=self.move.attribute, fade=self.fade.attribute)
+        for i in range(len(str(self.score_diff))):
+            tex.draw_texture('score', 'high_score_num', x=-(i*14), frame=int(str(self.score_diff)[::-1][i]), y=self.move.attribute, fade=self.fade.attribute)
+
 
 class Gauge:
     def __init__(self, player_num: str, gauge_length: int):

@@ -274,6 +274,8 @@ class Box:
 
     def _draw_text(self, color):
         text_x = self.x + (self.texture.width//2) - (self.text.texture.width//2)
+        if self.is_selected:
+            text_x += self.open.attribute
         text_y = self.y + 20
         text_dest = ray.Rectangle(text_x, text_y, self.text.texture.width, self.text.texture.height)
         if self.is_selected:

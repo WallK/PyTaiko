@@ -334,7 +334,8 @@ class SongBox:
         5: ray.Color(60, 104, 0, 255),
         6: ray.Color(134, 88, 0, 255),
         7: ray.Color(79, 40, 134, 255),
-        8: ray.Color(148, 24, 0, 255)
+        8: ray.Color(148, 24, 0, 255),
+        14: ray.Color(157, 13, 31, 255)
     }
     def __init__(self, name: str, texture_index: int, is_dir: bool, tja: Optional[TJAParser] = None,
         tja_count: Optional[int] = None, box_texture: Optional[str] = None, name_texture_index: Optional[int] = None):
@@ -460,7 +461,7 @@ class SongBox:
 
     def _draw_closed(self, x: int, y: int):
         tex.draw_texture('box', 'folder_texture_left', frame=self.texture_index, x=x)
-        offset = 1 if self.texture_index in {3, 9, 17} else 0
+        offset = 1 if self.texture_index == 3 or self.texture_index >= 9 else 0
         tex.draw_texture('box', 'folder_texture', frame=self.texture_index, x=x, x2=32, y=offset)
         tex.draw_texture('box', 'folder_texture_right', frame=self.texture_index, x=x)
         if self.texture_index == 9:
@@ -476,8 +477,9 @@ class SongBox:
 
         if self.tja is not None and self.tja.ex_data.new:
             tex.draw_texture('yellow_box', 'ex_data_new_song_balloon', x=x, y=y)
-        if self.scores:
-            highest_key = max(self.scores.keys())
+        valid_scores = {k: v for k, v in self.scores.items() if v is not None}
+        if valid_scores:
+            highest_key = max(valid_scores.keys())
             score = self.scores[highest_key]
             if score and score[3] == 0:
                 tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=highest_key)
@@ -503,7 +505,7 @@ class SongBox:
             self.hori_name.draw(self.hori_name.default_src, dest, ray.Vector2(0, 0), 0, color)
 
         tex.draw_texture('box', 'folder_texture_left', frame=self.texture_index, x=x - self.open_anim.attribute)
-        offset = 1 if self.texture_index in {3, 9, 17} else 0
+        offset = 1 if self.texture_index == 3 or self.texture_index >= 9 else 0
         tex.draw_texture('box', 'folder_texture', frame=self.texture_index, x=x - self.open_anim.attribute, y=offset, x2=324)
         tex.draw_texture('box', 'folder_texture_right', frame=self.texture_index, x=x + self.open_anim.attribute)
 
@@ -788,6 +790,7 @@ class FileSystemItem:
         'クラシック': 6,
         'ゲームミュージック': 7,
         'ナムコオリジナル': 8,
+        'DIFFICULTY': 14
     }
     """Base class for files and directories in the navigation system"""
     def __init__(self, path: Path, name: str):
@@ -811,8 +814,9 @@ class Directory(FileSystemItem):
         self.collection = None
         if collection in Directory.COLLECTIONS:
             self.collection = collection
-
-        if self.to_root or self.back:
+        if collection in FileSystemItem.GENRE_MAP:
+            texture_index = FileSystemItem.GENRE_MAP[collection]
+        elif self.to_root or self.back:
             texture_index = 17
 
         self.box = SongBox(name, texture_index, True, tja_count=tja_count, box_texture=box_texture)
@@ -1215,8 +1219,21 @@ class FileNavigator:
         # Add pre-generated content for this directory
         if dir_key in self.directory_contents:
             content_items = self.directory_contents[dir_key]
-            if isinstance(selected_item, Directory) and selected_item.collection == Directory.COLLECTIONS[0]:
-                content_items = self.new_items
+            if isinstance(selected_item, Directory):
+                if selected_item.collection == Directory.COLLECTIONS[0]:
+                    content_items = self.new_items
+                elif selected_item.collection == Directory.COLLECTIONS[3]:
+                    content_items = []
+                    parent_dir = selected_item.path.parent
+                    for sibling_path in parent_dir.iterdir():
+                        if sibling_path.is_dir() and sibling_path != selected_item.path:
+                            sibling_key = str(sibling_path)
+                            if sibling_key in self.directory_contents:
+                                for item in self.directory_contents[sibling_key]:
+                                    if isinstance(item, SongFile):
+                                        if 3 in item.tja.metadata.course_data and item.tja.metadata.course_data[3].level == 10:
+                                            item.box.texture_index = 14
+                                            content_items.append(item)
 
             i = 1
             for item in content_items:

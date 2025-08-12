@@ -205,5 +205,22 @@
         "initial_opacity": 0.0,
         "final_opacity": 1.0,
         "comment": "gauge fade in"
+    },
+    {
+        "id": 18,
+        "type": "move",
+        "duration": 383,
+        "total_distance": -50,
+        "ease_out": "quadratic",
+        "comment": "high score indicator up"
+    },
+    {
+        "id": 19,
+        "type": "fade",
+        "duration": 383,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "ease_in": "quadratic",
+        "comment": "high score indicator fade in"
     }
 ]

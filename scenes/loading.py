@@ -42,12 +42,8 @@ class LoadScreen:
 
     def _load_navigator(self):
         """Background thread function to load navigator"""
-        try:
-            self.song_select_screen.load_navigator()
-            self.loading_complete = True
-        except Exception as e:
-            print(f"Error loading navigator: {e}")
-            self.loading_complete = True
+        self.song_select_screen.load_navigator()
+        self.loading_complete = True
 
     def on_screen_start(self):
         if not self.screen_init:

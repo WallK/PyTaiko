@@ -208,6 +208,7 @@ class SessionData:
     result_max_combo: int = 0
     result_total_drumroll: int = 0
     result_gauge_length: int = 0
+    prev_score: int = 0
 
 session_data = SessionData()
 

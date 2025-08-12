@@ -62,29 +62,22 @@ def build_song_hashes(output_dir=Path("cache")):
 
     files_to_process = []
 
-    # O(n) pass to identify which files need processing
     for tja_path in all_tja_files:
         tja_path_str = str(tja_path)
         current_modified = tja_path.stat().st_mtime
 
-        # Skip files that haven't been modified since last run
         if current_modified <= saved_timestamp:
-            # File hasn't changed, just restore to global_data if we have it
             current_hash = path_to_hash.get(tja_path_str)
             if current_hash is not None:
                 global_data.song_paths[tja_path] = current_hash
             continue
 
-        # O(1) lookup instead of nested loops
         current_hash = path_to_hash.get(tja_path_str)
 
         if current_hash is None:
-            # New file (modified after saved_timestamp)
             files_to_process.append(tja_path)
         else:
-            # File was modified after saved_timestamp, need to reprocess
             files_to_process.append(tja_path)
-            # Clean up old hash
             if current_hash in song_hashes:
                 del song_hashes[current_hash]
             del path_to_hash[tja_path_str]

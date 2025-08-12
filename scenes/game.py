@@ -109,6 +109,10 @@ class GameScreen:
             cursor.execute(check_query, (hash,))
             result = cursor.fetchone()
             if result is None or session_data.result_score > result[0]:
+                if result is None:
+                    session_data.prev_score = 0
+                else:
+                    session_data.prev_score = result[0]
                 insert_query = '''
                 INSERT OR REPLACE INTO Scores (hash, en_name, jp_name, diff, score, good, ok, bad, drumroll, combo, clear)
                 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -542,11 +546,9 @@ class Player:
         tail = next((note for note in self.current_notes_draw[1:] if note.type == 8 and note.index > head.index), self.current_notes_draw[1])
         is_big = int(head.type == 6)
         end_position = self.get_position_x(game_screen.width, game_screen.current_ms, tail.load_ms, tail.pixels_per_frame_x)
-        length = (end_position - start_position - 50)
-        if length <= 0:
-            end_position += 50
+        length = end_position - start_position
         color = ray.Color(255, head.color, head.color, 255)
-        tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length, color=color)
+        tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-64-32, color=color)
         tex.draw_texture('notes', "9", frame=is_big, x=end_position, y=192, color=color)
         tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
 

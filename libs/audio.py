@@ -6,9 +6,9 @@ from threading import Lock, Thread
 from typing import Optional
 
 import soundfile as sf
-from numpy import abs as np_abs
 from numpy import (
     arange,
+    clip,
     column_stack,
     float32,
     frombuffer,
@@ -16,13 +16,12 @@ from numpy import (
     int32,
     interp,
     mean,
+    multiply,
     ndarray,
-    ones,
     sqrt,
     uint8,
     zeros,
 )
-from numpy import max as np_max
 
 os.environ["SD_ENABLE_ASIO"] = "1"
 import sounddevice as sd
@@ -514,7 +513,7 @@ class AudioEngine:
         self.running = False
         self.sound_queue: queue.Queue[str] = queue.Queue()
         self.music_queue = queue.Queue()
-        self.master_volume = 1.0
+        self.master_volume = 0.70
         self.output_channels = 2  # Default to stereo
         self.audio_device_ready = False
 
@@ -522,6 +521,10 @@ class AudioEngine:
         self.update_thread = None
         self.update_thread_running = False
         self.type = type
+
+        self._output_buffer = None
+        self._channel_conversion_buffer = None
+        self._expected_frames = None
 
     def _initialize_api(self) -> bool:
         """Set up API device"""
@@ -572,30 +575,25 @@ class AudioEngine:
 
     def _audio_callback(self, outdata: ndarray, frames: int, time: int, status: str) -> None:
         """callback function for the sounddevice stream"""
+
+        if self._output_buffer is None:
+            raise Exception("output buffer was not allocated")
         if status:
             print(f"Status: {status}")
 
         self._process_sound_queue()
         self._process_music_queue()
 
-        # Pre-allocate output buffer (reuse if possible)
-        if not hasattr(self, '_output_buffer') or self._output_buffer.shape != (frames, self.output_channels):
-            self._output_buffer = zeros((frames, self.output_channels), dtype=float32)
-        else:
-            self._output_buffer.fill(0.0)  # Clear previous data
+        self._output_buffer.fill(0.0)
 
         self._mix_sounds(self._output_buffer, frames)
 
         self._mix_music(self._output_buffer, frames)
 
-        # Apply master volume in-place
         if self.master_volume != 1.0:
-            self._output_buffer *= self.master_volume
+            multiply(self._output_buffer, self.master_volume, out=self._output_buffer)
 
-        # Apply limiter only if needed
-        max_val = np_max(np_abs(self._output_buffer))
-        if max_val > 1.0:
-            self._output_buffer /= max_val
+        clip(self._output_buffer, -0.95, 0.95, out=self._output_buffer)
 
         outdata[:] = self._output_buffer
 
@@ -668,19 +666,36 @@ class AudioEngine:
             output += music_data
 
     def _convert_channels(self, data: ndarray, input_channels: int) -> ndarray:
-        """channel conversion with caching"""
+        """Channel conversion using single pre-allocated buffer"""
+        if data.ndim == 1:
+            data = data.reshape(-1, 1)
+            input_channels = 1
+
+        frames = data.shape[0]
+
         if input_channels == self.output_channels:
             return data
 
+        if self._channel_conversion_buffer is None:
+            raise Exception("channel conversion buffer was not allocated")
+
+        self._channel_conversion_buffer[:frames, :self.output_channels].fill(0.0)
+
         if input_channels == 1 and self.output_channels > 1:
-            return data[:, None] * ones((1, self.output_channels), dtype=float32)
+            # Mono to stereo/multi: broadcast to all channels
+            for ch in range(self.output_channels):
+                self._channel_conversion_buffer[:frames, ch] = data[:frames, 0]
+
         elif input_channels > self.output_channels:
             if self.output_channels == 1:
-                return mean(data, axis=1, keepdims=True)
+                # Multi to mono: average channels
+                self._channel_conversion_buffer[:frames, 0] = mean(data[:frames, :input_channels], axis=1)
             else:
-                return data[:, :self.output_channels]
+                # Multi to fewer channels: take first N channels
+                self._channel_conversion_buffer[:frames, :self.output_channels] = data[:frames, :self.output_channels]
 
-        return data
+        # Return a view of the converted data
+        return self._channel_conversion_buffer[:frames, :self.output_channels]
 
     def _start_update_thread(self) -> None:
         """Start a thread to update music streams"""
@@ -710,6 +725,9 @@ class AudioEngine:
         try:
             self._initialize_api()
 
+            self._expected_frames = self.buffer_size
+            self._output_buffer = zeros((self._expected_frames, self.output_channels), dtype=float32)
+            self._channel_conversion_buffer = zeros((self._expected_frames, max(8, self.output_channels)), dtype=float32)
             # Set up and start the stream
             extra_settings = None
             buffer_size = self.buffer_size
@@ -752,6 +770,8 @@ class AudioEngine:
         self.music_streams = {}
         self.sound_queue = queue.Queue()
         self.music_queue = queue.Queue()
+        self._output_buffer = None
+        self._channel_conversion_buffer = None
         print("Audio device closed")
         return
 

@@ -135,6 +135,8 @@ class SongSelectScreen:
             elif isinstance(selected_item, Directory) and selected_item.collection == Directory.COLLECTIONS[3]:
                 self.state = State.DIFF_SORTING
                 self.diff_sort_selector = DiffSortSelect()
+                self.text_fade_in.start()
+                self.text_fade_out.start()
             else:
                 selected_song = self.navigator.select_current_item()
                 if selected_song:
@@ -190,22 +192,19 @@ class SongSelectScreen:
             self.diff_sort_selector.input_right()
             audio.play_sound(self.sound_kat)
         if is_l_don_pressed() or is_r_don_pressed():
-            diff, level = self.diff_sort_selector.input_select()
-            if diff == -2:
-                audio.play_sound(self.sound_don)
+            tuple = self.diff_sort_selector.input_select()
+            audio.play_sound(self.sound_don)
+            if tuple is None:
                 return
-            elif diff == -1:
-                self.diff_sort_selector = None
-                self.state = State.BROWSING
-                if level == 0:
-                    audio.play_sound(self.sound_don)
-                    self.navigator.select_current_item()
-            else:
-                self.diff_sort_selector = None
-                self.state = State.BROWSING
-                audio.play_sound(self.sound_don)
-                self.navigator.diff_sort_diff = diff
-                self.navigator.diff_sort_level = level
+            diff, level = tuple
+            self.diff_sort_selector = None
+            self.state = State.BROWSING
+            self.text_fade_out.reset()
+            self.text_fade_in.reset()
+            if diff != -1:
+                if level != -1:
+                    self.navigator.diff_sort_diff = diff
+                    self.navigator.diff_sort_level = level
                 self.navigator.select_current_item()
 
     def _cancel_selection(self):
@@ -342,7 +341,6 @@ class SongSelectScreen:
             tex.draw_texture('diff_select', f'{str(global_data.player_num)}p_outline', x=(difficulty * 115))
 
     def draw(self):
-        # Draw file/directory list
         width = tex.textures['box']['background'].width
         for i in range(0, width * 4, width):
             tex.draw_texture('box', 'background', frame=self.last_texture_index, x=i-self.background_move.attribute)
@@ -493,6 +491,9 @@ class SongBox:
         is_open_prev = self.is_open
         self.move_box()
         self.is_open = self.position == SongSelectScreen.BOX_CENTER + 150
+
+        if not (-56 <= self.position <= 1280):
+            return
         if self.yellow_box is not None:
             self.yellow_box.update(is_diff_select)
 
@@ -515,7 +516,7 @@ class SongBox:
         self.open_anim.update(get_current_ms())
         self.open_fade.update(get_current_ms())
 
-        if self.name is None and -56 <= self.position <= 1280:
+        if self.name is None:
             self.name = OutlinedText(self.text_name, 40, ray.WHITE, SongBox.OUTLINE_MAP.get(self.name_texture_index, ray.Color(101, 0, 82, 255)), outline_thickness=5, vertical=True)
 
 
@@ -575,15 +576,12 @@ class SongBox:
             tex.draw_texture('box', 'genre_overlay_large', x=x, y=y, color=color)
         elif self.texture_index == 14:
             tex.draw_texture('box', 'diff_overlay_large', x=x, y=y, color=color)
-        color = ray.WHITE
-        if fade_override is not None:
-            color = ray.fade(ray.WHITE, min(0.5, fade_override))
-        tex.draw_texture('yellow_box', 'song_count_back', color=color)
 
         color = ray.WHITE
         if fade_override is not None:
             color = ray.fade(ray.WHITE, fade_override)
-        if self.tja_count_text is not None:
+        if self.tja_count_text is not None and self.texture_index != 14:
+            tex.draw_texture('yellow_box', 'song_count_back', color=color, fade=0.5)
             tex.draw_texture('yellow_box', 'song_count_num', color=color)
             tex.draw_texture('yellow_box', 'song_count_songs', color=color)
             dest_width = min(124, self.tja_count_text.texture.width)
@@ -790,7 +788,7 @@ class YellowBox:
         self._draw_text(song_box)
 
 class GenreBG:
-    def __init__(self, start_box: SongBox, end_box: SongBox, title: OutlinedText):
+    def __init__(self, start_box: SongBox, end_box: SongBox, title: OutlinedText, diff_sort: Optional[int]):
         self.start_box = start_box
         self.end_box = end_box
         self.start_position = start_box.position
@@ -798,6 +796,7 @@ class GenreBG:
         self.title = title
         self.fade_in = Animation.create_fade(116, initial_opacity=0.0, final_opacity=1.0, ease_in='quadratic', delay=50)
         self.fade_in.start()
+        self.diff_num = diff_sort
     def update(self, current_ms):
         self.start_position = self.start_box.position
         self.end_position = self.end_box.position
@@ -820,11 +819,14 @@ class GenreBG:
 
         if ((self.start_position <= 594 and self.end_position >= 594) or
             ((self.start_position <= 594 or self.end_position >= 594) and (self.start_position > self.end_position))):
+            offset = 100 if self.diff_num is not None else 0
             dest_width = min(300, self.title.texture.width)
-            tex.draw_texture('box', 'folder_header', x=-(dest_width//2), y=y, x2=dest_width, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
-            tex.draw_texture('box', 'folder_header_edge', x=-(dest_width//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index, mirror="horizontal")
-            tex.draw_texture('box', 'folder_header_edge', x=(dest_width//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
-            dest = ray.Rectangle((1280//2) - (dest_width//2), y-60, dest_width, self.title.texture.height)
+            tex.draw_texture('box', 'folder_header', x=-((offset+dest_width)//2), y=y, x2=dest_width+offset, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
+            tex.draw_texture('box', 'folder_header_edge', x=-((offset+dest_width)//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index, mirror="horizontal")
+            tex.draw_texture('box', 'folder_header_edge', x=((offset+dest_width)//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
+            if self.diff_num is not None:
+                tex.draw_texture('diff_sort', 'star_num', frame=self.diff_num, x=-150 + (dest_width//2), y=-143)
+            dest = ray.Rectangle((1280//2) - (dest_width//2)-(offset//2), y-60, dest_width, self.title.texture.height)
             self.title.draw(self.title.default_src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, self.fade_in.attribute))
 
 class UraSwitchAnimation:
@@ -854,8 +856,27 @@ class DiffSortSelect:
         self.num_boxes = 6
         self.limits = [5, 7, 8, 10]
 
+        self.bg_resize = tex.get_animation(19)
+        self.diff_fade_in = tex.get_animation(20)
+        self.box_flicker = tex.get_animation(21)
+        self.bounce_up_1 = tex.get_animation(22)
+        self.bounce_down_1 = tex.get_animation(23)
+        self.bounce_up_2 = tex.get_animation(24)
+        self.bounce_down_2 = tex.get_animation(25)
+        self.bg_resize.start()
+        self.diff_fade_in.start()
+        self.box_flicker.start()
+
     def update(self, current_ms):
-        pass
+        self.bg_resize.update(current_ms)
+        self.diff_fade_in.update(current_ms)
+        self.box_flicker.update(current_ms)
+        self.bounce_up_1.update(current_ms)
+        self.bounce_down_1.update(current_ms)
+        self.bounce_up_2.update(current_ms)
+        self.bounce_down_2.update(current_ms)
+        if self.box_flicker.is_finished:
+            self.box_flicker.restart()
 
     def get_random_sort(self):
         diff = random.randint(0, 4)
@@ -875,26 +896,32 @@ class DiffSortSelect:
         if self.confirmation:
             if self.confirm_index == 0:
                 self.confirmation = False
-                return (-2, -1)
+                return None
             elif self.confirm_index == 1:
                 return self.selected_box, self.selected_level
             elif self.confirm_index == 2:
                 self.confirmation = False
                 self.in_level_select = False
-                return (-2, -1)
+                return None
         elif self.in_level_select:
             self.confirmation = True
+            self.bounce_up_1.start()
+            self.bounce_down_1.start()
+            self.bounce_up_2.start()
+            self.bounce_down_2.start()
             self.confirm_index = 1
-            return (-2, -1)
+            return None
         if self.selected_box == -1:
             return (-1, -1)
         elif self.selected_box == 5:
-            return (-1, 0)
+            return (0, -1)
         elif self.selected_box == 4:
             return self.get_random_sort()
         self.in_level_select = True
+        self.bg_resize.start()
+        self.diff_fade_in.start()
         self.selected_level = min(self.selected_level, self.limits[self.selected_box])
-        return (-2, -1)
+        return None
 
     def input_left(self):
         if self.confirmation:
@@ -913,43 +940,50 @@ class DiffSortSelect:
             self.selected_box = min(self.selected_box + 1, self.num_boxes - 1)
 
     def draw_diff_select(self):
-        tex.draw_texture('diff_sort', 'background')
+        tex.draw_texture('diff_sort', 'background', scale=self.bg_resize.attribute, center=True)
 
-        tex.draw_texture('diff_sort', 'back')
+        tex.draw_texture('diff_sort', 'back', fade=self.diff_fade_in.attribute)
         for i in range(self.num_boxes):
             if i == self.selected_box:
-                tex.draw_texture('diff_sort', 'box_highlight', x=(100*i))
-                tex.draw_texture('diff_sort', 'box_text_highlight', x=(100*i), frame=i)
+                tex.draw_texture('diff_sort', 'box_highlight', x=(100*i), fade=self.diff_fade_in.attribute)
+                tex.draw_texture('diff_sort', 'box_text_highlight', x=(100*i), frame=i, fade=self.diff_fade_in.attribute)
             else:
-                tex.draw_texture('diff_sort', 'box', x=(100*i))
-                tex.draw_texture('diff_sort', 'box_text', x=(100*i), frame=i)
+                tex.draw_texture('diff_sort', 'box', x=(100*i), fade=self.diff_fade_in.attribute)
+                tex.draw_texture('diff_sort', 'box_text', x=(100*i), frame=i, fade=self.diff_fade_in.attribute)
         if self.selected_box == -1:
-            tex.draw_texture('diff_sort', 'back_outline')
+            tex.draw_texture('diff_sort', 'back_outline', fade=self.box_flicker.attribute)
         else:
-            tex.draw_texture('diff_sort', 'box_outline', x=(100*self.selected_box))
+            tex.draw_texture('diff_sort', 'box_outline', x=(100*self.selected_box), fade=self.box_flicker.attribute)
 
         for i in range(self.num_boxes):
             if i < 4:
                 tex.draw_texture('diff_sort', 'box_diff', x=(100*i), frame=i)
 
     def draw_level_select(self):
-        tex.draw_texture('diff_sort', 'background')
-        tex.draw_texture('diff_sort', 'star_select_text')
-        tex.draw_texture('diff_sort', 'star_limit', frame=self.selected_box)
-        tex.draw_texture('diff_sort', 'level_box')
-        tex.draw_texture('diff_sort', 'diff', frame=self.selected_box)
-        tex.draw_texture('diff_sort', 'star_num', frame=self.selected_level)
+        tex.draw_texture('diff_sort', 'background', scale=self.bg_resize.attribute, center=True)
+        if self.confirmation:
+            tex.draw_texture('diff_sort', 'star_select_prompt')
+        else:
+            tex.draw_texture('diff_sort', 'star_select_text', fade=self.diff_fade_in.attribute)
+        tex.draw_texture('diff_sort', 'star_limit', frame=self.selected_box, fade=self.diff_fade_in.attribute)
+        tex.draw_texture('diff_sort', 'level_box', fade=self.diff_fade_in.attribute)
+        tex.draw_texture('diff_sort', 'diff', frame=self.selected_box, fade=self.diff_fade_in.attribute)
+        tex.draw_texture('diff_sort', 'star_num', frame=self.selected_level, fade=self.diff_fade_in.attribute)
         for i in range(self.selected_level):
-            tex.draw_texture('diff_sort', 'star', x=(i*40.5))
+            tex.draw_texture('diff_sort', 'star', x=(i*40.5), fade=self.diff_fade_in.attribute)
 
         if self.confirmation:
+            texture = tex.textures['diff_sort']['level_box']
+            ray.draw_rectangle(texture.x, texture.y, texture.x2, texture.y2, ray.fade(ray.BLACK, 0.5))
+            y = -self.bounce_up_1.attribute + self.bounce_down_1.attribute - self.bounce_up_2.attribute + self.bounce_down_2.attribute
             for i in range(3):
                 if i == self.confirm_index:
-                    tex.draw_texture('diff_sort', 'small_box_highlight', x=(i*245))
-                    tex.draw_texture('diff_sort', 'small_box_text_highlight', x=(i*245), frame=i)
+                    tex.draw_texture('diff_sort', 'small_box_highlight', x=(i*245), y=y)
+                    tex.draw_texture('diff_sort', 'small_box_text_highlight', x=(i*245), y=y, frame=i)
+                    tex.draw_texture('diff_sort', 'small_box_outline', x=(i*245), y=y, fade=self.box_flicker.attribute)
                 else:
-                    tex.draw_texture('diff_sort', 'small_box', x=(i*245))
-                    tex.draw_texture('diff_sort', 'small_box_text', x=(i*245), frame=i)
+                    tex.draw_texture('diff_sort', 'small_box', x=(i*245), y=y)
+                    tex.draw_texture('diff_sort', 'small_box_text', x=(i*245), y=y, frame=i)
         else:
             tex.draw_texture('diff_sort', 'pongos')
 
@@ -973,6 +1007,7 @@ class FileSystemItem:
         'RECOMMENDED': 10,
         'FAVORITE': 11,
         'RECENT': 12,
+        '段位道場': 13,
         'DIFFICULTY': 14
     }
     """Base class for files and directories in the navigation system"""
@@ -1095,6 +1130,10 @@ class FileNavigator:
 
             # Count TJA files for this directory
             tja_count = self._count_tja_files(dir_path)
+            if collection == Directory.COLLECTIONS[4]:
+                tja_count = 10
+            elif collection == Directory.COLLECTIONS[0]:
+                tja_count = len(self.new_items)
 
             # Create Directory object
             directory_obj = Directory(
@@ -1476,7 +1515,13 @@ class FileNavigator:
         if (not has_children and start_box is not None
             and end_box is not None and selected_item is not None
             and selected_item.box.hori_name is not None):
-            self.genre_bg = GenreBG(start_box, end_box, selected_item.box.hori_name)
+            hori_name = selected_item.box.hori_name
+            diff_sort = None
+            if selected_item.collection == Directory.COLLECTIONS[3]:
+                diff_sort = self.diff_sort_level
+                diffs = ['かんたん', 'ふつう', 'むずかしい', 'おに']
+                hori_name = OutlinedText(diffs[min(3, self.diff_sort_diff)], 40, ray.WHITE, ray.BLACK, outline_thickness=5)
+            self.genre_bg = GenreBG(start_box, end_box, hori_name, diff_sort)
 
     def mark_crowns_dirty_for_song(self, song_file: SongFile):
         """Mark directories as needing crown recalculation when a song's score changes"""

@@ -554,7 +554,10 @@ class Player:
         length = end_position - start_position
         color = ray.Color(255, head.color, head.color, 255)
         tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-64-32, color=color)
-        tex.draw_texture('notes', "9", frame=is_big, x=end_position, y=192, color=color)
+        if is_big:
+            tex.draw_texture('notes', "drumroll_big_tail", x=end_position, y=192, color=color)
+        else:
+            tex.draw_texture('notes', "9", frame=0, x=end_position, y=192, color=color)
         tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
 
         tex.draw_texture('notes', 'moji_drumroll_mid', x=start_position + 60, y=323, x2=length)

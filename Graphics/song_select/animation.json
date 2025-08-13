@@ -181,5 +181,89 @@
             "property": "duration"
         },
         "comment": "yellow box fade in 2"
+    },
+    {
+        "id": 19,
+        "type": "texture_resize",
+        "duration": 283,
+        "initial_size": 0.2,
+        "final_size": 1.0,
+        "ease_out": "quadratic",
+        "comment": "diff sort scale up"
+    },
+    {
+        "id": 20,
+        "type": "fade",
+        "duration": {
+            "reference_id": 19,
+            "property": "duration"
+        },
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "ease_out": "quadratic",
+        "comment": "diff sort diff select fade in"
+    },
+    {
+        "id": 21,
+        "type": "fade",
+        "duration": 133,
+        "reverse_delay": 0,
+        "comment": "box outline fade in/out"
+    },
+    {
+        "id": 22,
+        "type": "move",
+        "total_distance": 30,
+        "duration": 116.67,
+        "ease_out": "quadratic",
+        "comment": "diff sort confirmation bounce up"
+    },
+    {
+        "id": 23,
+        "type": "move",
+        "total_distance": 30,
+        "duration": 116.67,
+        "delay": {
+            "reference_id": 22,
+            "property": "duration"
+        },
+        "ease_in": "quadratic",
+        "comment": "diff sort confirmation bounce down"
+    },
+    {
+        "id": 24,
+        "type": "move",
+        "total_distance": 10,
+        "duration": 83.33,
+        "delay": {
+            "init_val": {
+                "reference_id": 22,
+                "property": "duration"
+            },
+            "reference_id": 23,
+            "property": "duration"
+        },
+        "ease_out": "quadratic",
+        "comment": "diff sort confirmation bounce up 2"
+    },
+    {
+        "id": 25,
+        "type": "move",
+        "total_distance": 10,
+        "duration": 83.33,
+        "delay": {
+            "init_val": {
+                "init_val": {
+                    "reference_id": 22,
+                    "property": "duration"
+                },
+                "reference_id": 23,
+                "property": "duration"
+            },
+            "reference_id": 24,
+            "property": "duration"
+        },
+        "ease_in": "quadratic",
+        "comment": "diff sort confirmation bounce down 2"
     }
 ]

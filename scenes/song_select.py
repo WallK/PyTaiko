@@ -1318,7 +1318,7 @@ class FileNavigator:
                     line = line.strip()
                     if line.startswith("#GENRE:"):
                         genre = line.split(":", 1)[1].strip()
-                        texture_index = FileSystemItem.GENRE_MAP.get(genre, 620)
+                        texture_index = FileSystemItem.GENRE_MAP.get(genre, 9)
                     elif line.startswith("#TITLE:"):
                         name = line.split(":", 1)[1].strip()
                     elif line.startswith("#TITLEJA:"):

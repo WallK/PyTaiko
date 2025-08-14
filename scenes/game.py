@@ -44,6 +44,7 @@ class GameScreen:
         self.sound_kat = audio.load_sound(sounds_dir / "inst_00_katsu.wav")
         self.sound_restart = audio.load_sound(sounds_dir / 'song_select' / 'Skip.ogg')
         self.sound_balloon_pop = audio.load_sound(sounds_dir / "balloon_pop.wav")
+        self.sound_kusudama_pop = audio.load_sound(sounds_dir / "kusudama_pop.ogg")
         self.sound_result_transition = audio.load_sound(sounds_dir / "result" / "VO_RESULT [1].ogg")
 
     def init_tja(self, song: Path, difficulty: int):
@@ -233,6 +234,7 @@ class Player:
         self.draw_drum_hit_list: list[DrumHitEffect] = []
         self.drumroll_counter: Optional[DrumrollCounter] = None
         self.balloon_anim: Optional[BalloonAnimation] = None
+        self.kusudama_anim: Optional[KusudamaAnimation] = None
         self.base_score_list: list[ScoreCounterAnimation] = []
         self.combo_display = Combo(self.combo, get_current_ms())
         self.score_counter = ScoreCounter(self.score)
@@ -307,7 +309,7 @@ class Player:
         elif (note.hit_ms <= game_screen.current_ms):
             if note.type == 5 or note.type == 6:
                 self.is_drumroll = True
-            elif note.type == 7:
+            elif note.type == 7 or note.type == 9:
                 self.is_balloon = True
 
     def draw_note_manager(self, game_screen: GameScreen):
@@ -353,7 +355,8 @@ class Player:
             if self.combo > self.max_combo:
                 self.max_combo = self.combo
 
-        self.draw_arc_list.append(NoteArc(note.type, get_current_ms(), 1, note.type == 3 or note.type == 4) or note.type == 7)
+        if note.type != 9:
+            self.draw_arc_list.append(NoteArc(note.type, get_current_ms(), 1, note.type == 3 or note.type == 4) or note.type == 7)
 
         if note in self.current_notes_draw:
             index = self.current_notes_draw.index(note)
@@ -372,6 +375,9 @@ class Player:
     def check_balloon(self, game_screen: GameScreen, drum_type: int, note: Balloon):
         if drum_type != 1:
             return
+        if note.is_kusudama:
+            self.check_kusudama(game_screen, note)
+            return
         if self.balloon_anim is None:
             self.balloon_anim = BalloonAnimation(get_current_ms(), note.count)
         self.curr_balloon_count += 1
@@ -384,6 +390,18 @@ class Player:
             self.balloon_anim.update(get_current_ms(), self.curr_balloon_count, note.popped)
             audio.play_sound(game_screen.sound_balloon_pop)
             self.note_correct(self.play_notes[0])
+
+    def check_kusudama(self, game_screen: GameScreen, note: Balloon):
+        if self.kusudama_anim is None:
+            self.kusudama_anim = KusudamaAnimation(note.count)
+        self.curr_balloon_count += 1
+        self.total_drumroll += 1
+        self.score += 100
+        self.base_score_list.append(ScoreCounterAnimation(self.player_number, 100))
+        if self.curr_balloon_count == note.count:
+            audio.play_sound(game_screen.sound_kusudama_pop)
+            self.is_balloon = False
+            note.popped = True
 
     def check_note(self, game_screen: GameScreen, drum_type: int):
         if len(self.play_notes) == 0:
@@ -453,6 +471,11 @@ class Player:
             self.balloon_anim.update(get_current_ms(), self.curr_balloon_count, not self.is_balloon)
             if self.balloon_anim.is_finished:
                 self.balloon_anim = None
+        if self.kusudama_anim is not None:
+            self.kusudama_anim.update(get_current_ms(), not self.is_balloon)
+            self.kusudama_anim.update_count(self.curr_balloon_count)
+            if self.kusudama_anim.is_finished:
+                self.kusudama_anim = None
 
     def handle_input(self, game_screen: GameScreen):
         input_checks = [
@@ -494,9 +517,9 @@ class Player:
                 self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
                 audio.play_sound(game_screen.sound_don)
                 type = note.type
-                if type == 6 or type == 9:
+                if type == 6:
                     type = 3
-                elif type == 5 or type == 7:
+                else:
                     type = 1
                 self.check_note(game_screen, type)
         else:
@@ -557,7 +580,7 @@ class Player:
         if is_big:
             tex.draw_texture('notes', "drumroll_big_tail", x=end_position, y=192, color=color)
         else:
-            tex.draw_texture('notes', "9", frame=0, x=end_position, y=192, color=color)
+            tex.draw_texture('notes', "drumroll_tail", x=end_position, y=192, color=color)
         tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
 
         tex.draw_texture('notes', 'moji_drumroll_mid', x=start_position + 60, y=323, x2=length)
@@ -617,7 +640,7 @@ class Player:
             y_position = self.get_position_y(game_screen.current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
             if isinstance(note, Drumroll):
                 self.draw_drumroll(game_screen, note, current_eighth)
-            elif isinstance(note, Balloon):
+            elif isinstance(note, Balloon) and not note.is_kusudama:
                 self.draw_balloon(game_screen, note, current_eighth)
                 tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
             else:
@@ -652,6 +675,8 @@ class Player:
             anim.draw()
         if self.balloon_anim is not None:
             self.balloon_anim.draw()
+        if self.kusudama_anim is not None:
+            self.kusudama_anim.draw()
         self.score_counter.draw()
         for anim in self.base_score_list:
             anim.draw()
@@ -979,6 +1004,74 @@ class BalloonAnimation:
             total_width = len(counter) * 52
             for i in range(len(counter)):
                 tex.draw_texture('balloon', 'counter', frame=int(counter[i]), color=self.color, x=-(total_width // 2) + (i * 52), y=-self.stretch_animation.attribute, y2=self.stretch_animation.attribute)
+
+class KusudamaAnimation:
+    def __init__(self, balloon_total: int):
+        self.balloon_total = balloon_total
+        self.move_down = tex.get_animation(11)
+        self.move_up = tex.get_animation(12)
+        self.renda_move_up = tex.get_animation(13)
+        self.renda_move_down = tex.get_animation(18)
+        self.renda_fade_in = tex.get_animation(14)
+        self.renda_fade_out = tex.get_animation(20)
+        self.stretch_animation = tex.get_animation(15)
+        self.breathing = tex.get_animation(16)
+        self.renda_breathe = tex.get_animation(17)
+        self.open = tex.get_animation(19)
+        self.fade_out = tex.get_animation(21)
+        self.balloon_count = 0
+        self.is_popped = False
+        self.is_finished = False
+        self.move_down.start()
+        self.move_up.start()
+        self.renda_move_up.start()
+        self.renda_move_down.start()
+        self.renda_fade_in.start()
+        self.renda_breathe.start()
+
+        self.open.reset()
+        self.renda_fade_out.reset()
+        self.fade_out.reset()
+
+    def update_count(self, balloon_count: int):
+        if self.balloon_count != balloon_count:
+            self.balloon_count = balloon_count
+            self.stretch_animation.start()
+            self.breathing.start()
+
+    def update(self, current_ms, is_popped: bool):
+        if is_popped and not self.is_popped:
+            self.is_popped = True
+            self.open.start()
+            self.renda_fade_out.start()
+            self.fade_out.start()
+        self.move_down.update(current_ms)
+        self.move_up.update(current_ms)
+        self.renda_move_up.update(current_ms)
+        self.renda_move_down.update(current_ms)
+        self.renda_fade_in.update(current_ms)
+        self.renda_fade_out.update(current_ms)
+        self.fade_out.update(current_ms)
+        self.stretch_animation.update(current_ms)
+        self.breathing.update(current_ms)
+        self.renda_breathe.update(current_ms)
+        self.open.update(current_ms)
+        if self.renda_breathe.is_finished:
+            self.renda_breathe.restart()
+        self.is_finished = self.fade_out.is_finished
+    def draw(self):
+        y = self.move_down.attribute - self.move_up.attribute
+        renda_y = -self.renda_move_up.attribute + self.renda_move_down.attribute + self.renda_breathe.attribute
+        tex.draw_texture('kusudama', 'kusudama', frame=self.open.attribute, y=y, scale=self.breathing.attribute, center=True, fade=self.fade_out.attribute)
+        tex.draw_texture('kusudama', 'renda', y=renda_y, fade=min(self.renda_fade_in.attribute, self.renda_fade_out.attribute))
+
+        if self.move_up.is_finished and not self.is_popped:
+            counter = str(max(0, self.balloon_total - self.balloon_count))
+            if counter == '0':
+                return
+            total_width = len(counter) * 150
+            for i in range(len(counter)):
+                tex.draw_texture('kusudama', 'counter', frame=int(counter[i]), x=-(total_width // 2) + (i * 150), y=-self.stretch_animation.attribute, y2=self.stretch_animation.attribute)
 
 class Combo:
     def __init__(self, combo: int, current_ms: float):

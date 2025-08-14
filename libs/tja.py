@@ -99,6 +99,7 @@ class Balloon(Note):
     _source_note: Note
     count: int = field(init=False)
     popped: bool = False
+    is_kusudama: bool = False
 
     def __repr__(self):
         return str(self.__dict__)
@@ -574,11 +575,14 @@ class TJAParser:
                     if item in {'5', '6'}:
                         note = Drumroll(note)
                         note.color = 255
-                    elif item in {'7'}:
+                    elif item in {'7', '9'}:
                         count += 1
                         if balloon is None:
                             raise Exception("Balloon note found, but no count was specified")
-                        note = Balloon(note)
+                        if item == '9':
+                            note = Balloon(note, is_kusudama=True)
+                        else:
+                            note = Balloon(note)
                         note.count = 1 if not balloon else balloon.pop(0)
                     elif item == '8':
                         new_pixels_per_ms = play_note_list[-1].pixels_per_frame_x / (1000 / 60)

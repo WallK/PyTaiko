@@ -185,6 +185,10 @@ class TextureChangeAnimation(BaseAnimation):
         self.delay_saved = delay
         self.attribute = textures[0][2]
 
+    def reset(self):
+        super().reset()
+        self.attribute = self.textures[0][2]
+
     def update(self, current_time_ms: float) -> None:
         super().update(current_time_ms)
         if not self.is_started:
@@ -231,6 +235,7 @@ class TextureResizeAnimation(BaseAnimation):
         self.reverse_delay_saved = reverse_delay
         self.ease_in = ease_in
         self.ease_out = ease_out
+        self.attribute = self.initial_size
 
     def restart(self) -> None:
         super().restart()

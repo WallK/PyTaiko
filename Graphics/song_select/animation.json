@@ -265,5 +265,55 @@
         },
         "ease_in": "quadratic",
         "comment": "diff sort confirmation bounce down 2"
+    },
+    {
+        "id": 26,
+        "type": "move",
+        "duration": 100,
+        "total_distance": 115,
+        "comment": "diff selector move between diffs"
+    },
+    {
+        "id": 27,
+        "type": "move",
+        "duration": 100,
+        "total_distance": 70,
+        "comment": "diff selector move between options"
+    },
+    {
+        "id": 28,
+        "type": "move",
+        "duration": 316.67,
+        "total_distance": 370,
+        "ease_out": "quadratic",
+        "comment": "neiro move up"
+    },
+    {
+        "id": 29,
+        "type": "fade",
+        "duration": 1000,
+        "comment": "neiro blue arrow fade out"
+    },
+    {
+        "id": 30,
+        "type": "move",
+        "duration": 1000,
+        "total_distance": 25,
+        "comment": "neiro blue arrow move out"
+    },
+    {
+        "id": 31,
+        "type": "move",
+        "duration": 250,
+        "total_distance": 100,
+        "ease_out": "quadratic",
+        "comment": "neiro move sideways"
+    },
+    {
+        "id": 32,
+        "type": "fade",
+        "duration": 250,
+        "ease_out": "quadratic",
+        "comment": "neiro fade sideways"
     }
 ]

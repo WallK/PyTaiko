@@ -930,9 +930,9 @@ class GenreBG:
             ((self.start_position <= 594 or self.end_position >= 594) and (self.start_position > self.end_position))):
             offset = 100 if self.diff_num is not None else 0
             dest_width = min(300, self.title.texture.width)
-            tex.draw_texture('box', 'folder_header', x=-((offset+dest_width)//2), y=y, x2=dest_width+offset, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
-            tex.draw_texture('box', 'folder_header_edge', x=-((offset+dest_width)//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index, mirror="horizontal")
-            tex.draw_texture('box', 'folder_header_edge', x=((offset+dest_width)//2), y=y, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
+            tex.draw_texture('box', 'folder_background_folder', x=-((offset+dest_width)//2), y=y-2, x2=dest_width+offset - 10, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
+            tex.draw_texture('box', 'folder_background_folder_edge', x=-((offset+dest_width)//2), y=y-2, fade=self.fade_in.attribute, frame=self.end_box.texture_index, mirror="horizontal")
+            tex.draw_texture('box', 'folder_background_folder_edge', x=((offset+dest_width)//2)+20, y=y-2, fade=self.fade_in.attribute, frame=self.end_box.texture_index)
             if self.diff_num is not None:
                 tex.draw_texture('diff_sort', 'star_num', frame=self.diff_num, x=-150 + (dest_width//2), y=-143)
             dest = ray.Rectangle((1280//2) - (dest_width//2)-(offset//2), y-60, dest_width, self.title.texture.height)

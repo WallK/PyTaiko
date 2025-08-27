@@ -1264,6 +1264,8 @@ class ModifierSelector:
         self.text_true = OutlinedText('する', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
         self.text_false = OutlinedText('じゃない', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
         self.text_speed = OutlinedText(str(global_data.modifiers.speed), 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        self.text_kimagure = OutlinedText('きまぐれ', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        self.text_detarame = OutlinedText('でたらめ', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
 
     def update(self, current_ms):
         self.is_finished = self.is_confirmed and self.move.is_finished
@@ -1343,8 +1345,12 @@ class ModifierSelector:
                     tex.draw_texture('modifier', 'mod_yonbai', y=move + (i*50))
             elif current_mod.name == 'random':
                 if current_value == 1:
+                    dest = ray.Rectangle(330 - (self.text_kimagure.texture.width//2), 819 + move + (i*50), self.text_kimagure.texture.width, self.text_kimagure.texture.height)
+                    self.text_kimagure.draw(self.text_kimagure.default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
                     tex.draw_texture('modifier', ModifierSelector.TEX_MAP[self.mods[i].name], y=move + (i*50))
                 elif current_value == 2:
+                    dest = ray.Rectangle(330 - (self.text_detarame.texture.width//2), 819 + move + (i*50), self.text_detarame.texture.width, self.text_detarame.texture.height)
+                    self.text_detarame.draw(self.text_detarame.default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
                     tex.draw_texture('modifier', 'mod_detarame', y=move + (i*50))
 
 class ScoreHistory:

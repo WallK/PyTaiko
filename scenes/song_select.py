@@ -416,7 +416,7 @@ class SongSelectScreen:
             return self.on_screen_end('ENTRY')
 
     def draw_selector(self):
-        fade = 0.5 if self.neiro_selector is not None else self.text_fade_in.attribute
+        fade = 0.5 if (self.neiro_selector is not None or self.modifier_selector is not None) else self.text_fade_in.attribute
         direction = 1 if self.diff_select_move_right else -1
         if self.selected_difficulty <= -1 or self.prev_diff == -1:
             if self.prev_diff == -1 and self.selected_difficulty >= 0:

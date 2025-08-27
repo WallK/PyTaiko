@@ -126,17 +126,20 @@ class TextureWrapper:
             self.load_zip(screen_name, zip.name)
 
     def control(self, tex_object: Texture):
+        distance = 1
+        if ray.is_key_down(ray.KeyboardKey.KEY_LEFT_SHIFT):
+            distance = 10
         if ray.is_key_pressed(ray.KeyboardKey.KEY_LEFT):
-            tex_object.x -= 1
+            tex_object.x -= distance
             print(f"{tex_object.name}: {tex_object.x}, {tex_object.y}")
         if ray.is_key_pressed(ray.KeyboardKey.KEY_RIGHT):
-            tex_object.x += 1
+            tex_object.x += distance
             print(f"{tex_object.name}: {tex_object.x}, {tex_object.y}")
         if ray.is_key_pressed(ray.KeyboardKey.KEY_UP):
-            tex_object.y -= 1
+            tex_object.y -= distance
             print(f"{tex_object.name}: {tex_object.x}, {tex_object.y}")
         if ray.is_key_pressed(ray.KeyboardKey.KEY_DOWN):
-            tex_object.y += 1
+            tex_object.y += distance
             print(f"{tex_object.name}: {tex_object.x}, {tex_object.y}")
 
     def draw_texture(self, subset: str, texture: str, color: ray.Color=ray.WHITE, frame: int = 0, scale: float = 1.0, center: bool = False,

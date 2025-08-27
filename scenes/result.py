@@ -196,6 +196,22 @@ class ResultScreen:
             ray.end_shader_mode()
         self.bottom_characters.draw()
 
+    def draw_modifiers(self):
+        if global_data.modifiers.display:
+            tex.draw_texture('score', 'mod_doron')
+        if global_data.modifiers.inverse:
+            tex.draw_texture('score', 'mod_abekobe')
+        if global_data.modifiers.random == 1:
+            tex.draw_texture('score', 'mod_kimagure')
+        elif global_data.modifiers.random == 2:
+            tex.draw_texture('score', 'mod_detarame')
+        if global_data.modifiers.speed >= 4:
+            tex.draw_texture('score', 'mod_yonbai')
+        elif global_data.modifiers.speed >= 3:
+            tex.draw_texture('score', 'mod_sanbai')
+        elif global_data.modifiers.speed > 1:
+            tex.draw_texture('score', 'mod_baisaku')
+
     def draw(self):
         x = 0
         while x < self.width:
@@ -229,6 +245,8 @@ class ResultScreen:
 
         if self.crown is not None:
             self.crown.draw(self.crown_type)
+
+        self.draw_modifiers()
 
         if self.high_score_indicator is not None:
             self.high_score_indicator.draw()

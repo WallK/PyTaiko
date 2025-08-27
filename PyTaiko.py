@@ -82,7 +82,7 @@ def main():
     if global_data.config["video"]["fullscreen"]:
         ray.toggle_fullscreen()
 
-    current_screen = Screens.LOADING
+    current_screen = Screens.RESULT
 
     audio.init_audio_device()
 

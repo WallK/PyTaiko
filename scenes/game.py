@@ -40,8 +40,6 @@ class GameScreen:
         self.height = height
         self.current_ms = 0
         self.screen_init = False
-        self.movie = None
-        self.song_music = None
         self.end_ms = 0
         self.start_delay = 1000
         self.song_started = False
@@ -75,8 +73,8 @@ class GameScreen:
                 self.movie = None
             session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
             if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file():
-                self.song_music = audio.load_music_stream(self.tja.metadata.wave)
-                audio.normalize_music_stream(self.song_music, 0.1935)
+                self.song_music = audio.load_sound(self.tja.metadata.wave)
+                audio.normalize_sound(self.song_music, 0.1935)
 
         self.player_1 = Player(self, global_data.player_num, difficulty)
         if self.tja is not None:
@@ -85,6 +83,8 @@ class GameScreen:
     def on_screen_start(self):
         if not self.screen_init:
             self.screen_init = True
+            self.movie = None
+            self.song_music = None
             tex.load_screen_textures('game')
             self.background = Background(self.width, self.height, global_data.player_num)
             self.load_sounds()
@@ -102,8 +102,7 @@ class GameScreen:
         self.screen_init = False
         tex.unload_textures()
         if self.song_music is not None:
-            audio.unload_music_stream(self.song_music)
-        del self.song_music
+            audio.unload_sound(self.song_music)
         self.song_started = False
         self.end_ms = 0
         self.movie = None
@@ -146,8 +145,8 @@ class GameScreen:
         if self.tja is not None:
             if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
                 if self.song_music is not None:
-                    if not audio.is_music_stream_playing(self.song_music):
-                        audio.play_music_stream(self.song_music)
+                    if not audio.is_sound_playing(self.song_music):
+                        audio.play_sound(self.song_music)
                         print(f"Song started at {self.current_ms}")
                 if self.movie is not None:
                     self.movie.start(get_current_ms())
@@ -159,10 +158,6 @@ class GameScreen:
 
         self.player_1.update(self)
         self.song_info.update(get_current_ms())
-
-        if self.song_music is not None:
-            audio.update_music_stream(self.song_music)
-
         self.result_transition.update(get_current_ms())
         if self.result_transition.is_finished:
             return self.on_screen_end('RESULT')
@@ -180,14 +175,14 @@ class GameScreen:
 
         if ray.is_key_pressed(ray.KeyboardKey.KEY_F1):
             if self.song_music is not None:
-                audio.stop_music_stream(self.song_music)
+                audio.stop_sound(self.song_music)
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
             audio.play_sound(self.sound_restart)
             self.song_started = False
 
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ESCAPE):
             if self.song_music is not None:
-                audio.stop_music_stream(self.song_music)
+                audio.stop_sound(self.song_music)
             return self.on_screen_end('SONG_SELECT')
 
     def draw(self):

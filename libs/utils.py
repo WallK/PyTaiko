@@ -198,6 +198,14 @@ def is_r_kat_pressed() -> bool:
     return False
 
 @dataclass
+class Modifiers:
+    auto: bool = False
+    speed: float = 1.0
+    display: bool = False
+    inverse: bool = False
+    random: int = 0
+
+@dataclass
 class SessionData:
     selected_difficulty: int = 0
     song_title: str = ''
@@ -227,6 +235,7 @@ class GlobalData:
     total_songs: int = 0
     hit_sound: int = 0
     player_num: int = 1
+    modifiers: Modifiers = field(default_factory=lambda: Modifiers())
 
 global_data = GlobalData()
 

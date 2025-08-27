@@ -11,7 +11,14 @@ from libs.animation import Animation
 from libs.audio import audio
 from libs.backgrounds import Background
 from libs.texture import tex
-from libs.tja import Balloon, Drumroll, Note, TJAParser, calculate_base_score
+from libs.tja import (
+    Balloon,
+    Drumroll,
+    Note,
+    TJAParser,
+    apply_modifiers,
+    calculate_base_score,
+)
 from libs.transition import Transition
 from libs.utils import (
     OutlinedText,
@@ -34,6 +41,7 @@ class GameScreen:
         self.current_ms = 0
         self.screen_init = False
         self.movie = None
+        self.song_music = None
         self.end_ms = 0
         self.start_delay = 1000
         self.song_started = False
@@ -66,15 +74,13 @@ class GameScreen:
             else:
                 self.movie = None
             session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
-            if not hasattr(self, 'song_music'):
-                if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file():
-                    self.song_music = audio.load_music_stream(self.tja.metadata.wave)
-                    audio.normalize_music_stream(self.song_music, 0.1935)
-                else:
-                    self.song_music = None
-            self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
+            if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file():
+                self.song_music = audio.load_music_stream(self.tja.metadata.wave)
+                audio.normalize_music_stream(self.song_music, 0.1935)
 
         self.player_1 = Player(self, global_data.player_num, difficulty)
+        if self.tja is not None:
+            self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
     def on_screen_start(self):
         if not self.screen_init:
@@ -107,7 +113,7 @@ class GameScreen:
     def write_score(self):
         if self.tja is None:
             return
-        if global_data.config['general']['autoplay']:
+        if global_data.modifiers.auto:
             return
         with sqlite3.connect('scores.db') as con:
             cursor = con.cursor()
@@ -210,6 +216,7 @@ class Player:
 
         if game_screen.tja is not None:
             self.play_notes, self.draw_note_list, self.draw_bar_list = game_screen.tja.notes_to_position(self.difficulty)
+            self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(self.play_notes, self.draw_note_list, self.draw_bar_list)
         else:
             self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
         self.total_notes = len([note for note in self.play_notes if 0 < note.type < 5])
@@ -502,7 +509,7 @@ class Player:
                 self.input_log[game_screen.current_ms] = (note_type, side)
 
     def autoplay_manager(self, game_screen: GameScreen):
-        if not global_data.config["general"]["autoplay"]:
+        if not global_data.modifiers.auto:
             return
         if len(self.play_notes) == 0:
             return
@@ -582,12 +589,13 @@ class Player:
         end_position = self.get_position_x(game_screen.width, game_screen.current_ms, tail.load_ms, tail.pixels_per_frame_x)
         length = end_position - start_position
         color = ray.Color(255, head.color, head.color, 255)
-        tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-64-32, color=color)
-        if is_big:
-            tex.draw_texture('notes', "drumroll_big_tail", x=end_position, y=192, color=color)
-        else:
-            tex.draw_texture('notes', "drumroll_tail", x=end_position, y=192, color=color)
-        tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
+        if head.display:
+            tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-64-32, color=color)
+            if is_big:
+                tex.draw_texture('notes', "drumroll_big_tail", x=end_position, y=192, color=color)
+            else:
+                tex.draw_texture('notes', "drumroll_tail", x=end_position, y=192, color=color)
+            tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
 
         tex.draw_texture('notes', 'moji_drumroll_mid', x=start_position + 60, y=323, x2=length)
         tex.draw_texture('notes', 'moji', frame=head.moji, x=(start_position - (168//2)) + 64, y=323)
@@ -605,7 +613,8 @@ class Player:
             position = pause_position
         else:
             position = start_position
-        tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=position-offset, y=192)
+        if head.display:
+            tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=position-offset, y=192)
         tex.draw_texture('notes', '10', frame=current_eighth % 2, x=position-offset+128, y=192)
 
     def draw_bars(self, game_screen: GameScreen):
@@ -650,8 +659,26 @@ class Player:
                 self.draw_balloon(game_screen, note, current_eighth)
                 tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
             else:
-                tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
+                if note.display:
+                    tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
                 tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
+
+    def draw_modifiers(self):
+        tex.draw_texture('lane', 'mod_shinuchi')
+        if global_data.modifiers.speed >= 4:
+            tex.draw_texture('lane', 'mod_yonbai')
+        elif global_data.modifiers.speed >= 3:
+            tex.draw_texture('lane', 'mod_sanbai')
+        elif global_data.modifiers.speed > 1:
+            tex.draw_texture('lane', 'mod_baisaku')
+        if global_data.modifiers.display:
+            tex.draw_texture('lane', 'mod_doron')
+        if global_data.modifiers.inverse:
+            tex.draw_texture('lane', 'mod_abekobe')
+        if global_data.modifiers.random == 2:
+            tex.draw_texture('lane', 'mod_detarame')
+        elif global_data.modifiers.random == 1:
+            tex.draw_texture('lane', 'mod_kimagure')
 
     def draw(self, game_screen: GameScreen):
         tex.draw_texture('lane', 'lane_background')
@@ -665,7 +692,7 @@ class Player:
         self.draw_notes(game_screen)
         tex.draw_texture('lane', f'{self.player_number}p_lane_cover')
         tex.draw_texture('lane', 'drum')
-        if global_data.config["general"]["autoplay"]:
+        if global_data.modifiers.auto:
             tex.draw_texture('lane', 'auto_icon')
         for anim in self.draw_drum_hit_list:
             anim.draw()
@@ -673,6 +700,7 @@ class Player:
         tex.draw_texture('lane', 'lane_score_cover')
         tex.draw_texture('lane', f'{self.player_number}p_icon')
         tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
+        self.draw_modifiers()
         if self.drumroll_counter is not None:
             self.drumroll_counter.draw()
         for anim in self.draw_arc_list:

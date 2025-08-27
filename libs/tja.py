@@ -1,12 +1,13 @@
 import bisect
 import hashlib
 import math
+import random
 from collections import deque
 from dataclasses import dataclass, field, fields
 from functools import lru_cache
 from pathlib import Path
 
-from libs.utils import get_pixels_per_frame, strip_comments
+from libs.utils import get_pixels_per_frame, global_data, strip_comments
 
 
 @lru_cache(maxsize=64)
@@ -584,6 +585,7 @@ class TJAParser:
                         continue
                     note = Note()
                     note.hit_ms = self.current_ms
+                    note.display = True
                     note.pixels_per_frame_x = bar_line.pixels_per_frame_x
                     note.pixels_per_frame_y = bar_line.pixels_per_frame_y
                     pixels_per_ms = get_pixels_per_ms(note.pixels_per_frame_x)
@@ -628,6 +630,7 @@ class TJAParser:
         # Sorting by load_ms is necessary for drawing, as some notes appear on the
         # screen slower regardless of when they reach the judge circle
         # Bars can be sorted like this because they don't need hit detection
+        print(play_note_list[0])
         return deque(play_note_list), deque(draw_note_list), deque(bar_list)
 
     def hash_note_data(self, play_notes: deque[Note | Drumroll | Balloon], bars: deque[Note]):
@@ -650,3 +653,47 @@ class TJAParser:
             n.update(item.get_hash().encode('utf-8'))
 
         return n.hexdigest()
+
+def modifier_speed(notes: deque[Note | Balloon | Drumroll], bars, value: float):
+    notes = notes.copy()
+    for note in notes:
+        note.pixels_per_frame_x *= value
+        note.load_ms = note.hit_ms - (866 / get_pixels_per_ms(note.pixels_per_frame_x))
+    for bar in bars:
+        bar.pixels_per_frame_x *= value
+        bar.load_ms = bar.hit_ms - (866 / get_pixels_per_ms(bar.pixels_per_frame_x))
+    return notes, bars
+
+def modifier_display(notes: deque[Note | Balloon | Drumroll]):
+    notes = notes.copy()
+    for note in notes:
+        note.display = False
+    return notes
+
+def modifier_inverse(notes: deque[Note | Balloon | Drumroll]):
+    notes = notes.copy()
+    type_mapping = {1: 2, 2: 1, 3: 4, 4: 3}
+    for note in notes:
+        if note.type in type_mapping:
+            note.type = type_mapping[note.type]
+    return notes
+
+def modifier_random(notes: deque[Note | Balloon | Drumroll], value: int):
+    #value: 1 == kimagure, 2 == detarame
+    notes = notes.copy()
+    percentage = int(len(notes) / 5) * value
+    selected_notes = random.sample(range(len(notes)), percentage)
+    type_mapping = {1: 2, 2: 1, 3: 4, 4: 3}
+    for i in selected_notes:
+        if notes[i].type in type_mapping:
+            notes[i].type = type_mapping[notes[i].type]
+    return notes
+
+def apply_modifiers(notes: deque[Note | Balloon | Drumroll], draw_notes: deque[Note | Balloon | Drumroll], bars: deque[Note]):
+    if global_data.modifiers.display:
+        draw_notes = modifier_display(draw_notes)
+    if global_data.modifiers.inverse:
+        notes = modifier_inverse(notes)
+    notes = modifier_random(notes, global_data.modifiers.random)
+    draw_notes, bars = modifier_speed(draw_notes, bars, global_data.modifiers.speed)
+    return notes, draw_notes, bars

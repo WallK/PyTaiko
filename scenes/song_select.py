@@ -1,3 +1,4 @@
+from dataclasses import fields
 import random
 import sqlite3
 from datetime import datetime, timedelta
@@ -12,6 +13,7 @@ from libs.texture import tex
 from libs.tja import TJAParser, test_encodings
 from libs.transition import Transition
 from libs.utils import (
+    Modifiers,
     OutlinedText,
     get_current_ms,
     global_data,
@@ -72,6 +74,7 @@ class SongSelectScreen:
             self.demo_song = None
             self.diff_sort_selector = None
             self.neiro_selector = None
+            self.modifier_selector = None
             self.texture_index = 9
             self.last_texture_index = 9
             self.last_moved = get_current_ms()
@@ -169,20 +172,31 @@ class SongSelectScreen:
     def handle_input_selected(self):
         # Handle song selection confirmation or cancel
         if self.neiro_selector is not None:
-            if is_l_kat_pressed() or is_r_kat_pressed():
-                if is_l_kat_pressed():
-                    self.neiro_selector.move_left()
-                elif is_r_kat_pressed():
-                    self.neiro_selector.move_right()
+            if is_l_kat_pressed():
+                self.neiro_selector.move_left()
+            elif is_r_kat_pressed():
+                self.neiro_selector.move_right()
             if is_l_don_pressed() or is_r_don_pressed():
                 audio.play_sound(self.sound_don)
                 self.neiro_selector.confirm()
+            return
+        if self.modifier_selector is not None:
+            if is_l_kat_pressed():
+                audio.play_sound(self.sound_kat)
+                self.modifier_selector.left()
+            elif is_r_kat_pressed():
+                audio.play_sound(self.sound_kat)
+                self.modifier_selector.right()
+            if is_l_don_pressed() or is_r_don_pressed():
+                audio.play_sound(self.sound_don)
+                self.modifier_selector.confirm()
             return
         if is_l_don_pressed() or is_r_don_pressed():
             if self.selected_difficulty == -3:
                 self._cancel_selection()
             elif self.selected_difficulty == -2:
-                pass
+                audio.play_sound(self.sound_don)
+                self.modifier_selector = ModifierSelector()
             elif self.selected_difficulty == -1:
                 audio.play_sound(self.sound_don)
                 self.neiro_selector = NeiroSelector()
@@ -378,6 +392,11 @@ class SongSelectScreen:
             if self.neiro_selector.is_finished:
                 self.neiro_selector = None
 
+        if self.modifier_selector is not None:
+            self.modifier_selector.update(get_current_ms())
+            if self.modifier_selector.is_finished:
+                self.modifier_selector = None
+
         for song in self.navigator.items:
             song.box.update(self.state == State.SONG_SELECTED)
             song.box.is_open = song.box.position == SongSelectScreen.BOX_CENTER + 150
@@ -397,7 +416,7 @@ class SongSelectScreen:
             return self.on_screen_end('ENTRY')
 
     def draw_selector(self):
-        fade = 0.5 if self.neiro_selector is not None else 1.0
+        fade = 0.5 if self.neiro_selector is not None else self.text_fade_in.attribute
         direction = 1 if self.diff_select_move_right else -1
         if self.selected_difficulty <= -1 or self.prev_diff == -1:
             if self.prev_diff == -1 and self.selected_difficulty >= 0:
@@ -463,6 +482,9 @@ class SongSelectScreen:
 
         if self.neiro_selector is not None:
             self.neiro_selector.draw()
+
+        if self.modifier_selector is not None:
+            self.modifier_selector.draw()
 
         if self.game_transition is not None:
             self.game_transition.draw()
@@ -839,7 +861,6 @@ class YellowBox:
             return
         tex.draw_texture('diff_select', 'back', fade=self.fade_in.attribute)
         tex.draw_texture('diff_select', 'option', fade=self.fade_in.attribute)
-        tex.draw_texture('diff_select', 'disable', fade=min(0.5, self.fade_in.attribute))
         tex.draw_texture('diff_select', 'neiro', fade=self.fade_in.attribute)
 
         for i in range(4):
@@ -1215,6 +1236,115 @@ class NeiroSelector:
 
         dest = ray.Rectangle((self.direction*-100) + 235 - (self.text_2.texture.width//2) + (self.move_sideways.attribute*self.direction), y+1000, self.text_2.texture.width, self.text_2.texture.height)
         self.text_2.draw(self.text_2.default_src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, 1 - self.fade_sideways.attribute))
+
+class ModifierSelector:
+    TEX_MAP = {
+        "auto": "mod_auto",
+        "speed": "mod_baisaku",
+        "display": "mod_doron",
+        "inverse": "mod_abekobe",
+        "random": "mod_kimagure"
+    }
+    NAME_MAP = {
+        "auto": "オート",
+        "speed": "はやさ",
+        "display": "ドロン",
+        "inverse": "あべこべ",
+        "random": "ランダム"
+    }
+    def __init__(self):
+        self.mods = fields(Modifiers)
+        self.current_mod_index = 0
+        self.is_confirmed = False
+        self.is_finished = False
+        self.move = tex.get_animation(28)
+        self.move.start()
+        self.text = [OutlinedText(ModifierSelector.NAME_MAP[mod.name], 30, ray.WHITE, ray.BLACK, outline_thickness=3.5) for mod in self.mods]
+        self.text_true = OutlinedText('する', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        self.text_false = OutlinedText('じゃない', 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        self.text_speed = OutlinedText(str(global_data.modifiers.speed), 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+
+    def update(self, current_ms):
+        self.is_finished = self.is_confirmed and self.move.is_finished
+        if self.is_finished:
+            for text in self.text:
+                text.unload()
+        self.move.update(current_ms)
+    def confirm(self):
+        if self.is_confirmed:
+            return
+        self.current_mod_index += 1
+        if self.current_mod_index == len(self.mods):
+            self.is_confirmed = True
+            self.move.restart()
+    def left(self):
+        if self.is_confirmed:
+            return
+        current_mod = self.mods[self.current_mod_index]
+        current_value = getattr(global_data.modifiers, current_mod.name)
+        if current_mod.type is bool:
+            setattr(global_data.modifiers, current_mod.name, not current_value)
+        elif current_mod.name == 'speed':
+            setattr(global_data.modifiers, current_mod.name, max(0.1, current_value-0.1))
+            self.text_speed.unload()
+            self.text_speed = OutlinedText(str(global_data.modifiers.speed), 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        elif current_mod.name == 'random':
+            setattr(global_data.modifiers, current_mod.name, max(0, current_value-1))
+    def right(self):
+        if self.is_confirmed:
+            return
+        current_mod = self.mods[self.current_mod_index]
+        current_value = getattr(global_data.modifiers, current_mod.name)
+        if current_mod.type is bool:
+            setattr(global_data.modifiers, current_mod.name, not current_value)
+        elif current_mod.name == 'speed':
+            setattr(global_data.modifiers, current_mod.name, current_value+0.1)
+            self.text_speed.unload()
+            self.text_speed = OutlinedText(str(global_data.modifiers.speed), 30, ray.WHITE, ray.BLACK, outline_thickness=3.5)
+        elif current_mod.name == 'random':
+            setattr(global_data.modifiers, current_mod.name, min(2, current_value+1))
+    def draw(self):
+        if self.is_confirmed:
+            move = self.move.attribute - 370
+        else:
+            move = -self.move.attribute
+        tex.draw_texture('modifier', 'top', y=move)
+        tex.draw_texture('modifier', f'{global_data.player_num}p', y=move)
+        tex.draw_texture('modifier', 'bottom', y=move + (len(self.mods)*50))
+        for i in range(len(self.mods)):
+            tex.draw_texture('modifier', 'background', y=move + (i*50))
+            if i == self.current_mod_index:
+                tex.draw_texture('modifier', 'mod_bg_highlight', y=move + (i*50))
+            else:
+                tex.draw_texture('modifier', 'mod_bg', y=move + (i*50))
+            tex.draw_texture('modifier', 'mod_box', y=move + (i*50))
+            dest = ray.Rectangle(92, 819 + move + (i*50), self.text[i].texture.width, self.text[i].texture.height)
+            self.text[i].draw(self.text[i].default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+
+            current_mod = self.mods[i]
+            current_value = getattr(global_data.modifiers, current_mod.name)
+            if current_mod.type is bool:
+                if current_value:
+                    tex.draw_texture('modifier', ModifierSelector.TEX_MAP[self.mods[i].name], y=move + (i*50))
+                    dest = ray.Rectangle(330 - (self.text_true.texture.width//2), 819 + move + (i*50), self.text_true.texture.width, self.text_true.texture.height)
+                    self.text_true.draw(self.text_true.default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+                else:
+                    dest = ray.Rectangle(330 - (self.text_false.texture.width//2), 819 + move + (i*50), self.text_false.texture.width, self.text_false.texture.height)
+                    self.text_false.draw(self.text_false.default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)
+            elif current_mod.name == 'speed':
+                dest = ray.Rectangle(330 - (self.text_speed.texture.width//2), 819 + move + (i*50), self.text_speed.texture.width, self.text_speed.texture.height)
+                self.text_speed.draw(self.text_speed.default_src, dest, ray.Vector2(0, 0), 0, ray.WHITE)add
+                if current_value > 1.0:
+                    tex.draw_texture('modifier', ModifierSelector.TEX_MAP[self.mods[i].name], y=move + (i*50))
+                elif current_value >= 3.0:
+                    tex.draw_texture('modifier', 'mod_sanbai', y=move + (i*50))
+                elif current_value >= 4.0:
+                    tex.draw_texture('modifier', 'mod_yonbai', y=move + (i*50))
+            elif current_mod.name == 'random':
+                if current_value == 1:
+                    tex.draw_texture('modifier', ModifierSelector.TEX_MAP[self.mods[i].name], y=move + (i*50))
+                elif current_value == 2:
+                    tex.draw_texture('modifier', 'mod_detarame', y=move + (i*50))
 
 class ScoreHistory:
     def __init__(self, scores: dict[int, tuple[int, int, int, int]], current_ms):

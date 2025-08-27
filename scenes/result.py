@@ -391,8 +391,7 @@ class ScoreAnimator:
         if int(ret_val) == 0:
             if not (len(self.target_score) - self.digit_index) > (len(self.target_score)):
                 return '0' * (len(self.target_score) - self.digit_index)
-            else:
-                return '0'
+            return '0'
         return str(int(ret_val))
 
 class HighScoreIndicator:

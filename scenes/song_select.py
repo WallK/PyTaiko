@@ -1503,6 +1503,10 @@ class FileSystemItem:
         '段位道場': 13,
         'DIFFICULTY': 14
     }
+    GENRE_MAP_2 = {
+        'ボーカロイド': 3,
+        'バラエティ': 5
+    }
     """Base class for files and directories in the navigation system"""
     def __init__(self, path: Path, name: str):
         self.path = path
@@ -2003,6 +2007,8 @@ class FileNavigator:
                     if line.startswith("#GENRE:"):
                         genre = line.split(":", 1)[1].strip()
                         texture_index = FileSystemItem.GENRE_MAP.get(genre, 9)
+                        if texture_index == 9:
+                            texture_index = FileSystemItem.GENRE_MAP_2.get(genre, 9)
                     elif line.startswith("#TITLE:"):
                         name = line.split(":", 1)[1].strip()
                     elif line.startswith("#TITLEJA:"):

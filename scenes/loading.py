@@ -33,12 +33,8 @@ class LoadScreen:
 
     def _load_song_hashes(self):
         """Background thread function to load song hashes"""
-        try:
-            global_data.song_hashes = build_song_hashes()
-            self.songs_loaded = True
-        except Exception as e:
-            print(f"Error loading song hashes: {e}")
-            self.songs_loaded = True
+        global_data.song_hashes = build_song_hashes()
+        self.songs_loaded = True
 
     def _load_navigator(self):
         """Background thread function to load navigator"""

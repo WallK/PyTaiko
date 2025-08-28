@@ -1,3 +1,4 @@
+import configparser
 import csv
 import json
 import sqlite3
@@ -21,6 +22,21 @@ def diff_hashes_object_hook(obj):
 class DiffHashesDecoder(json.JSONDecoder):
     def __init__(self, *args, **kwargs):
         super().__init__(object_hook=diff_hashes_object_hook, *args, **kwargs)
+
+def read_tjap3_score(input_file: Path):
+    score_ini = configparser.ConfigParser()
+    score_ini.read(input_file)
+    scores = [int(score_ini['HiScore.Drums']['HiScore1']),
+              int(score_ini['HiScore.Drums']['HiScore2']),
+              int(score_ini['HiScore.Drums']['HiScore3']),
+              int(score_ini['HiScore.Drums']['HiScore4']),
+              int(score_ini['HiScore.Drums']['HiScore5'])]
+    clears = [int(score_ini['HiScore.Drums']['Clear0']),
+              int(score_ini['HiScore.Drums']['Clear1']),
+              int(score_ini['HiScore.Drums']['Clear2']),
+              int(score_ini['HiScore.Drums']['Clear3']),
+              int(score_ini['HiScore.Drums']['Clear4'])]
+    return scores, clears
 
 def build_song_hashes(output_dir=Path("cache")):
     if not output_dir.exists():
@@ -124,6 +140,37 @@ def build_song_hashes(output_dir=Path("cache")):
         # Prepare database updates for each difficulty
         en_name = tja.metadata.title.get('en', '') if isinstance(tja.metadata.title, dict) else str(tja.metadata.title)
         jp_name = tja.metadata.title.get('jp', '') if isinstance(tja.metadata.title, dict) else ''
+
+        score_ini_path = tja_path.with_suffix('.tja.score.ini')
+        if score_ini_path.exists():
+            imported_scores, imported_clears = read_tjap3_score(score_ini_path)
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            for i in range(len(imported_scores)):
+                if i not in diff_hashes or imported_scores[i] == 0:
+                    continue
+                cursor.execute("SELECT score FROM scores WHERE hash = ?", (diff_hashes[i],))
+                existing_record = cursor.fetchone()
+                if existing_record and existing_record[0] >= imported_scores[i]:
+                    continue
+                if imported_clears[i] == 2:
+                    bads = 0
+                    clear = 1
+                elif imported_clears[i] == 1:
+                    bads = None
+                    clear = 1
+                else:
+                    bads = None
+                    clear = 0
+                cursor.execute("""
+                    INSERT OR REPLACE INTO scores (hash, en_name, jp_name, diff, score, clear, bad)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (diff_hashes[i], en_name, jp_name, i, imported_scores[i], clear, bads))
+                if cursor.rowcount > 0:
+                    action = "Added" if not existing_record else "Updated"
+                    print(f"{action} entry for {en_name} ({i}) - Score: {imported_scores[i]}")
+            conn.commit()
+            conn.close()
 
         for diff, diff_hash in diff_hashes.items():
             db_updates.append((diff_hash, en_name, jp_name, diff))

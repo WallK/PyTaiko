@@ -31,6 +31,7 @@
         "duration": 366,
         "delay": 3332,
         "reverse_delay": 3332,
+        "loop": true,
         "comment": "song name/number fade in/out"
     },
     {
@@ -149,6 +150,7 @@
         "duration": 500,
         "reverse_delay": 0,
         "total_distance": 40,
+        "loop": true,
         "comment": "renda breathing"
     },
     {

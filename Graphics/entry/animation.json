@@ -15,6 +15,7 @@
         "initial_opacity": 0.5,
         "final_opacity": 0.4,
         "reverse_delay": 0,
+        "loop": true,
         "comment": "background lights flicker"
     },
     {
@@ -68,6 +69,7 @@
         "initial_size": 1.0,
         "final_size": 1.2,
         "reverse_delay": 200,
+        "loop": true,
         "delay": {
             "reference_id": 5,
             "property": "duration"

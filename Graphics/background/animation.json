@@ -4,6 +4,7 @@
         "type": "move",
         "duration": 3000,
         "total_distance": -328,
+        "loop": true,
         "comment": "donbg background move"
     },
     {
@@ -20,6 +21,7 @@
         "duration": 1000,
         "total_distance": 20,
         "reverse_delay": 0,
+        "loop": true,
         "comment": "donbg 1,4,6 overlay move"
     },
     {
@@ -28,6 +30,7 @@
         "duration": 1500,
         "total_distance": 20,
         "reverse_delay": 0,
+        "loop": true,
         "comment": "donbg 2 overlay move"
     },
     {
@@ -36,6 +39,7 @@
         "duration": 266,
         "total_distance": -40,
         "ease_out": "quadratic",
+        "loop": true,
         "comment": "donbg 3,5 bounce up"
     },
     {
@@ -48,6 +52,7 @@
             "reference_id": 4,
             "property": "duration"
         },
+        "loop": true,
         "comment": "donbg 3,5 bounce down"
     },
     {
@@ -66,6 +71,7 @@
             "reference_id": 5,
             "property": "duration"
         },
+        "loop": true,
         "comment": "donbg 3 overlay move"
     },
     {
@@ -88,6 +94,7 @@
             "reference_id": 6,
             "property": "duration"
         },
+        "loop": true,
         "comment": "donbg 3 overlay move 2"
     },
     {
@@ -104,6 +111,108 @@
             "reference_id": 5,
             "property": "duration"
         },
+        "loop": true,
         "comment": "donbg 5 adjust"
+    },
+    {
+        "id": 9,
+        "type": "fade",
+        "duration": 66.68,
+        "initial_opacity": 0.5,
+        "final_opacity": 0.4,
+        "reverse_delay": 0,
+        "loop": true,
+        "comment": "bg normal 1,2 flicker"
+    },
+    {
+        "id": 10,
+        "type": "fade",
+        "duration": 166.7,
+        "initial_opacity": 0.5,
+        "final_opacity": 0.4,
+        "reverse_delay": 0,
+        "loop": true,
+        "comment": "bg normal 3 flicker"
+    },
+    {
+        "id": 11,
+        "type": "fade",
+        "duration": 50,
+        "initial_opacity": 0.5,
+        "final_opacity": 0.4,
+        "reverse_delay": 0,
+        "loop": true,
+        "comment": "bg normal 4 flicker"
+    },
+    {
+        "id": 12,
+        "type": "move",
+        "duration": 6666,
+        "start_position": 1392,
+        "total_distance": -1728,
+        "loop": true,
+        "comment": "turtle move"
+    },
+    {
+        "id": 13,
+        "type": "texture_change",
+        "duration": 600,
+        "textures": [
+            [0, 100, 0],
+            [100, 200, 1],
+            [200, 300, 2],
+            [300, 400, 3],
+            [400, 500, 4],
+            [500, 600, 5]
+        ],
+        "loop": true,
+        "comment": "turtle texture change"
+    },
+    {
+        "id": 14,
+        "type": "fade",
+        "duration": 166.7,
+        "initial_opacity": 0.75,
+        "final_opacity": 0.4,
+        "reverse_delay": 0,
+        "loop": true,
+        "comment": "bg normal 5 flicker"
+    },
+    {
+        "id": 15,
+        "type": "move",
+        "duration": 1300,
+        "total_distance": 50,
+        "reverse_delay": 0,
+        "loop": true,
+        "comment": "bg fever 4 vertical move"
+    },
+    {
+        "id": 16,
+        "type": "move",
+        "duration": 5000,
+        "total_distance": 1256,
+        "loop": true,
+        "comment": "bg fever 4 horizontal move"
+    },
+    {
+        "id": 17,
+        "type": "move",
+        "duration": 516,
+        "total_distance": 400,
+        "ease_in": "cubic",
+        "comment": "bg fever 4 bg move down"
+    },
+    {
+        "id": 18,
+        "type": "move",
+        "duration": 200,
+        "total_distance": 40,
+        "delay": {
+            "reference_id": 17,
+            "property": "duration"
+        },
+        "ease_out": "quadratic",
+        "comment": "bg fever 4 bg move up"
     }
 ]

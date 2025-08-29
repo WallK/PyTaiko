@@ -130,7 +130,6 @@ class TextureWrapper:
                     raise Exception(f"Texture {tex_name} was not found in {zip}")
 
     def load_screen_textures(self, screen_name: str) -> None:
-        self.unload_textures()
         screen_path = self.graphics_path / screen_name
         if (screen_path / 'animation.json').exists():
             with open(screen_path / 'animation.json') as json_file:

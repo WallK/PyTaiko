@@ -10,6 +10,7 @@ import pyray as ray
 from libs.animation import Animation
 from libs.audio import audio
 from libs.backgrounds import Background
+from libs.global_objects import Nameplate
 from libs.texture import tex
 from libs.tja import (
     Balloon,
@@ -246,6 +247,8 @@ class Player:
         self.base_score_list: list[ScoreCounterAnimation] = []
         self.combo_display = Combo(self.combo, get_current_ms())
         self.score_counter = ScoreCounter(self.score)
+        plate_info = global_data.config['nameplate']
+        self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
 
         self.input_log: dict[float, tuple] = dict()
 
@@ -573,7 +576,7 @@ class Player:
         self.score_counter.update(get_current_ms(), self.score)
         self.autoplay_manager(game_screen)
         self.handle_input(game_screen)
-
+        self.nameplate.update(get_current_ms())
         self.gauge.update(get_current_ms())
 
     def draw_drumroll(self, game_screen: GameScreen, head: Drumroll, current_eighth: int):
@@ -694,6 +697,7 @@ class Player:
         tex.draw_texture('lane', 'lane_score_cover')
         tex.draw_texture('lane', f'{self.player_number}p_icon')
         tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
+        self.nameplate.draw(-62, 285)
         self.draw_modifiers()
         if self.drumroll_counter is not None:
             self.drumroll_counter.draw()

@@ -3,6 +3,7 @@ from pathlib import Path
 import pyray as ray
 
 from libs.audio import audio
+from libs.global_objects import Nameplate
 from libs.texture import tex
 from libs.utils import (
     OutlinedText,
@@ -39,6 +40,8 @@ class EntryScreen:
             self.side = 1
             self.box_manager = BoxManager()
             self.state = State.SELECT_SIDE
+            plate_info = global_data.config['nameplate']
+            self.nameplate = Nameplate(plate_info['name'], plate_info['title'], -1, -1, False)
             self.screen_init = True
             self.side_select_fade = tex.get_animation(0)
             self.bg_flicker = tex.get_animation(1)
@@ -49,6 +52,7 @@ class EntryScreen:
             self.cloud_resize_loop = tex.get_animation(6)
             self.cloud_texture_change = tex.get_animation(7)
             self.cloud_fade = tex.get_animation(8)
+            self.nameplate_fadein = tex.get_animation(12)
             self.side_select_fade.start()
             audio.play_sound(self.bgm)
 
@@ -56,6 +60,7 @@ class EntryScreen:
         self.screen_init = False
         global_data.player_num = round((self.side/3) + 1)
         audio.stop_sound(self.bgm)
+        self.nameplate.unload()
         tex.unload_textures()
         audio.unload_all_sounds()
         return next_screen
@@ -74,6 +79,10 @@ class EntryScreen:
                 self.cloud_resize_loop.start()
                 self.cloud_texture_change.start()
                 self.cloud_fade.start()
+                plate_info = global_data.config['nameplate']
+                self.nameplate.unload()
+                self.nameplate = Nameplate(plate_info['name'], plate_info['title'], round((self.side/3) + 1), plate_info['dan'], plate_info['gold'])
+                self.nameplate_fadein.start()
                 self.state = State.SELECT_MODE
                 audio.play_sound(self.sound_don)
             if is_l_kat_pressed():
@@ -105,6 +114,8 @@ class EntryScreen:
         self.cloud_fade.update(get_current_ms())
         self.cloud_resize_loop.update(get_current_ms())
         self.box_manager.update(get_current_ms())
+        self.nameplate_fadein.update(get_current_ms())
+        self.nameplate.update(get_current_ms())
         if self.box_manager.is_finished():
             return self.on_screen_end(self.box_manager.selected_box())
         return self.handle_input()
@@ -152,6 +163,7 @@ class EntryScreen:
             tex.draw_texture('side_select', '2P_highlight', fade=fade)
             tex.draw_texture('side_select', '1P2P_outline', index=1, fade=fade)
         tex.draw_texture('side_select', 'cancel_text', fade=fade)
+        self.nameplate.draw(500, 185)
 
     def draw_player_drum(self):
         move_x = self.drum_move_3.attribute
@@ -182,6 +194,12 @@ class EntryScreen:
         elif self.state == State.SELECT_MODE:
             self.draw_mode_select()
         self.draw_footer()
+
+        if self.state == State.SELECT_MODE:
+            if self.side == 0:
+                self.nameplate.draw(30, 640, fade=self.nameplate_fadein.attribute)
+            else:
+                self.nameplate.draw(950, 640, fade=self.nameplate_fadein.attribute)
 
         tex.draw_texture('global', 'player_entry')
 

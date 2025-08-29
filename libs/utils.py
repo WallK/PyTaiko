@@ -252,6 +252,7 @@ class OutlinedText:
     def __init__(self, text: str, font_size: int, color: ray.Color, outline_color: ray.Color, outline_thickness=5.0, vertical=False):
         self.text = text
         self.hash = self._hash_text(text, font_size, color, vertical)
+        self.outline_thickness = outline_thickness
         if self.hash in text_cache:
             self.texture = ray.load_texture(f'cache/image/{self.hash}.png')
         else:
@@ -260,7 +261,7 @@ class OutlinedText:
                 self.texture = self._create_text_vertical(text, font_size, color, ray.BLANK, self.font)
             else:
                 self.texture = self._create_text_horizontal(text, font_size, color, ray.BLANK, self.font)
-        outline_size = ray.ffi.new('float*', outline_thickness)
+        outline_size = ray.ffi.new('float*', self.outline_thickness)
         if isinstance(outline_color, tuple):
             outline_color_alloc = ray.ffi.new("float[4]", [
                 outline_color[0] / 255.0,
@@ -498,9 +499,11 @@ class OutlinedText:
         else:
             alpha_value = ray.ffi.new('float*', color.a / 255.0)
         ray.set_shader_value(self.shader, self.alpha_loc, alpha_value, SHADER_UNIFORM_FLOAT)
-        ray.begin_shader_mode(self.shader)
+        if self.outline_thickness > 0:
+            ray.begin_shader_mode(self.shader)
         ray.draw_texture_pro(self.texture, src, dest, origin, rotation, color)
-        ray.end_shader_mode()
+        if self.outline_thickness > 0:
+            ray.end_shader_mode()
 
     def unload(self):
         ray.unload_shader(self.shader)

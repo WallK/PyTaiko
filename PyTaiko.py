@@ -76,6 +76,7 @@ def main():
     camera.projection = CAMERA_ORTHOGRAPHIC
 
     ray.init_window(screen_width, screen_height, "PyTaiko")
+    global_data.tex.load_screen_textures('global')
     global_data.tex.load_screen_textures('transition')
     if global_data.config["video"]["borderless"]:
         ray.toggle_borderless_windowed()

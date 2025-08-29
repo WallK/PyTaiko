@@ -130,5 +130,13 @@
         "total_distance": 54,
         "delay": 200,
         "comment": "box opening"
+    },
+    {
+        "id": 12,
+        "type": "fade",
+        "duration": 200,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "comment": "nameplate fade in"
     }
 ]

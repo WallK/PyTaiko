@@ -9,6 +9,7 @@ import pyray as ray
 
 from libs.animation import Animation, MoveAnimation
 from libs.audio import audio
+from libs.global_objects import Nameplate
 from libs.texture import tex
 from libs.tja import TJAParser, test_encodings
 from libs.transition import Transition
@@ -80,6 +81,8 @@ class SongSelectScreen:
             self.is_ura = False
             self.screen_init = True
             self.ura_switch_animation = UraSwitchAnimation()
+            plate_info = global_data.config['nameplate']
+            self.nameplate = self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
 
             if self.navigator.items == []:
                 return self.on_screen_end("ENTRY")
@@ -101,6 +104,7 @@ class SongSelectScreen:
             self.navigator.reset_items()
             audio.unload_all_sounds()
             tex.unload_textures()
+            self.nameplate.unload()
         return next_screen
 
     def reset_demo_music(self):
@@ -355,6 +359,7 @@ class SongSelectScreen:
         self.ura_switch_animation.update(get_current_ms())
         self.diff_selector_move_1.update(get_current_ms())
         self.diff_selector_move_2.update(get_current_ms())
+        self.nameplate.update(get_current_ms())
 
         if self.text_fade_out.is_finished:
             self.selected_song = True
@@ -460,6 +465,11 @@ class SongSelectScreen:
                     box.draw(box.position + int(self.move_away.attribute), 95, self.is_ura, fade_override=self.diff_fade_out.attribute)
 
         tex.draw_texture('global', 'footer')
+
+        if self.nameplate.player_num == 1:
+            self.nameplate.draw(30, 640)
+        else:
+            self.nameplate.draw(950, 640)
 
         self.ura_switch_animation.draw()
 

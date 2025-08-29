@@ -22,7 +22,7 @@ class DevScreen:
             return self.on_screen_end('GAME')
 
     def draw(self):
-        pass
+        ray.draw_rectangle(0, 0, 1280, 720, ray.GREEN)
 
     def draw_3d(self):
         pass

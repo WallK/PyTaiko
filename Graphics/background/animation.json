@@ -39,7 +39,6 @@
         "duration": 266,
         "total_distance": -40,
         "ease_out": "quadratic",
-        "loop": true,
         "comment": "donbg 3,5 bounce up"
     },
     {
@@ -52,7 +51,6 @@
             "reference_id": 4,
             "property": "duration"
         },
-        "loop": true,
         "comment": "donbg 3,5 bounce down"
     },
     {

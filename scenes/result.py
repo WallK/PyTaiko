@@ -5,6 +5,7 @@ from raylib import SHADER_UNIFORM_FLOAT
 
 from libs import utils
 from libs.audio import audio
+from libs.global_objects import Nameplate
 from libs.texture import tex
 from libs.utils import (
     OutlinedText,
@@ -54,6 +55,8 @@ class ResultScreen:
             self.crown = None
             self.state = None
             self.high_score_indicator = None
+            plate_info = global_data.config['nameplate']
+            self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
             self.score_animator = ScoreAnimator(session_data.result_score)
             self.score = ''
             self.good = ''
@@ -162,6 +165,8 @@ class ResultScreen:
         if self.crown is not None:
             self.crown.update(get_current_ms())
 
+        self.nameplate.update(get_current_ms())
+
     def draw_score_info(self):
         if self.good:
             for i in range(len(str(self.good))):
@@ -245,6 +250,8 @@ class ResultScreen:
 
         if self.crown is not None:
             self.crown.draw(self.crown_type)
+
+        self.nameplate.draw(265, 80)
 
         self.draw_modifiers()
 

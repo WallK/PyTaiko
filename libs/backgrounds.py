@@ -93,6 +93,8 @@ class DonBG3(DonBGBase):
         super().__init__(tex, index, player_num)
         self.bounce_up = tex.get_animation(4)
         self.bounce_down = tex.get_animation(5)
+        self.bounce_up.start()
+        self.bounce_down.start()
         self.overlay_move = tex.get_animation(6)
         self.overlay_move_2 = tex.get_animation(7)
 
@@ -100,6 +102,9 @@ class DonBG3(DonBGBase):
         super().update(current_time_ms, is_clear)
         self.bounce_up.update(current_time_ms)
         self.bounce_down.update(current_time_ms)
+        if self.bounce_up.is_finished:
+            self.bounce_up.restart()
+            self.bounce_down.restart()
         self.overlay_move.update(current_time_ms)
         self.overlay_move_2.update(current_time_ms)
 
@@ -137,12 +142,17 @@ class DonBG5(DonBGBase):
         super().__init__(tex, index, player_num)
         self.bounce_up = tex.get_animation(4)
         self.bounce_down = tex.get_animation(5)
+        self.bounce_up.start()
+        self.bounce_down.start()
         self.adjust = tex.get_animation(8)
 
     def update(self, current_time_ms: float, is_clear: bool):
         super().update(current_time_ms, is_clear)
         self.bounce_up.update(current_time_ms)
         self.bounce_down.update(current_time_ms)
+        if self.bounce_up.is_finished:
+            self.bounce_up.restart()
+            self.bounce_down.restart()
         self.adjust.update(current_time_ms)
 
     def draw(self, tex: TextureWrapper):
@@ -321,7 +331,7 @@ class BGFever:
 
     @staticmethod
     def create(tex: TextureWrapper, index: int):
-        map = [None, None, None, BGFever4]
+        map = [BGFever1, None, None, BGFever4]
         selected_obj = map[index]
         return selected_obj(tex, index)
 
@@ -330,6 +340,19 @@ class BGFeverBase:
         self.name = 'bg_fever_' + str(index)
         tex.load_zip('background', f'bg_fever/{self.name}')
         self.transitioned = False
+
+class BGFever1(BGFeverBase):
+    def __init__(self, tex: TextureWrapper, index: int):
+        super().__init__(tex, index)
+
+    def start(self):
+        pass
+
+    def update(self, current_time_ms: float):
+        pass
+
+    def draw(self, tex: TextureWrapper):
+        pass
 
 class BGFever4(BGFeverBase):
     def __init__(self, tex: TextureWrapper, index: int):

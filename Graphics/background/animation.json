@@ -212,5 +212,24 @@
         },
         "ease_out": "quadratic",
         "comment": "bg fever 4 bg move up"
+    },
+    {
+        "id": 19,
+        "type": "fade",
+        "duration": 416,
+        "initial_opacity": 0.0,
+        "final_opacity": 1.0,
+        "comment": "bg fever 2 fadein"
+    },
+    {
+        "id": 20,
+        "type": "texture_change",
+        "duration": 332,
+        "textures": [
+            [0, 166, 0],
+            [166, 332, 1]
+        ],
+        "comment": "bg fever 2 texture change",
+        "loop": true
     }
 ]

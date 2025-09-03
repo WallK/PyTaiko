@@ -153,7 +153,7 @@ class ResultScreen:
         alpha_value = ray.ffi.new('float*', self.fade_in_bottom.attribute)
         ray.set_shader_value(self.alpha_shader, alpha_loc, alpha_value, SHADER_UNIFORM_FLOAT)
 
-        if get_current_ms() >= self.start_ms + 5000:
+        if get_current_ms() >= self.start_ms + 5000 and not self.fade_out.is_started:
             self.handle_input()
 
         self.update_score_animation()
@@ -404,8 +404,6 @@ class ScoreAnimator:
     def next_score(self) -> str:
         if self.digit_index == -1:
             self.is_finished = True
-            if self.target_score == '0':
-                return '0'
             return str(int(''.join([str(item[0]) for item in self.current_score_list])))
         curr_digit, counter = self.current_score_list[self.digit_index]
         if counter < 9:

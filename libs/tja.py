@@ -204,7 +204,7 @@ class TJAParser:
                 region_code = 'en'
                 if item[len('SUBTITLE')] != ':':
                     region_code = (item[len('SUBTITLE'):len('SUBTITLE')+2]).lower()
-                self.metadata.subtitle[region_code] = ''.join(item.split(':')[1:])
+                self.metadata.subtitle[region_code] = ''.join(item.split(':')[1:]).replace('--', '')
                 if 'ja' in self.metadata.subtitle and '限定' in self.metadata.subtitle['ja']:
                     self.ex_data.limited_time = True
             elif item.startswith('TITLE'):

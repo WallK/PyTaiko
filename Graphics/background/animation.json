@@ -219,7 +219,7 @@
         "duration": 416,
         "initial_opacity": 0.0,
         "final_opacity": 1.0,
-        "comment": "bg fever 2 fadein"
+        "comment": "bg fever 2,3 fadein"
     },
     {
         "id": 20,
@@ -229,7 +229,103 @@
             [0, 166, 0],
             [166, 332, 1]
         ],
-        "comment": "bg fever 2 texture change",
+        "comment": "bg fever 2,3 texture change",
         "loop": true
+    },
+    {
+        "id": 21,
+        "type": "fade",
+        "duration": 1000,
+        "initial_opacity": -0.2,
+        "final_opacity": 0.2,
+        "reverse_delay": 0,
+        "loop": true,
+        "ease_in": "quadratic",
+        "ease_out": "quadratic",
+        "comment": "bg fever 2 ship rotation"
+    },
+    {
+        "id": 22,
+        "type": "move",
+        "duration": 333,
+        "total_distance": 600,
+        "start_position": -500,
+        "ease_out": "quadratic",
+        "comment": "bg fever 2 move in"
+    },
+    {
+        "id": 23,
+        "type": "move",
+        "duration": 166,
+        "total_distance": 100,
+        "delay": {
+            "reference_id": 22,
+            "property": "duration"
+        },
+        "ease_in": "quadratic",
+        "comment": "bg fever 2 move out"
+    },
+    {
+        "id": 24,
+        "type": "move",
+        "duration": 1000,
+        "total_distance": 1800,
+        "comment": "bg fever 3 background move in"
+    },
+    {
+        "id": 25,
+        "type": "texture_change",
+        "duration": 996,
+        "textures": [
+            [0, 332, 0],
+            [332, 664, 1],
+            [664, 996, 2]
+        ],
+        "comment": "bg fever 3 overlay texture change",
+        "loop": true
+    },
+    {
+        "id": 26,
+        "type": "move",
+        "duration": 1000,
+        "total_distance": 100,
+        "ease_out": "quadratic",
+        "comment": "bg fever 3 footer move up"
+    },
+    {
+        "id": 27,
+        "type": "move",
+        "duration": 7000,
+        "total_distance": 360,
+        "comment": "bg fever 3 rotation",
+        "loop": true
+    },
+    {
+        "id": 28,
+        "type": "move",
+        "duration": 8000,
+        "total_distance": -360,
+        "comment": "bg fever 3 fish circular motion",
+        "loop": true
+    },
+    {
+        "id": 29,
+        "type": "move",
+        "duration": 133,
+        "total_distance": 360,
+        "comment": "bg fever 1 corner move up",
+        "ease_out": "quadratic"
+    },
+    {
+        "id": 30,
+        "type": "move",
+        "duration": 133,
+        "total_distance": 160,
+        "delay": {
+            "reference_id": 29,
+            "property": "duration"
+        },
+        "comment": "bg fever 1 corner move down",
+        "ease_in": "quadratic"
     }
 ]

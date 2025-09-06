@@ -7,7 +7,7 @@ class Dancer:
 
     @staticmethod
     def create(tex: TextureWrapper, index: int, bpm: float):
-        map = [DancerGroup0]
+        map = [DancerGroup0, DancerGroup0, DancerGroup0]
         selected_obj = map[index]
         return selected_obj(tex, index, bpm)
 

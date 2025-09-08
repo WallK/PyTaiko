@@ -43,6 +43,7 @@ class GameScreen:
         self.end_ms = 0
         self.start_delay = 1000
         self.song_started = False
+        self.mask_shader = ray.load_shader("", "shader/mask.fs")
 
     def load_sounds(self):
         sounds_dir = Path("Sounds")
@@ -86,6 +87,8 @@ class GameScreen:
             self.movie = None
             self.song_music = None
             tex.load_screen_textures('game')
+            ray.set_shader_value_texture(self.mask_shader, ray.get_shader_location(self.mask_shader, "texture0"), tex.textures['balloon']['rainbow_mask'].texture)
+            ray.set_shader_value_texture(self.mask_shader, ray.get_shader_location(self.mask_shader, "texture1"), tex.textures['balloon']['rainbow'].texture)
             self.load_sounds()
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
             self.song_info = SongInfo(session_data.song_title, 'TEST')
@@ -372,14 +375,14 @@ class Player:
                 self.max_combo = self.combo
 
         if note.type != 9:
-            self.draw_arc_list.append(NoteArc(note.type, get_current_ms(), 1, note.type == 3 or note.type == 4) or note.type == 7)
+            self.draw_arc_list.append(NoteArc(note.type, get_current_ms(), 1, note.type == 3 or note.type == 4 or note.type == 7, note.type == 7))
 
         if note in self.current_notes_draw:
             index = self.current_notes_draw.index(note)
             self.current_notes_draw.pop(index)
 
     def check_drumroll(self, drum_type: int, game_screen: GameScreen):
-        self.draw_arc_list.append(NoteArc(drum_type, get_current_ms(), 1, drum_type == 3 or drum_type == 4))
+        self.draw_arc_list.append(NoteArc(drum_type, get_current_ms(), 1, drum_type == 3 or drum_type == 4, False))
         self.curr_drumroll_count += 1
         self.total_drumroll += 1
         game_screen.background.add_renda()
@@ -711,7 +714,7 @@ class Player:
         if self.drumroll_counter is not None:
             self.drumroll_counter.draw()
         for anim in self.draw_arc_list:
-            anim.draw()
+            anim.draw(game_screen)
         for anim in self.gauge_hit_effect:
             anim.draw()
         if self.balloon_anim is not None:
@@ -877,10 +880,12 @@ class GaugeHitEffect:
             tex.draw_texture('gauge', 'hit_effect_circle', color=self.color)
 
 class NoteArc:
-    def __init__(self, note_type: int, current_ms: float, player_number: int, big: bool):
+    def __init__(self, note_type: int, current_ms: float, player_number: int, big: bool, is_balloon: bool):
         self.note_type = note_type
         self.is_big = big
+        self.is_balloon = is_balloon
         self.arc_points = 22
+        self.current_progress = 0
         self.create_ms = current_ms
         self.player_number = player_number
         curve_height = 425
@@ -939,6 +944,8 @@ class NoteArc:
         ms_since_call = (current_ms - self.create_ms) / 16.67
         ms_since_call = max(0, min(ms_since_call, self.arc_points))
 
+        self.current_progress = ms_since_call / self.arc_points
+
         # Calculate desired distance along the path (constant speed)
         target_distance = (ms_since_call / self.arc_points) * self.total_path_length
 
@@ -962,7 +969,21 @@ class NoteArc:
             self.x_i = self.end_x
             self.y_i = self.end_y
 
-    def draw(self):
+    def draw(self, game_screen: GameScreen):
+        if self.is_balloon:
+            rainbow = tex.textures['balloon']['rainbow']
+            trail_length_ratio = 0.5
+            trail_start_progress = max(0, self.current_progress - trail_length_ratio)
+            trail_end_progress = self.current_progress
+            if trail_end_progress > trail_start_progress:
+                crop_start_x = int(trail_start_progress * rainbow.width)
+                crop_end_x = int(trail_end_progress * rainbow.width)
+                crop_width = crop_end_x - crop_start_x
+                if crop_width > 0:
+                    src = ray.Rectangle(crop_start_x, 0, crop_width, rainbow.height)
+                    ray.begin_shader_mode(game_screen.mask_shader)
+                    tex.draw_texture('balloon', 'rainbow_mask', src=src, x=crop_start_x, x2=-rainbow.width + crop_width)
+                    ray.end_shader_mode()
         tex.draw_texture('notes', str(self.note_type), x=self.x_i, y=self.y_i)
 
 class DrumrollCounter:

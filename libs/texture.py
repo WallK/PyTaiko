@@ -4,7 +4,7 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pyray as ray
 
@@ -159,7 +159,7 @@ class TextureWrapper:
     def draw_texture(self, subset: str, texture: str, color: ray.Color=ray.WHITE, frame: int = 0, scale: float = 1.0, center: bool = False,
                             mirror: str = '', x: float = 0, y: float = 0, x2: float = 0, y2: float = 0,
                             origin: ray.Vector2 = ray.Vector2(0,0), rotation: float = 0, fade: float = 1.1,
-                            index: int = 0) -> None:
+                            index: int = 0, src: Optional[ray.Rectangle] = None) -> None:
         mirror_x = -1 if mirror == 'horizontal' else 1
         mirror_y = -1 if mirror == 'vertical' else 1
         if fade != 1.1:
@@ -167,7 +167,10 @@ class TextureWrapper:
         else:
             final_color = color
         tex_object = self.textures[subset][texture]
-        source_rect = ray.Rectangle(0, 0, tex_object.width * mirror_x, tex_object.height * mirror_y)
+        if src is not None:
+            source_rect = src
+        else:
+            source_rect = ray.Rectangle(0, 0, tex_object.width * mirror_x, tex_object.height * mirror_y)
         if center:
             dest_rect = ray.Rectangle(tex_object.x[index] + (tex_object.width//2) - ((tex_object.width * scale)//2) + x, tex_object.y[index] + (tex_object.height//2) - ((tex_object.height * scale)//2) + y, tex_object.x2[index]*scale + x2, tex_object.y2[index]*scale + y2)
         else:

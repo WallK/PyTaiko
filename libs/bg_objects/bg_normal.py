@@ -7,19 +7,19 @@ from libs.texture import TextureWrapper
 class BGNormal:
 
     @staticmethod
-    def create(tex: TextureWrapper, index: int):
+    def create(tex: TextureWrapper, index: int, path: str = 'background'):
         map = [BGNormal1, BGNormal2, BGNormal3, BGNormal4, BGNormal5]
         selected_obj = map[index]
-        return selected_obj(tex, index)
+        return selected_obj(tex, index, path)
 
 class BGNormalBase:
-    def __init__(self, tex: TextureWrapper, index: int):
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
         self.name = "bg_" + str(index)
-        tex.load_zip('background', f'bg_normal/{self.name}')
+        tex.load_zip(path, f'bg_normal/{self.name}')
 
 class BGNormal1(BGNormalBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.flicker = tex.get_animation(9)
     def update(self, current_time_ms: float):
         self.flicker.update(current_time_ms)
@@ -28,8 +28,8 @@ class BGNormal1(BGNormalBase):
         tex.draw_texture(self.name, 'overlay', fade=self.flicker.attribute)
 
 class BGNormal2(BGNormalBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.flicker = tex.get_animation(9)
     def update(self, current_time_ms: float):
         self.flicker.update(current_time_ms)
@@ -38,8 +38,8 @@ class BGNormal2(BGNormalBase):
         tex.draw_texture(self.name, 'overlay', fade=self.flicker.attribute)
 
 class BGNormal3(BGNormalBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.flicker = tex.get_animation(10)
     def update(self, current_time_ms):
         self.flicker.update(current_time_ms)
@@ -82,8 +82,8 @@ class BGNormal4(BGNormalBase):
             self.move_y.update(current_time_ms)
         def draw(self, name: str, tex: TextureWrapper):
             tex.draw_texture(name, 'petal', x=self.spawn_point + self.move_x.attribute, y=360+self.move_y.attribute, fade=0.75)
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.flicker = tex.get_animation(11)
         self.turtle_move = tex.get_animation(12)
         self.turtle_change = tex.get_animation(13)
@@ -108,8 +108,8 @@ class BGNormal4(BGNormalBase):
             petal.draw(self.name, tex)
 
 class BGNormal5(BGNormalBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.flicker = tex.get_animation(14)
     def update(self, current_time_ms: float):
         self.flicker.update(current_time_ms)

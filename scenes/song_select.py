@@ -101,7 +101,7 @@ class SongSelectScreen:
         if self.navigator.items != []:
             global_data.selected_song = self.navigator.get_current_item().path
             session_data.selected_difficulty = self.selected_difficulty
-            session_data.genre_index = self.navigator.get_current_item().box.texture_index
+            session_data.genre_index = self.navigator.get_current_item().box.name_texture_index
             self.reset_demo_music()
             self.navigator.reset_items()
             audio.unload_all_sounds()

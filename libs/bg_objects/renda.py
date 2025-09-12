@@ -7,15 +7,15 @@ import pyray as ray
 class Renda:
 
     @staticmethod
-    def create(tex: TextureWrapper, index: int):
+    def create(tex: TextureWrapper, index: int, path: str):
         map = [Renda0, Renda1, Renda2]
         selected_obj = map[index]
-        return selected_obj(tex, index)
+        return selected_obj(tex, index, path)
 
 class BaseRenda:
-    def __init__(self, tex: TextureWrapper, index: int):
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
         self.name = 'renda_' + str(index)
-        tex.load_zip('background', 'renda')
+        tex.load_zip(path, 'renda')
         self.hori_move = Animation.create_move(1500, total_distance=1280)
         self.hori_move.start()
 
@@ -23,8 +23,8 @@ class BaseRenda:
         self.hori_move.update(current_time_ms)
 
 class Renda0(BaseRenda):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.vert_move = Animation.create_move(1500, total_distance=800)
         self.vert_move.start()
         self.frame = random.randint(0, 5)
@@ -39,8 +39,8 @@ class Renda0(BaseRenda):
         tex.draw_texture('renda', self.name, frame=self.frame, x=self.hori_move.attribute+self.x, y=-self.vert_move.attribute+self.y)
 
 class Renda1(BaseRenda):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.frame = random.randint(0, 5)
         self.y = random.randint(0, 200)
         self.rotate = Animation.create_move(800, total_distance=360)
@@ -57,8 +57,8 @@ class Renda1(BaseRenda):
         tex.draw_texture('renda', self.name, frame=self.frame, x=self.hori_move.attribute+origin.x, y=self.y+origin.y, origin=origin, rotation=self.rotate.attribute)
 
 class Renda2(BaseRenda):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.vert_move = Animation.create_move(1500, total_distance=800)
         self.vert_move.start()
         self.x = random.randint(0, 500)
@@ -72,13 +72,14 @@ class Renda2(BaseRenda):
         tex.draw_texture('renda', self.name, x=self.hori_move.attribute+self.x, y=-self.vert_move.attribute+self.y)
 
 class RendaController:
-    def __init__(self, tex: TextureWrapper, index: int):
+    def __init__(self, tex: TextureWrapper, index: int, path: str ='background'):
         self.rendas = set()
         self.tex = tex
         self.index = index
+        self.path = path
 
     def add_renda(self):
-        self.rendas.add(Renda.create(self.tex, self.index))
+        self.rendas.add(Renda.create(self.tex, self.index, self.path))
 
     def update(self, current_time_ms: float):
         remove = set()

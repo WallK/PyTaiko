@@ -6,13 +6,13 @@ from libs.texture import TextureWrapper
 class Dancer:
 
     @staticmethod
-    def create(tex: TextureWrapper, index: int, bpm: float):
+    def create(tex: TextureWrapper, index: int, bpm: float, max_dancers: int = 5, path: str = 'background'):
         map = [DancerGroup0, DancerGroup0, DancerGroup0, BaseDancerGroup, BaseDancerGroup, BaseDancerGroup,
                 BaseDancerGroup, DancerGroupPoof1, DancerGroupPoof1, BaseDancerGroup, BaseDancerGroup, BaseDancerGroup,
                 DancerGroupPoof2, DancerGroupPoof2, BaseDancerGroup, BaseDancerGroup, DancerGroupPoof2, BaseDancerGroup,
                 BaseDancerGroup, BaseDancerGroup, BaseDancerGroup]
         selected_obj = map[index]
-        return selected_obj(tex, index, bpm)
+        return selected_obj(tex, index, bpm, max_dancers, path)
 
 class BaseDancer:
     def __init__(self, name: str, index: int, bpm: float, tex: TextureWrapper):
@@ -129,13 +129,13 @@ class DancerPoof2(DancerPoof):
             tex.draw_texture(self.name, str(self.index) + '_poof', x=x, frame=self.poof_texture_change.attribute)
 
 class BaseDancerGroup():
-    def __init__(self, tex: TextureWrapper, index: int, bpm: float):
+    def __init__(self, tex: TextureWrapper, index: int, bpm: float, max_dancers: int, path: str):
         self.name = 'dancer_' + str(index)
         self.active_count = 0
-        tex.load_zip('background', f'dancer/{self.name}')
+        tex.load_zip(path, f'dancer/{self.name}')
         # center (2), left (1), right (3), far left (0), far right (4)
         self.spawn_positions = [2, 1, 3, 0, 4]
-        self.active_dancers = [None] * 5
+        self.active_dancers = [None] * max_dancers
         dancer_classes = [BaseDancer]
         tex_set = set()
         tex_dict = tex.textures['dancer_' + str(index)]
@@ -143,7 +143,7 @@ class BaseDancerGroup():
             if key[0].isdigit():
                 tex_set.add(int(key[0]))
         self.dancers = []
-        for i in range(5):
+        for i in range(max_dancers):
             DancerClass = random.choice(dancer_classes)
             dancer = DancerClass(self.name, i % len(tex_set), bpm, tex)
             self.dancers.append(dancer)
@@ -164,18 +164,30 @@ class BaseDancerGroup():
             dancer.update(current_time_ms, bpm)
 
     def draw(self, tex: TextureWrapper):
+        total_width = 1280
+        num_dancers = len(self.active_dancers)
+
+        first_dancer = self.active_dancers[3]
+        if first_dancer is None:
+            return
+        dancer_width = tex.textures[self.name][str(first_dancer.index) + '_loop'].width
+
+        available_space = total_width - (num_dancers * dancer_width)
+        spacing = available_space / (num_dancers + 1)
+
         for i, dancer in enumerate(self.active_dancers):
             if dancer is not None:
-                dancer.draw(tex, 100 + i * 210)
+                x_pos = int(spacing + i * (dancer_width + spacing))
+                dancer.draw(tex, x_pos)
 
 class DancerGroup0(BaseDancerGroup):
-    def __init__(self, tex: TextureWrapper, index: int, bpm: float):
+    def __init__(self, tex: TextureWrapper, index: int, bpm: float, max_dancers: int, path: str):
         self.name = 'dancer_' + str(index)
         self.active_count = 0
-        tex.load_zip('background', f'dancer/{self.name}')
+        tex.load_zip(path, f'dancer/{self.name}')
         # center (2), left (1), right (3), far left (0), far right (4)
         self.spawn_positions = [2, 1, 3, 0, 4]
-        self.active_dancers = [None] * 5
+        self.active_dancers = [None] * max_dancers
         self.dancers = [BaseDancer(self.name, 0, bpm, tex), BaseDancer(self.name, 1, bpm, tex),
                        BaseDancer(self.name, 2, bpm, tex), BaseDancer(self.name, 3, bpm, tex),
                        Dancer0_4(self.name, 4, bpm, tex)]
@@ -183,13 +195,13 @@ class DancerGroup0(BaseDancerGroup):
         self.add_dancer()
 
 class DancerGroupPoof1(BaseDancerGroup):
-    def __init__(self, tex: TextureWrapper, index: int, bpm: float):
+    def __init__(self, tex: TextureWrapper, index: int, bpm: float, max_dancers: int, path: str):
         self.name = 'dancer_' + str(index)
         self.active_count = 0
-        tex.load_zip('background', f'dancer/{self.name}')
+        tex.load_zip(path, f'dancer/{self.name}')
         # center (2), left (1), right (3), far left (0), far right (4)
         self.spawn_positions = [2, 1, 3, 0, 4]
-        self.active_dancers = [None] * 5
+        self.active_dancers = [None] * max_dancers
         dancer_classes = [DancerPoof]
         tex_set = set()
         tex_dict = tex.textures['dancer_' + str(index)]
@@ -197,7 +209,7 @@ class DancerGroupPoof1(BaseDancerGroup):
             if key[0].isdigit():
                 tex_set.add(int(key[0]))
         self.dancers = []
-        for i in range(5):
+        for i in range(max_dancers):
             DancerClass = random.choice(dancer_classes)
             dancer = DancerClass(self.name, i % len(tex_set), bpm, tex)
             self.dancers.append(dancer)
@@ -206,13 +218,13 @@ class DancerGroupPoof1(BaseDancerGroup):
         self.add_dancer()
 
 class DancerGroupPoof2(BaseDancerGroup):
-    def __init__(self, tex: TextureWrapper, index: int, bpm: float):
+    def __init__(self, tex: TextureWrapper, index: int, bpm: float, max_dancers: int, path: str):
         self.name = 'dancer_' + str(index)
         self.active_count = 0
-        tex.load_zip('background', f'dancer/{self.name}')
+        tex.load_zip(path, f'dancer/{self.name}')
         # center (2), left (1), right (3), far left (0), far right (4)
         self.spawn_positions = [2, 1, 3, 0, 4]
-        self.active_dancers = [None] * 5
+        self.active_dancers = [None] * max_dancers
         dancer_classes = [DancerPoof2]
         tex_set = set()
         tex_dict = tex.textures['dancer_' + str(index)]
@@ -220,7 +232,7 @@ class DancerGroupPoof2(BaseDancerGroup):
             if key[0].isdigit():
                 tex_set.add(int(key[0]))
         self.dancers = []
-        for i in range(5):
+        for i in range(max_dancers):
             DancerClass = random.choice(dancer_classes)
             dancer = DancerClass(self.name, i % len(tex_set), bpm, tex)
             self.dancers.append(dancer)

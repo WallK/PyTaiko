@@ -9,15 +9,15 @@ from libs.texture import TextureWrapper
 class BGFever:
 
     @staticmethod
-    def create(tex: TextureWrapper, index: int):
+    def create(tex: TextureWrapper, index: int, path: str = 'background'):
         map = [BGFever1, BGFever2, BGFever3, BGFever4]
         selected_obj = map[index]
-        return selected_obj(tex, index)
+        return selected_obj(tex, index, path)
 
 class BGFeverBase:
-    def __init__(self, tex: TextureWrapper, index: int):
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
         self.name = 'bg_fever_' + str(index)
-        tex.load_zip('background', f'bg_fever/{self.name}')
+        tex.load_zip(path, f'bg_fever/{self.name}')
         self.transitioned = False
 
 class BGFever1(BGFeverBase):
@@ -29,8 +29,8 @@ class BGFever1(BGFeverBase):
             self.expansion.update(current_time_ms)
         def draw(self, tex: TextureWrapper, name: str, x: int, frame: int):
             tex.draw_texture(name, 'background', frame=frame, x=x, y2=-360+self.expansion.attribute, y=360+(180-self.expansion.attribute/2))
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path):
+        super().__init__(tex, index, path)
         self.wait = 0
         self.bg_tiles: list[BGFever1.Tile] = []
         self.corner_move_up = tex.get_animation(29)
@@ -104,8 +104,8 @@ class BGFever1(BGFeverBase):
         tex.draw_texture(self.name, 'overlay', y=self.overlay_move_up.attribute-self.overlay_move_down.attribute)
 
 class BGFever2(BGFeverBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.fadein = tex.get_animation(19)
         self.bg_texture_change = tex.get_animation(20)
         self.ship_rotation = tex.get_animation(21)
@@ -137,8 +137,8 @@ class BGFever2(BGFeverBase):
         tex.draw_texture(self.name, 'ship', x=origin.x, y=origin.y + self.move_in.attribute-self.move_out.attribute, origin=origin, rotation=self.ship_rotation.attribute*100, center=True)
 
 class BGFever3(BGFeverBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.fadein = tex.get_animation(19)
         self.move_in = tex.get_animation(24)
         self.footer_move_up = tex.get_animation(26)
@@ -215,8 +215,8 @@ class BGFever3(BGFeverBase):
         tex.draw_texture(self.name, 'bird', frame=self.bird_tc.attribute, index=1, x=-self.move_in.attribute)
 
 class BGFever4(BGFeverBase):
-    def __init__(self, tex: TextureWrapper, index: int):
-        super().__init__(tex, index)
+    def __init__(self, tex: TextureWrapper, index: int, path: str):
+        super().__init__(tex, index, path)
         self.vertical_move = tex.get_animation(15)
         self.horizontal_move = tex.get_animation(16)
         self.bg_texture_move_down = tex.get_animation(17)

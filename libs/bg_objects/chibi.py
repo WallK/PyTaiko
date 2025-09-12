@@ -46,10 +46,14 @@ class BaseChibi:
 
 class ChibiBad(BaseChibi):
     def __init__(self, index: int, bpm: float, tex: TextureWrapper):
-        super().__init__(index, bpm, tex)
+        self.bpm = bpm
         self.index = random.randint(0, 2)
         self.keyframes = [3, 4]
         duration = (60000 / self.bpm) / 2
+        self.hori_move = Animation.create_move(duration * 10, total_distance=1280)
+        self.hori_move.start()
+        self.vert_move = Animation.create_move(duration, total_distance=50, reverse_delay=0)
+        self.vert_move.start()
         self.fade_in = Animation.create_fade(duration, initial_opacity=0.0, final_opacity=1.0)
         self.fade_in.start()
         s_keyframes = [0, 1, 2]
@@ -131,14 +135,15 @@ class Chibi13(BaseChibi):
 
 
 class ChibiController:
-    def __init__(self, tex: TextureWrapper, index: int, bpm: float):
+    def __init__(self, tex: TextureWrapper, index: int, bpm: float, path: str = 'background'):
         self.chibis = set()
         self.tex = tex
         self.index = index
+        print(self.index)
         self.name = 'chibi_' + str(index)
         self.bpm = bpm
-        tex.load_zip('background', f'chibi/{self.name}')
-        tex.load_zip('background', f'chibi/chibi_bad')
+        tex.load_zip(path, f'chibi/{self.name}')
+        tex.load_zip('background', 'chibi/chibi_bad')
 
     def add_chibi(self, bad=False):
         self.chibis.add(Chibi.create(self.index, self.bpm, bad, self.tex))

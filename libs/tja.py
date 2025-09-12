@@ -130,6 +130,7 @@ class TJAMetadata:
     bpm: float = 120.0
     bgmovie: Path = Path()
     movieoffset: float = 0.0
+    scene_preset: str = ''
     course_data: dict[int, CourseData] = field(default_factory=dict)
 
 @dataclass
@@ -224,6 +225,8 @@ class TJAParser:
                 self.metadata.bgmovie = self.file_path.parent / item.split(':')[1].strip()
             elif item.startswith('MOVIEOFFSET'):
                 self.metadata.movieoffset = float(item.split(':')[1])
+            elif item.startswith('SCENEPRESET'):
+                self.metadata.scene_preset = item.split(':')[1]
             elif item.startswith('COURSE'):
                 course = str(item.split(':')[1]).lower().strip()
 

@@ -1,27 +1,44 @@
 import random
 
+import libs.bg_collabs
 from libs.bg_objects.bg_fever import BGFever
 from libs.bg_objects.bg_normal import BGNormal
 from libs.bg_objects.chibi import ChibiController
 from libs.bg_objects.dancer import Dancer
 from libs.bg_objects.don_bg import DonBG
 from libs.bg_objects.fever import Fever
+from libs.bg_objects.footer import Footer
 from libs.bg_objects.renda import RendaController
 from libs.texture import TextureWrapper
 
-
 class Background:
-    def __init__(self, player_num: int, bpm: float):
+    COLLABS = {
+        "A3": libs.bg_collabs.a3.A3
+    }
+    def __init__(self, player_num: int, bpm: float, scene_preset: str = ''):
         self.tex_wrapper = TextureWrapper()
         self.tex_wrapper.load_animations('background')
-        self.donbg = DonBG.create(self.tex_wrapper, random.randint(0, 5), player_num)
-        self.bg_normal = BGNormal.create(self.tex_wrapper, random.randint(0, 4))
-        self.bg_fever = BGFever.create(self.tex_wrapper, random.randint(0, 3))
-        self.footer = Footer(self.tex_wrapper, random.randint(0, 2))
-        self.fever = Fever.create(self.tex_wrapper, random.randint(0, 3), bpm)
-        self.dancer = Dancer.create(self.tex_wrapper, random.randint(0, 20), bpm)
-        self.renda = RendaController(self.tex_wrapper, random.randint(0, 2))
-        self.chibi = ChibiController(self.tex_wrapper, random.randint(0, 13), bpm)
+        if scene_preset == '':
+            self.max_dancers = 5
+            self.don_bg = DonBG.create(self.tex_wrapper, random.randint(0, 5), player_num)
+            self.bg_normal = BGNormal.create(self.tex_wrapper, random.randint(0, 4))
+            self.bg_fever = BGFever.create(self.tex_wrapper, random.randint(0, 3))
+            self.footer = Footer(self.tex_wrapper, random.randint(0, 2))
+            self.fever = Fever.create(self.tex_wrapper, random.randint(0, 3), bpm)
+            self.dancer = Dancer.create(self.tex_wrapper, random.randint(0, 20), bpm)
+            self.renda = RendaController(self.tex_wrapper, random.randint(0, 2))
+            self.chibi = ChibiController(self.tex_wrapper, random.randint(0, 13), bpm)
+        else:
+            collab_bg = Background.COLLABS[scene_preset](self.tex_wrapper, bpm)
+            self.max_dancers = collab_bg.max_dancers
+            self.don_bg = collab_bg.don_bg
+            self.bg_normal = collab_bg.bg_normal
+            self.bg_fever = collab_bg.bg_fever
+            self.footer = collab_bg.footer
+            self.fever = collab_bg.fever
+            self.dancer = collab_bg.dancer
+            self.renda = collab_bg.renda
+            self.chibi = collab_bg.chibi
         self.is_clear = False
         self.is_rainbow = False
         self.last_milestone = 0
@@ -37,22 +54,23 @@ class Background:
         is_rainbow = gauge.gauge_length == gauge.gauge_max
         clear_threshold = gauge.clear_start[min(gauge.difficulty, 3)]
         if gauge.gauge_length < clear_threshold:
-            current_milestone = min(4, int(gauge.gauge_length / (clear_threshold / 4)))
+            current_milestone = min(self.max_dancers - 1, int(gauge.gauge_length / (clear_threshold / self.max_dancers - 1)))
         else:
-            current_milestone = 5
-        if current_milestone > self.last_milestone and current_milestone <= 5:
+            current_milestone = self.max_dancers
+        if current_milestone > self.last_milestone and current_milestone < self.max_dancers:
             self.dancer.add_dancer()
             self.last_milestone = current_milestone
         if not self.is_clear and is_clear:
             self.bg_fever.start()
-        if not self.is_rainbow and is_rainbow:
+        if not self.is_rainbow and is_rainbow and self.fever is not None:
             self.fever.start()
         self.is_clear = is_clear
         self.is_rainbow = is_rainbow
-        self.donbg.update(current_time_ms, self.is_clear)
+        self.don_bg.update(current_time_ms, self.is_clear)
         self.bg_normal.update(current_time_ms)
         self.bg_fever.update(current_time_ms)
-        self.fever.update(current_time_ms, bpm)
+        if self.fever is not None:
+            self.fever.update(current_time_ms, bpm)
         self.dancer.update(current_time_ms, bpm)
         self.renda.update(current_time_ms)
         self.chibi.update(current_time_ms, bpm)
@@ -60,19 +78,13 @@ class Background:
         self.bg_normal.draw(self.tex_wrapper)
         if self.is_clear:
             self.bg_fever.draw(self.tex_wrapper)
-        self.donbg.draw(self.tex_wrapper)
+        self.don_bg.draw(self.tex_wrapper)
         self.renda.draw()
         self.dancer.draw(self.tex_wrapper)
-        self.footer.draw(self.tex_wrapper)
-        if self.is_rainbow:
+        if self.footer is not None:
+            self.footer.draw(self.tex_wrapper)
+        if self.is_rainbow and self.fever is not None:
             self.fever.draw(self.tex_wrapper)
         self.chibi.draw()
     def unload(self):
         self.tex_wrapper.unload_textures()
-
-class Footer:
-    def __init__(self, tex: TextureWrapper, index: int):
-        self.index = index
-        tex.load_zip('background', 'footer')
-    def draw(self, tex: TextureWrapper):
-        tex.draw_texture('footer', str(self.index))

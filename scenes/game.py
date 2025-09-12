@@ -97,9 +97,11 @@ class GameScreen:
             if self.tja is not None:
                 subtitle = self.tja.metadata.subtitle.get(global_data.config['general']['language'].lower(), '')
                 self.bpm = self.tja.metadata.bpm
+                scene_preset = self.tja.metadata.scene_preset
             else:
                 subtitle = ''
-            self.background = Background(global_data.player_num, self.bpm)
+                scene_preset = ''
+            self.background = Background(global_data.player_num, self.bpm, scene_preset=scene_preset)
             self.transition = Transition(session_data.song_title, subtitle, is_second=True)
             self.transition.start()
 
@@ -1298,7 +1300,8 @@ class SongInfo:
         dest = ray.Rectangle(text_x, text_y, self.song_title.texture.width, self.song_title.texture.height)
         self.song_title.draw(self.song_title.default_src, dest, ray.Vector2(0, 0), 0, ray.fade(ray.WHITE, 1 - self.fade.attribute))
 
-        tex.draw_texture('song_info', 'genre', fade=1 - self.fade.attribute, frame=self.genre)
+        if self.genre < 9:
+            tex.draw_texture('song_info', 'genre', fade=1 - self.fade.attribute, frame=self.genre)
 
 class ResultTransition:
     def __init__(self, player_num: int):

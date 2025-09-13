@@ -3,6 +3,7 @@ import queue
 import time
 from pathlib import Path
 from threading import Lock, Thread
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 import soundfile as sf
@@ -241,6 +242,8 @@ class Music:
 
         # Thread safety
         self.lock = Lock()
+        self.buffer_executor = ThreadPoolExecutor(max_workers=1)
+        self.buffer_future = None
 
         # Load audio
         self._load_audio()
@@ -326,10 +329,14 @@ class Music:
 
     def _fill_buffer(self):
         """Fill the audio buffer from appropriate source"""
+        if self.buffer_future and not self.buffer_future.done():
+            return True
         if self.uses_file_streaming:
-            return self._fill_buffer_from_file()
+            self.buffer_future = self.buffer_executor.submit(self._fill_buffer_from_file)
+            return True
         else:
-            return self._fill_buffer_from_memory()
+            self.buffer_future = self.buffer_executor.submit(self._fill_buffer_from_memory)
+            return True
 
     def _fill_buffer_from_file(self):
         """Stream buffer from file"""

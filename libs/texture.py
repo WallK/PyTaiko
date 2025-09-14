@@ -10,6 +10,16 @@ import pyray as ray
 
 from libs.animation import BaseAnimation, parse_animations
 
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+
+def is_rect_on_screen(rect, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT):
+    return not (
+        rect.x + rect.width < 0 or
+        rect.x > screen_width or
+        rect.y + rect.height < 0 or
+        rect.y > screen_height
+    )
 
 class Texture:
     def __init__(self, name: str, texture: Union[ray.Texture, list[ray.Texture]], init_vals: dict[str, int]):
@@ -175,6 +185,9 @@ class TextureWrapper:
             dest_rect = ray.Rectangle(tex_object.x[index] + (tex_object.width//2) - ((tex_object.width * scale)//2) + x, tex_object.y[index] + (tex_object.height//2) - ((tex_object.height * scale)//2) + y, tex_object.x2[index]*scale + x2, tex_object.y2[index]*scale + y2)
         else:
             dest_rect = ray.Rectangle(tex_object.x[index] + x, tex_object.y[index] + y, tex_object.x2[index]*scale + x2, tex_object.y2[index]*scale + y2)
+
+        if not is_rect_on_screen(dest_rect):
+            return
         if tex_object.is_frames:
             if not isinstance(tex_object.texture, list):
                 raise Exception("Texture was marked as multiframe but is only 1 texture")

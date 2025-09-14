@@ -1,5 +1,5 @@
 import random
-from libs.animation import Animation, get_current_ms
+from libs.animation import Animation
 from libs.texture import TextureWrapper
 
 import pyray as ray
@@ -136,28 +136,24 @@ class Chibi13(BaseChibi):
 
 class ChibiController:
     def __init__(self, tex: TextureWrapper, index: int, bpm: float, path: str = 'background'):
-        self.chibis = set()
+        self.chibis = []
         self.tex = tex
         self.index = index
-        print(self.index)
         self.name = 'chibi_' + str(index)
         self.bpm = bpm
         tex.load_zip(path, f'chibi/{self.name}')
         tex.load_zip('background', 'chibi/chibi_bad')
 
     def add_chibi(self, bad=False):
-        self.chibis.add(Chibi.create(self.index, self.bpm, bad, self.tex))
+        self.chibis.append(Chibi.create(self.index, self.bpm, bad, self.tex))
 
     def update(self, current_time_ms: float, bpm: float):
         self.bpm = bpm
-        remove = set()
-        for chibi in self.chibis:
+        for i in range(len(self.chibis)-1, -1, -1):
+            chibi = self.chibis[i]
             chibi.update(current_time_ms)
             if chibi.hori_move.is_finished:
-                remove.add(chibi)
-
-        for chibi in remove:
-            self.chibis.remove(chibi)
+                self.chibis.remove(chibi)
 
     def draw(self):
         for chibi in self.chibis:

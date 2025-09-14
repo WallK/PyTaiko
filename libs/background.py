@@ -55,7 +55,7 @@ class Background:
         is_rainbow = gauge.gauge_length == gauge.gauge_max
         clear_threshold = gauge.clear_start[min(gauge.difficulty, 3)]
         if gauge.gauge_length < clear_threshold:
-            current_milestone = min(self.max_dancers - 1, int(gauge.gauge_length / (clear_threshold / self.max_dancers - 1)))
+            current_milestone = min(self.max_dancers, int(gauge.gauge_length / (clear_threshold / self.max_dancers)))
         else:
             current_milestone = self.max_dancers
         if current_milestone > self.last_milestone and current_milestone < self.max_dancers:
@@ -76,9 +76,13 @@ class Background:
         self.renda.update(current_time_ms)
         self.chibi.update(current_time_ms, bpm)
     def draw(self):
-        self.bg_normal.draw(self.tex_wrapper)
-        if self.is_clear:
+        if self.is_clear and not self.bg_fever.transitioned:
+            self.bg_normal.draw(self.tex_wrapper)
             self.bg_fever.draw(self.tex_wrapper)
+        elif self.is_clear:
+            self.bg_fever.draw(self.tex_wrapper)
+        else:
+            self.bg_normal.draw(self.tex_wrapper)
         self.don_bg.draw(self.tex_wrapper)
         self.renda.draw()
         self.dancer.draw(self.tex_wrapper)

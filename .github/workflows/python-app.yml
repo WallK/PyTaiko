@@ -1,70 +1,154 @@
 name: PyTaiko
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 permissions:
-    contents: write
-    pull-requests: write
-    issues: write
-    repository-projects: write
+  contents: write
+  pull-requests: write
+  issues: write
+  repository-projects: write
 jobs:
-    build:
-        strategy:
-            matrix:
-                os: [ubuntu-22.04, windows-latest]
-        runs-on: ${{ matrix.os }}
-        steps:
-            - name: Check-out repository
-              uses: actions/checkout@v4
-            - name: Install uv
-              uses: astral-sh/setup-uv@v4
-            - name: Setup Python
-              run: uv python install
-            - name: Install Dependencies
-              run: |
-                  uv sync
-            - name: Install Nuitka
-              run: |
-                  uv add nuitka
-            - name: Build Executable
-              run: |
-                  uv run nuitka --mode=app --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow --assume-yes-for-downloads PyTaiko.py
-            - name: Create Release Directory
-              run: |
-                  mkdir -p release
-                  cp -r Graphics Sounds Videos Songs config.toml shader model release/
-                  # Copy executable based on OS
-                  if [ "${{ runner.os }}" == "Windows" ]; then
-                    cp *.exe release/ 2>/dev/null || true
-                  elif [ "${{ runner.os }}" == "macOS" ]; then
-                    cp -r *.app release/ 2>/dev/null || true
-                  else
-                    cp *.bin release/ 2>/dev/null || true
-                  fi
-              shell: bash
-            - name: Create Zip Archive
-              run: |
-                  cd release
-                  if [ "${{ runner.os }}" == "Windows" ]; then
-                    7z a ../PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip *
-                  else
-                    zip -r ../PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip *
-                  fi
-              shell: bash
-            - name: Upload Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: PyTaiko-${{ runner.os }}-${{ runner.arch }}
-                  path: release/
-            - name: Upload Release
-              uses: softprops/action-gh-release@v2
-              if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-              with:
-                  files: PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip
-                  name: "PyTaiko [Rolling Release]"
-                  tag_name: "latest"
-                  make_latest: true
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check-out repository
+        uses: actions/checkout@v4
+
+      # Install audio library dependencies
+      - name: Install Audio Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+              build-essential \
+              pkg-config \
+              libportaudio2 \
+              libportaudio-dev \
+              libsndfile1 \
+              libsndfile1-dev \
+              libsamplerate0 \
+              libsamplerate0-dev
+
+      - name: Install Audio Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install portaudio libsndfile libsamplerate pkg-config
+
+      - name: Install Audio Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          # Using vcpkg for Windows dependencies
+          vcpkg install portaudio:x64-windows libsndfile:x64-windows libsamplerate:x64-windows
+          # Set environment variables for linking
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/lib/pkgconfig" >> $env:GITHUB_ENV
+        shell: powershell
+
+      # Compile the audio library
+      - name: Check Audio Library Dependencies
+        run: |
+          cd libs/audio
+          make check-deps
+        shell: bash
+        continue-on-error: true
+
+      - name: Compile Audio Library
+        run: |
+          cd libs/audio
+          make clean
+          make all
+        shell: bash
+
+      - name: Install Audio Library (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd libs/audio
+          sudo make install
+        shell: bash
+
+      - name: Copy Audio Library to System Path (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd libs/audio
+          # Copy DLL to a location where Python can find it
+          mkdir -p ../../build/lib
+          cp libaudio.dll ../../build/lib/
+          # Add to PATH
+          echo "${{ github.workspace }}/build/lib" >> $env:GITHUB_PATH
+        shell: powershell
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Setup Python
+        run: uv python install
+
+      - name: Install Dependencies
+        run: |
+          uv sync
+
+      - name: Install Nuitka
+        run: |
+          uv add nuitka
+
+      - name: Build Executable
+        run: |
+          uv run nuitka --mode=app --noinclude-setuptools-mode=nofollow --noinclude-IPython-mode=nofollow --assume-yes-for-downloads PyTaiko.py
+
+      - name: Create Release Directory
+        run: |
+          mkdir -p release
+          cp -r Graphics Sounds Videos Songs config.toml shader model release/
+
+          # Copy the compiled audio library to release
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cp libs/audio/libaudio.dll release/ 2>/dev/null || true
+            cp build/lib/libaudio.dll release/ 2>/dev/null || true
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            cp libs/audio/libaudio.dylib release/ 2>/dev/null || true
+          else
+            cp libs/audio/libaudio.so release/ 2>/dev/null || true
+          fi
+
+          # Copy executable based on OS
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cp *.exe release/ 2>/dev/null || true
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            cp -r *.app release/ 2>/dev/null || true
+          else
+            cp *.bin release/ 2>/dev/null || true
+          fi
+        shell: bash
+
+      - name: Create Zip Archive
+        run: |
+          cd release
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            7z a ../PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip *
+          else
+            zip -r ../PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip *
+          fi
+        shell: bash
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PyTaiko-${{ runner.os }}-${{ runner.arch }}
+          path: release/
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        with:
+          files: PyTaiko-${{ runner.os }}-${{ runner.arch }}.zip
+          name: "PyTaiko [Rolling Release]"
+          tag_name: "latest"
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

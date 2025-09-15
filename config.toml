@@ -29,8 +29,8 @@ right_don = [17]
 right_kat = [12]
 
 [audio]
-device_type = "ALSA"
-buffer_size = 64
+device_type = 0
+buffer_size = 16
 sample_rate = -1
 exclusive = false
 

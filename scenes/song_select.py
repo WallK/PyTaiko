@@ -407,8 +407,9 @@ class SongSelectScreen:
                 if self.demo_song is None and get_current_ms() >= song.box.wait + (83.33*3):
                     song.box.get_scores()
                     if song.tja.metadata.wave.exists() and song.tja.metadata.wave.is_file():
-                        self.demo_song = audio.load_music_stream(song.tja.metadata.wave, preview=song.tja.metadata.demostart)
+                        self.demo_song = audio.load_music_stream(song.tja.metadata.wave)
                         audio.play_music_stream(self.demo_song)
+                        audio.seek_music_stream(self.demo_song, song.tja.metadata.demostart)
                         audio.stop_sound(self.sound_bgm)
             if song.box.is_open:
                 current_box = song.box

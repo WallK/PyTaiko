@@ -13,7 +13,8 @@ class VideoPlayer:
         self.is_finished_list = [False, False]
         self.video = VideoFileClip(path)
         if self.video.audio is not None:
-            self.audio = audio.load_music_stream_from_data(self.video.audio.to_soundarray(), sample_rate=self.video.audio.fps)
+            self.video.audio.write_audiofile("cache/temp_audio.wav")
+            self.audio = audio.load_music_stream(Path("cache/temp_audio.wav"))
 
         self.buffer_size = 10  # Number of frames to keep in memory
         self.frame_buffer: dict[float, ray.Texture] = dict()  # Dictionary to store frames {timestamp: texture}
@@ -31,11 +32,11 @@ class VideoPlayer:
             return
         if self.is_finished_list[1]:
             return
-        if not audio.is_music_stream_playing(self.audio) and not self.audio_played:
+        if not self.audio_played:
             audio.play_music_stream(self.audio)
             self.audio_played = True
         audio.update_music_stream(self.audio)
-        self.is_finished_list[1] = not audio.is_music_stream_playing(self.audio)
+        self.is_finished_list[1] = audio.get_music_time_length(self.audio) <= audio.get_music_time_played(self.audio)
 
     def _load_frame(self, index: int):
         """Load a specific frame into the buffer"""
@@ -138,3 +139,4 @@ class VideoPlayer:
         if audio.is_music_stream_playing(self.audio):
             audio.stop_music_stream(self.audio)
         audio.unload_music_stream(self.audio)
+        Path("cache/temp_audio.wav").unlink()

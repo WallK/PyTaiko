@@ -111,7 +111,6 @@ class GameScreen:
         tex.unload_textures()
         if self.song_music is not None:
             audio.unload_music_stream(self.song_music)
-            self.song_music = None
         self.song_started = False
         self.end_ms = 0
         self.movie = None
@@ -156,9 +155,8 @@ class GameScreen:
         if self.tja is not None:
             if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
                 if self.song_music is not None:
-                    if not audio.is_music_stream_playing(self.song_music):
-                        audio.play_music_stream(self.song_music)
-                        print(f"Song started at {self.current_ms}")
+                    audio.play_music_stream(self.song_music)
+                    print(f"Song started at {self.current_ms}")
                 if self.movie is not None:
                     self.movie.start(current_time)
                 self.song_started = True
@@ -169,6 +167,9 @@ class GameScreen:
                 self.bpm = self.player_1.current_bars[0].bpm
             if self.background is not None:
                 self.background.update(current_time, self.bpm, self.player_1.gauge)
+
+        if self.song_music is not None:
+            audio.update_music_stream(self.song_music)
 
         self.player_1.update(self, current_time)
         self.song_info.update(current_time)

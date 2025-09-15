@@ -26,6 +26,7 @@ class SettingsScreen:
 
     def on_screen_start(self):
         if not self.screen_init:
+            audio.list_host_apis()
             self.screen_init = True
 
     def on_screen_end(self):
@@ -33,7 +34,7 @@ class SettingsScreen:
         save_config(self.config)
         global_data.config = self.config
         audio.close_audio_device()
-        audio.type = global_data.config["audio"]["device_type"]
+        audio.device_type = global_data.config["audio"]["device_type"]
         audio.init_audio_device()
         return "ENTRY"
 

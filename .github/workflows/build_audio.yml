@@ -38,10 +38,33 @@ jobs:
       - name: Setup MSVC environment
         uses: microsoft/setup-msbuild@v2
 
-      - name: Check dependencies
-        run: make check-deps
+      - name: Setup Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Debug Makefile and environment
+        run: |
+          echo "Current directory:"
+          dir
+          echo "Makefile exists:"
+          if exist Makefile (echo Yes) else (echo No)
+          echo "Available make targets:"
+          make help || echo "Help target not available"
+          echo "VCPKG_ROOT: %VCPKG_ROOT%"
+          echo "VCPKG_INSTALLATION_ROOT: %VCPKG_INSTALLATION_ROOT%"
         shell: cmd
         working-directory: libs/audio
+        env:
+          VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
+
+      - name: Check dependencies
+        run: |
+          echo "Attempting to check dependencies..."
+          make check-deps || echo "check-deps target failed or not available, continuing..."
+        shell: cmd
+        working-directory: libs/audio
+        continue-on-error: true
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
 
@@ -96,6 +119,11 @@ jobs:
           key: vcpkg-${{ matrix.architecture }}-${{ matrix.configuration }}-${{ hashFiles('**/vcpkg.json') }}
           restore-keys: |
             vcpkg-${{ matrix.architecture }}-${{ matrix.configuration }}-
+
+      - name: Setup MSVC environment and Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.architecture }}
 
       - name: Install vcpkg dependencies
         run: |

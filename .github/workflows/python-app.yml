@@ -95,7 +95,7 @@ jobs:
           cp /mingw64/bin/libsamplerate-0.dll /c/Users/runneradmin/work/*/build/lib/
 
           # Copy other potential dependencies
-          cp /mingw64/bin/libFLAC-8.dll /c/Users/runneradmin/work/*/build/lib/ || true
+          cp /mingw64/bin/libFLAC.dll /c/Users/runneradmin/work/*/build/lib/ || true
           cp /mingw64/bin/libvorbis-0.dll /c/Users/runneradmin/work/*/build/lib/ || true
           cp /mingw64/bin/libvorbisenc-2.dll /c/Users/runneradmin/work/*/build/lib/ || true
           cp /mingw64/bin/libogg-0.dll /c/Users/runneradmin/work/*/build/lib/ || true

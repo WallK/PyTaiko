@@ -37,57 +37,48 @@ jobs:
           brew update
           brew install portaudio libsndfile libsamplerate pkg-config
 
-      - name: Install Audio Dependencies (Windows)
+      # Use MSYS2 for Windows audio library build
+      - name: Set up MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-portaudio
+            mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-libsamplerate
+
+      - name: Build audio library (DLL) (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        working-directory: libs/audio
+        run: |
+          make clean
+          make all
+
+      - name: List build outputs (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        working-directory: libs/audio
+        run: |
+          ls -l
+
+      - name: Copy DLL to build directory (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install vcpkg dependencies
-          vcpkg integrate install
-          vcpkg install portaudio:x64-windows libsndfile:x64-windows libsamplerate:x64-windows
+          mkdir -p build/lib
+          cp libs/audio/libaudio.dll build/lib/
+        shell: bash
 
-          # Set up environment variables for the build system
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
-          echo "VCPKG_INCLUDE_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/include" >> $env:GITHUB_ENV
-          echo "VCPKG_LIB_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/lib" >> $env:GITHUB_ENV
-          echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
-
-          # Set up include and library paths
-          $vcpkgPath = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows"
-          echo "CPPFLAGS=-I$vcpkgPath/include" >> $env:GITHUB_ENV
-          echo "LDFLAGS=-L$vcpkgPath/lib" >> $env:GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$vcpkgPath/lib/pkgconfig" >> $env:GITHUB_ENV
-
-          # Add bin directory to PATH for runtime DLLs
-          echo "$vcpkgPath/bin" >> $env:GITHUB_PATH
-        shell: powershell
-
-      # Set up build tools for Windows
-      - name: Setup MSVC (Windows)
-        if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Setup MSVC Environment (Windows)
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # Compile the audio library
+      # Compile the audio library (Unix)
       - name: Check Audio Library Dependencies
         run: |
           cd libs/audio
           make check-deps
         shell: bash
         continue-on-error: true
-
-      - name: Compile Audio Library (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd libs/audio
-          make clean
-          make all
-        shell: cmd
-        env:
-          VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
 
       - name: Compile Audio Library (Unix)
         if: runner.os != 'Windows'
@@ -103,33 +94,6 @@ jobs:
           cd libs/audio
           sudo make install
         shell: bash
-
-      - name: Setup Audio Library (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd libs/audio
-          # Create build directory and copy library files
-          mkdir -p ../../build/lib
-
-          # Copy the compiled library
-          if (Test-Path "libaudio.dll") {
-            Copy-Item "libaudio.dll" "../../build/lib/"
-            echo "Copied libaudio.dll"
-          }
-
-          # Copy vcpkg DLLs that are needed at runtime
-          $vcpkgBin = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
-          if (Test-Path $vcpkgBin) {
-            echo "Copying runtime DLLs from vcpkg..."
-            Get-ChildItem "$vcpkgBin/*.dll" | ForEach-Object {
-              Copy-Item $_.FullName "../../build/lib/" -ErrorAction SilentlyContinue
-              echo "Copied $($_.Name)"
-            }
-          }
-
-          # Add to PATH
-          echo "${{ github.workspace }}/build/lib" >> $env:GITHUB_PATH
-        shell: powershell
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4

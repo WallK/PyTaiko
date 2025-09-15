@@ -14,14 +14,14 @@ define check_static_lib
 $(shell find /usr/lib /usr/local/lib /lib -name "lib$(1).a" 2>/dev/null | head -1)
 endef
 
-# MSYS2/MinGW-w64 with intelligent static linking
+# MSYS2/MinGW-w64 with complete static linking
 ifneq (,$(findstring MINGW,$(UNAME_S)))
     CC = x86_64-w64-mingw32-gcc
     LIBNAME = libaudio.dll
     CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64
     LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -L/mingw64/lib -m64
 
-    # Core libraries with full dependency chain
+    # Core libraries with full dependency chain (order is critical!)
     CORE_LIBS =
     ifneq (,$(wildcard /mingw64/lib/libportaudio.a))
         CORE_LIBS += /mingw64/lib/libportaudio.a
@@ -29,11 +29,20 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         CORE_LIBS += -lportaudio
     endif
 
-    # libsndfile and ALL its dependencies (order matters!)
+    # libsndfile and ALL its dependencies in dependency order
     ifneq (,$(wildcard /mingw64/lib/libsndfile.a))
         CORE_LIBS += /mingw64/lib/libsndfile.a
 
-        # libsndfile codec dependencies
+        # Codec libraries (dependencies of libsndfile)
+        ifneq (,$(wildcard /mingw64/lib/libmpg123.a))
+            CORE_LIBS += /mingw64/lib/libmpg123.a
+        endif
+        ifneq (,$(wildcard /mingw64/lib/libmp3lame.a))
+            CORE_LIBS += /mingw64/lib/libmp3lame.a
+        endif
+        ifneq (,$(wildcard /mingw64/lib/libopus.a))
+            CORE_LIBS += /mingw64/lib/libopus.a
+        endif
         ifneq (,$(wildcard /mingw64/lib/libFLAC.a))
             CORE_LIBS += /mingw64/lib/libFLAC.a
         endif
@@ -43,21 +52,11 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         ifneq (,$(wildcard /mingw64/lib/libogg.a))
             CORE_LIBS += /mingw64/lib/libogg.a
         endif
-        ifneq (,$(wildcard /mingw64/lib/libopus.a))
-            CORE_LIBS += /mingw64/lib/libopus.a
-        endif
-        ifneq (,$(wildcard /mingw64/lib/libmpg123.a))
-            CORE_LIBS += /mingw64/lib/libmpg123.a
-        endif
-        ifneq (,$(wildcard /mingw64/lib/libmp3lame.a))
-            CORE_LIBS += /mingw64/lib/libmp3lame.a
-        endif
         ifneq (,$(wildcard /mingw64/lib/libspeex.a))
             CORE_LIBS += /mingw64/lib/libspeex.a
         endif
     else
-        # Dynamic linking with all dependencies
-        CORE_LIBS += -lsndfile -lFLAC -lvorbisenc -lvorbisfile -lvorbis -logg -lopus -lmpg123 -lmp3lame -lspeex
+        CORE_LIBS += -lsndfile
     endif
 
     ifneq (,$(wildcard /mingw64/lib/libsamplerate.a))
@@ -66,8 +65,14 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         CORE_LIBS += -lsamplerate
     endif
 
-    # System libraries (always dynamic)
-    SYSTEM_LIBS = -lwinmm -lole32 -luuid -lksuser -lsetupapi -lws2_32 -ladvapi32
+    # Windows system libraries (these provide the missing symbols)
+    SYSTEM_LIBS = -lwinmm -lole32 -luuid -lksuser -lsetupapi -lws2_32 -ladvapi32 -luser32 -lgdi32 -lkernel32
+
+    # Additional Windows libraries for codec dependencies
+    SYSTEM_LIBS += -lshlwapi -lshell32 -lcomdlg32 -lcomctl32 -lrpcrt4
+
+    # Math and C runtime
+    SYSTEM_LIBS += -lm -lmsvcrt
 
     LIBS = $(CORE_LIBS) $(SYSTEM_LIBS)
     OBJ_EXT = .o

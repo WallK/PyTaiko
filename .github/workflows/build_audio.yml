@@ -79,15 +79,13 @@ jobs:
 
       - name: Build audio library (Force Windows detection)
         run: |
-          echo "Forcing Windows build..."
-          set "UNAME_S=Windows"
-          make all
+          echo "Forcing Windows build with explicit variables..."
+          make all CC=cl CFLAGS="/O2 /W3 /MD /TC /I\"%VCPKG_INSTALLATION_ROOT%\installed\x64-windows\include\"" LDFLAGS="/DLL /LIBPATH:\"%VCPKG_INSTALLATION_ROOT%\installed\x64-windows\lib\"" LIBS="portaudio.lib libsndfile.lib libsamplerate.lib" LIBNAME="libaudio.dll" OBJ_EXT=".obj"
         shell: cmd
         working-directory: libs/audio
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
           OS: Windows_NT
-          UNAME_S: Windows
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -148,10 +146,23 @@ jobs:
 
       - name: Build library (${{ matrix.architecture }}, ${{ matrix.configuration }})
         run: |
-          if ("${{ matrix.configuration }}" -eq "Debug") {
-            make debug
+          $arch = "${{ matrix.architecture }}"
+          $config = "${{ matrix.configuration }}"
+          $vcpkg_path = $env:VCPKG_ROOT
+
+          $cflags = "/O2 /W3 /MD /TC"
+          if ($config -eq "Debug") {
+              $cflags += " /Zi"
+          }
+          $cflags += " /I`"$vcpkg_path\installed\$arch-windows\include`""
+
+          $ldflags = "/DLL /LIBPATH:`"$vcpkg_path\installed\$arch-windows\lib`""
+
+          Write-Host "Building with MSVC for $arch $config..."
+          if ($config -eq "Debug") {
+              make debug CC=cl CFLAGS="$cflags" LDFLAGS="$ldflags" LIBS="portaudio.lib libsndfile.lib libsamplerate.lib" LIBNAME="libaudio.dll" OBJ_EXT=".obj"
           } else {
-            make all
+              make all CC=cl CFLAGS="$cflags" LDFLAGS="$ldflags" LIBS="portaudio.lib libsndfile.lib libsamplerate.lib" LIBNAME="libaudio.dll" OBJ_EXT=".obj"
           }
         shell: powershell
         working-directory: libs/audio

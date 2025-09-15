@@ -41,12 +41,14 @@ jobs:
       - name: Check dependencies
         run: make check-deps
         shell: cmd
+        working-directory: libs/audio
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
 
       - name: Build audio library
         run: make all
         shell: cmd
+        working-directory: libs/audio
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
 
@@ -55,8 +57,8 @@ jobs:
         with:
           name: libaudio-windows-x64
           path: |
-            libaudio.dll
-            *.lib
+            libs/audio/libaudio.dll
+            libs/audio/*.lib
           retention-days: 30
 
       - name: Run tests (if available)
@@ -68,6 +70,7 @@ jobs:
             echo No tests found, skipping...
           )
         shell: cmd
+        working-directory: libs/audio
         continue-on-error: true
 
   build-matrix:
@@ -109,6 +112,7 @@ jobs:
             make all
           }
         shell: powershell
+        working-directory: libs/audio
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}
 
@@ -117,7 +121,7 @@ jobs:
         with:
           name: libaudio-windows-${{ matrix.architecture }}-${{ matrix.configuration }}
           path: |
-            libaudio.dll
-            *.lib
-            *.pdb
+            libs/audio/libaudio.dll
+            libs/audio/*.lib
+            libs/audio/*.pdb
           retention-days: 30

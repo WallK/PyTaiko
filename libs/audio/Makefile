@@ -8,30 +8,16 @@ LIBS = -lportaudio -lsndfile -lsamplerate -lpthread -lm
 # Detect OS and set appropriate flags
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-# Windows detection
-ifneq (,$(findstring Windows,$(UNAME_S)))
-    # Windows with MSVC
-    CC = cl
+# MSYS2/MinGW-w64 detection
+ifeq ($(UNAME_S),MINGW64_NT)
+    CC = x86_64-w64-mingw32-gcc
     LIBNAME = libaudio.dll
-    CFLAGS = /O2 /W3 /MD /TC
-    LDFLAGS = /DLL
-    LIBS = portaudio.lib libsndfile.lib libsamplerate.lib
-    OBJ_EXT = .obj
+    CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include
+    LDFLAGS = -shared -Wl,--export-all-symbols -L/mingw64/lib
+    LIBS = -lportaudio -lsndfile -lsamplerate -lpthread -lm
+    OBJ_EXT = .o
+endif
 
-    # Check for vcpkg environment
-    ifdef VCPKG_INSTALLATION_ROOT
-        INCLUDE_PATH = /I"$(VCPKG_INSTALLATION_ROOT)/installed/x64-windows/include"
-        LIB_PATH = /LIBPATH:"$(VCPKG_INSTALLATION_ROOT)/installed/x64-windows/lib"
-        CFLAGS += $(INCLUDE_PATH)
-        LDFLAGS += $(LIB_PATH)
-    endif
-
-    ifdef VCPKG_INCLUDE_PATH
-        CFLAGS += /I"$(VCPKG_INCLUDE_PATH)"
-    endif
-    ifdef VCPKG_LIB_PATH
-        LDFLAGS += /LIBPATH:"$(VCPKG_LIB_PATH)"
-    endif
 
 else ifeq ($(UNAME_S),Darwin)
     # macOS

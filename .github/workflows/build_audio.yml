@@ -1,52 +1,46 @@
-name: Build Audio Library (Windows)
+name: Build Audio Library (Windows MSYS2)
 
 on:
   workflow_dispatch:
   push:
     paths:
       - "libs/audio/**"
-      - ".github/workflows/windows-audio-build.yml"
+      - ".github/workflows/build_audio.yml"
 
 jobs:
-  build-windows:
+  build-msys2:
     runs-on: windows-latest
-
-    env:
-      VCPKG_DEFAULT_TRIPLET: x64-windows
-      VCPKG_INSTALLATION_ROOT: ${{ github.workspace }}\vcpkg
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup MSVC Build Environment
-        uses: microsoft/setup-msbuild@v2
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-portaudio
+            mingw-w64-x86_64-libsndfile
+            mingw-w64-x86_64-libsamplerate
 
-      - name: Install vcpkg
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          .\vcpkg\bootstrap-vcpkg.bat
-
-      - name: Install dependencies with vcpkg
-        run: |
-          .\vcpkg\vcpkg.exe install portaudio:x64-windows libsndfile:x64-windows libsamplerate:x64-windows
-
-      - name: Add vcpkg include/lib paths to environment
-        run: |
-          echo "VCPKG_INCLUDE_PATH=${{ github.workspace }}\vcpkg\installed\x64-windows\include" >> $env:GITHUB_ENV
-          echo "VCPKG_LIB_PATH=${{ github.workspace }}\vcpkg\installed\x64-windows\lib" >> $env:GITHUB_ENV
-
-      - name: Build audio library
+      - name: Build audio library (DLL)
+        shell: msys2 {0}
         working-directory: libs/audio
         run: |
-          nmake /f Makefile all
+          make clean
+          make all
 
       - name: List build outputs
+        shell: msys2 {0}
         working-directory: libs/audio
         run: |
-          dir
+          ls -l
 
-      - name: Clean build artifacts
-        working-directory: libs/audio
-        run: |
-          nmake /f Makefile clean
+      - name: Upload DLL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libaudio-dll
+          path: libs/audio/libaudio.dll

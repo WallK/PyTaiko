@@ -46,6 +46,8 @@ jobs:
 
           # Set up environment variables for the build system
           echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+          echo "VCPKG_INCLUDE_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/include" >> $env:GITHUB_ENV
+          echo "VCPKG_LIB_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/lib" >> $env:GITHUB_ENV
           echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
 
           # Set up include and library paths
@@ -82,8 +84,7 @@ jobs:
         run: |
           cd libs/audio
           make clean
-          # Use environment variables set above
-          make all CC=cl CFLAGS="/I%VCPKG_INSTALLATION_ROOT%/installed/x64-windows/include" LDFLAGS="/LIBPATH:%VCPKG_INSTALLATION_ROOT%/installed/x64-windows/lib"
+          make all
         shell: cmd
         env:
           VCPKG_INSTALLATION_ROOT: ${{ env.VCPKG_ROOT }}

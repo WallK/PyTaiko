@@ -77,31 +77,49 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          # Create build directory
-          mkdir -p /c/Users/runneradmin/work/*/build/lib
-          ls -la /mingw64/bin
+          # Get the actual workspace path
+          WORKSPACE_PATH=$(cygpath -m "$GITHUB_WORKSPACE")
+          echo "Workspace path: $WORKSPACE_PATH"
 
-          # Copy our built library
-          cp libs/audio/libaudio.dll /c/Users/runneradmin/work/*/build/lib/
+          # Create build directory
+          mkdir -p "$WORKSPACE_PATH/build/lib"
+
+          # Copy our built library first
+          cp libs/audio/libaudio.dll "$WORKSPACE_PATH/build/lib/"
 
           # Copy MinGW runtime dependencies
-          cp /mingw64/bin/libgcc_s_seh-1.dll /c/Users/runneradmin/work/*/build/lib/
-          cp /mingw64/bin/libwinpthread-1.dll /c/Users/runneradmin/work/*/build/lib/
-          cp /mingw64/bin/libstdc++-6.dll /c/Users/runneradmin/work/*/build/lib/ || true
+          cp /mingw64/bin/libgcc_s_seh-1.dll "$WORKSPACE_PATH/build/lib/"
+          cp /mingw64/bin/libwinpthread-1.dll "$WORKSPACE_PATH/build/lib/"
+          cp /mingw64/bin/libstdc++-6.dll "$WORKSPACE_PATH/build/lib/" || echo "libstdc++-6.dll not found"
 
           # Copy audio library dependencies
-          cp /mingw64/bin/libportaudio.dll /c/Users/runneradmin/work/*/build/lib/
-          cp /mingw64/bin/libsndfile-1.dll /c/Users/runneradmin/work/*/build/lib/
-          cp /mingw64/bin/libsamplerate-0.dll /c/Users/runneradmin/work/*/build/lib/
+          cp /mingw64/bin/libportaudio.dll "$WORKSPACE_PATH/build/lib/"
+          cp /mingw64/bin/libsndfile-1.dll "$WORKSPACE_PATH/build/lib/"
+          cp /mingw64/bin/libsamplerate-0.dll "$WORKSPACE_PATH/build/lib/"
 
-          # Copy other potential dependencies
-          cp /mingw64/bin/libFLAC.dll /c/Users/runneradmin/work/*/build/lib/ || true
-          cp /mingw64/bin/libvorbis-0.dll /c/Users/runneradmin/work/*/build/lib/ || true
-          cp /mingw64/bin/libvorbisenc-2.dll /c/Users/runneradmin/work/*/build/lib/ || true
-          cp /mingw64/bin/libogg-0.dll /c/Users/runneradmin/work/*/build/lib/ || true
+          # Copy other potential dependencies (with error handling)
+          cp /mingw64/bin/libFLAC.dll "$WORKSPACE_PATH/build/lib/" || echo "libFLAC.dll not found"
+          cp /mingw64/bin/libvorbis-0.dll "$WORKSPACE_PATH/build/lib/" || echo "libvorbis-0.dll not found"
+          cp /mingw64/bin/libvorbisenc-2.dll "$WORKSPACE_PATH/build/lib/" || echo "libvorbisenc-2.dll not found"
+          cp /mingw64/bin/libogg-0.dll "$WORKSPACE_PATH/build/lib/" || echo "libogg-0.dll not found"
 
-          # List what we copied
-          ls -la /c/Users/runneradmin/work/*/build/lib/
+          # Also copy DLLs directly to libs/audio for the release step
+          cp /mingw64/bin/libgcc_s_seh-1.dll libs/audio/
+          cp /mingw64/bin/libwinpthread-1.dll libs/audio/
+          cp /mingw64/bin/libstdc++-6.dll libs/audio/ || echo "libstdc++-6.dll not found"
+          cp /mingw64/bin/libportaudio.dll libs/audio/
+          cp /mingw64/bin/libsndfile-1.dll libs/audio/
+          cp /mingw64/bin/libsamplerate-0.dll libs/audio/
+          cp /mingw64/bin/libFLAC.dll libs/audio/ || echo "libFLAC.dll not found"
+          cp /mingw64/bin/libvorbis-0.dll libs/audio/ || echo "libvorbis-0.dll not found"
+          cp /mingw64/bin/libvorbisenc-2.dll libs/audio/ || echo "libvorbisenc-2.dll not found"
+          cp /mingw64/bin/libogg-0.dll libs/audio/ || echo "libogg-0.dll not found"
+
+          # List what we have
+          echo "Contents of build/lib/:"
+          ls -la "$WORKSPACE_PATH/build/lib/"
+          echo "Contents of libs/audio/:"
+          ls -la libs/audio/
 
       # Compile the audio library (Unix)
       - name: Check Audio Library Dependencies
@@ -147,12 +165,17 @@ jobs:
       - name: Create Release Directory
         run: |
           mkdir -p release
-          cp -r Graphics Sounds Videos Songs config.toml shader model lib release/
+          cp -r Graphics Sounds Videos Songs config.toml shader model release/
 
-          # Copy the compiled audio library to release
+          # Copy the compiled audio library and dependencies to release
           if [ "${{ runner.os }}" == "Windows" ]; then
-            cp libs/audio/*.dll release/ 2>/dev/null || true
-            cp build/lib/*.dll release/ 2>/dev/null || true
+            # Copy all DLLs from libs/audio (includes our library and dependencies)
+            cp libs/audio/*.dll release/ 2>/dev/null || echo "No DLLs found in libs/audio/"
+            # Also try from build/lib as backup
+            cp build/lib/*.dll release/ 2>/dev/null || echo "No DLLs found in build/lib/"
+            # List what we copied
+            echo "DLLs in release directory:"
+            ls -la release/*.dll 2>/dev/null || echo "No DLLs found in release/"
           elif [ "${{ runner.os }}" == "macOS" ]; then
             cp libs/audio/libaudio.dylib release/ 2>/dev/null || true
           else
@@ -161,12 +184,15 @@ jobs:
 
           # Copy executable based on OS
           if [ "${{ runner.os }}" == "Windows" ]; then
-            cp *.exe release/ 2>/dev/null || true
+            cp *.exe release/ 2>/dev/null || echo "No .exe files found"
           elif [ "${{ runner.os }}" == "macOS" ]; then
-            cp -r *.app release/ 2>/dev/null || true
+            cp -r *.app release/ 2>/dev/null || echo "No .app bundles found"
           else
-            cp *.bin release/ 2>/dev/null || true
+            cp *.bin release/ 2>/dev/null || echo "No .bin files found"
           fi
+
+          echo "Final release directory contents:"
+          ls -la release/
         shell: bash
 
       - name: Create Zip Archive

@@ -1,4 +1,5 @@
 import cffi
+import platform
 from pathlib import Path
 from typing import Optional
 import numpy as np
@@ -103,14 +104,27 @@ ffi.cdef("""
 """)
 
 # Load the compiled C library
-# You'll need to compile your C code into a shared library first
 # gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread
 try:
-    lib = ffi.dlopen("libs/audio_c/libaudio.so")  # Adjust path as needed
+    if platform.system() == "Windows":
+        lib = ffi.dlopen("libaudio.dll")  # or "libaudio.dll" if that's the compiled name
+    elif platform.system() == "Darwin":
+        lib = ffi.dlopen("libaudio.dylib")
+    else:  # Assume Linux/Unix
+        lib = ffi.dlopen("libaudio.so")
 except OSError as e:
-    print(f"Failed to load libaudio.so: {e}")
-    print("Make sure to compile your C code first:")
-    print("gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread")
+    print(f"Failed to load shared library: {e}")
+    print("Make sure to compile your C code first.")
+    if platform.system() == "Linux":
+        print("Example:")
+        print("gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread")
+    elif platform.system() == "Windows":
+        print("On Windows, make sure you've built a DLL with MinGW or MSVC:")
+        print("Example with MinGW:")
+        print("gcc -shared -o libaudio.dll audio.c -lportaudio -lsndfile -lpthread")
+    elif platform.system() == "Darwin":
+        print("On macOS:")
+        print("gcc -dynamiclib -o libaudio.dylib audio.c -lportaudio -lsndfile -lpthread")
     raise
 
 class AudioEngine:

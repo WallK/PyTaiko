@@ -1,5 +1,4 @@
 import pyray as ray
-import sounddevice as sd
 
 from libs.audio import audio
 from libs.utils import (
@@ -76,16 +75,8 @@ class SettingsScreen:
         """Cycle through predefined string values"""
         current_value = self.config[section][key]
 
-        hostapis = sd.query_hostapis()
-        audio_devices = []
-        if isinstance(hostapis, tuple):
-            for api in hostapis:
-                if isinstance(api, dict):
-                    audio_devices.append(api['name'])
-
         options = {
             'language': ['ja', 'en'],
-            'device_type': audio_devices
         }
 
         if key in options:

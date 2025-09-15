@@ -50,7 +50,7 @@ jobs:
           make clean
 
           # Build with static linking
-          make static
+          make all
 
           # Verify the build
           make verify

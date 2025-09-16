@@ -21,7 +21,9 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
     CXX = x86_64-w64-mingw32-g++
     LIBNAME = libaudio.dll
     CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64 -DPA_USE_ASIO=1
-    LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -L/mingw64/lib -m64
+
+    # Critical: Add static linking flags and correct pthread linking
+    LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -static -L/mingw64/lib -m64 -Wl,-Bstatic -lpthread -Wl,-Bdynamic
 
     # Core libraries with full dependency chain (order is critical!)
     CORE_LIBS =
@@ -54,7 +56,7 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         ifneq (,$(wildcard /mingw64/lib/libvorbisenc.a))
             CORE_LIBS += /mingw64/lib/libvorbisenc.a /mingw64/lib/libvorbisfile.a /mingw64/lib/libvorbis.a
         endif
-        ifneq (,$(wildcard /mingw64/lib/libogg.a))
+        ifneq (,$(wildstring /mingw64/lib/libogg.a))
             CORE_LIBS += /mingw64/lib/libogg.a
         endif
         ifneq (,$(wildcard /mingw64/lib/libspeex.a))
@@ -70,19 +72,13 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         CORE_LIBS += -lsamplerate
     endif
 
-    ifneq (,$(wildcard /mingw64/lib/libwinpthread.a))
-        SYSTEM_LIBS += /mingw64/lib/libwinpthread.a
-    else
-        SYSTEM_LIBS += -lwinpthread
-    endif
-
     # Windows system libraries (these provide the missing symbols)
     SYSTEM_LIBS = -lwinmm -lole32 -luuid -lksuser -lsetupapi -lws2_32 -ladvapi32 -luser32 -lgdi32 -lkernel32
 
     # Additional Windows libraries for codec dependencies
     SYSTEM_LIBS += -lshlwapi -lshell32 -lcomdlg32 -lcomctl32 -lrpcrt4
 
-    # Math and C runtime (include C++ runtime for ASIO support)
+    # Math and C runtime - remove redundant pthread linking here since it's in LDFLAGS
     SYSTEM_LIBS += -lm -lmsvcrt -lstdc++
 
     LIBS = $(CORE_LIBS) $(SYSTEM_LIBS)
@@ -236,6 +232,8 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
 	@ls -la ./libportaudio.a 2>/dev/null && echo "✓ Found local libportaudio.a" || echo "✗ No local libportaudio.a"
 	@echo "Available system static libraries:"
 	@ls /mingw64/lib/lib{portaudio,sndfile,samplerate,FLAC,vorbis*,ogg}.a 2>/dev/null || echo "None found"
+	@echo "Static pthread library:"
+	@ls /mingw64/lib/libwinpthread.a 2>/dev/null && echo "✓ Found libwinpthread.a" || echo "✗ Missing libwinpthread.a"
 	@echo "Libraries to link: $(LIBS)"
 else ifeq ($(UNAME_S),Linux)
 	@echo "=== Linux Package Check ==="

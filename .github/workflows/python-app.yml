@@ -62,7 +62,8 @@ jobs:
             -DPA_USE_DS=ON \
             -DPA_USE_WMME=ON \
             -DPA_USE_WASAPI=ON \
-            -DCMAKE_INSTALL_PREFIX=/mingw64
+            -DCMAKE_INSTALL_PREFIX=/mingw64 \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
           # Build and install
           make -j$(nproc)

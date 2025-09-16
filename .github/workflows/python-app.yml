@@ -55,7 +55,7 @@ jobs:
           cd portaudio
 
           # Configure with ASIO support
-          mkdir build && cd build
+          cd build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
             -DPA_USE_ASIO=ON \

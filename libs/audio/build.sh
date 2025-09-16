@@ -26,7 +26,7 @@ fi
 
 # Build command
 CFLAGS="-O2 -Wall -Wextra"
-LDFLAGS="-shared -Wl,--out-implib,libaudio.lib"
+LDFLAGS="-shared -Wl,--out-implib,libaudio.lib -static-libgcc -static-libstdc++"
 LIBS="-lportaudio -lsndfile -lsamplerate -lwinmm -lole32 -luuid -lksuser -lsetupapi"
 
 if [ -d "$WIN_DEPS" ]; then

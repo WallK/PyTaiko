@@ -23,7 +23,9 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
 
     # Core libraries with full dependency chain (order is critical!)
     CORE_LIBS =
-    ifneq (,$(wildcard /mingw64/lib/libportaudio.a))
+    ifneq (,$(wildcard ./libportaudio.a))
+        CORE_LIBS += ./libportaudio.a
+    else ifneq (,$(wildcard /mingw64/lib/libportaudio.a))
         CORE_LIBS += /mingw64/lib/libportaudio.a
     else
         CORE_LIBS += -lportaudio

@@ -120,15 +120,6 @@ jobs:
           # Verify the build
           make verify 2>/dev/null || echo "Verification step not available"
 
-          # Show final library info
-          echo "=== Final library verification ==="
-          ls -la *.dll *.a 2>/dev/null || echo "No libraries found"
-
-          # Check for ASIO symbols in our library
-          if [ -f libaudio.dll ]; then
-            echo "=== Checking our library for ASIO symbols ==="
-            nm libaudio.dll | grep -i asio && echo "Our library has ASIO support!" || echo "Our library uses non-ASIO audio APIs"
-
       - name: Copy static DLL (Windows)
         if: runner.os == 'Windows'
         run: |

@@ -16,13 +16,16 @@ endef
 
 # MSYS2/MinGW-w64 with complete static linking
 ifneq (,$(findstring MINGW,$(UNAME_S)))
+    # Use g++ for linking when we have C++ dependencies (like ASIO)
     CC = x86_64-w64-mingw32-gcc
+    CXX = x86_64-w64-mingw32-g++
     LIBNAME = libaudio.dll
     CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64 -DPA_USE_ASIO=1
     LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -L/mingw64/lib -m64
 
     # Core libraries with full dependency chain (order is critical!)
     CORE_LIBS =
+    # Check for local libportaudio.a first, then system location
     ifneq (,$(wildcard ./libportaudio.a))
         CORE_LIBS += ./libportaudio.a
     else ifneq (,$(wildcard /mingw64/lib/libportaudio.a))
@@ -79,8 +82,8 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
     # Additional Windows libraries for codec dependencies
     SYSTEM_LIBS += -lshlwapi -lshell32 -lcomdlg32 -lcomctl32 -lrpcrt4
 
-    # Math and C runtime
-    SYSTEM_LIBS += -lm -lmsvcrt
+    # Math and C runtime (include C++ runtime for ASIO support)
+    SYSTEM_LIBS += -lm -lmsvcrt -lstdc++
 
     LIBS = $(CORE_LIBS) $(SYSTEM_LIBS)
     OBJ_EXT = .o
@@ -190,10 +193,17 @@ all: check-deps $(LIBNAME)
 # Build targets
 ifneq (,$(findstring Windows,$(UNAME_S)))
 $(LIBNAME): $(OBJECTS)
-	link $(LDFLAGS) /OUT:$@ $^ $(LIBS)
+	# Check if we need C++ linking (if libportaudio.a contains C++ code)
+	@if nm ./libportaudio.a 2>/dev/null | grep -q "operator\|__gxx_personality"; then \
+		echo "Detected C++ code in libportaudio.a - using C++ linker"; \
+		$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS); \
+	else \
+		echo "Using C linker"; \
+		$(CC) $(LDFLAGS) -o $@ $^ $(LIBS); \
+	fi
 
 %.obj: %.c
-	$(CC) $(CFLAGS) /c $< /Fo:$@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	-del /Q *.obj $(LIBNAME) 2>nul || rm -f $(OBJECTS) $(LIBNAME)
@@ -222,7 +232,9 @@ check-deps:
 	@echo "Compiler: $(CC)"
 ifneq (,$(findstring MINGW,$(UNAME_S)))
 	@echo "=== MinGW Libraries ==="
-	@echo "Available static libraries:"
+	@echo "Checking for local libportaudio.a:"
+	@ls -la ./libportaudio.a 2>/dev/null && echo "✓ Found local libportaudio.a" || echo "✗ No local libportaudio.a"
+	@echo "Available system static libraries:"
 	@ls /mingw64/lib/lib{portaudio,sndfile,samplerate,FLAC,vorbis*,ogg}.a 2>/dev/null || echo "None found"
 	@echo "Libraries to link: $(LIBS)"
 else ifeq ($(UNAME_S),Linux)

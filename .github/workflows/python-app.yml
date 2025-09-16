@@ -63,7 +63,7 @@ jobs:
           curl -L https://github.com/PortAudio/portaudio/releases/download/v19.7.0/pa_stable_v190700_20210406_msvc.zip -o portaudio_msvc.zip 2>/dev/null || echo "MSVC binaries not available"
 
           # Option 2: Try community builds
-          curl -L https://github.com/spatialaudio/portaudio-binaries/releases/download/v19.7.0/portaudio-v19.7.0-win64.zip -o portaudio_win64.zip 2>/dev/null || echo "Community binaries not available"
+          curl -L https://github.com/spatialaudio/portaudio-binaries/blob/master/libportaudio64bit-asio.dll || echo "Community binaries not available"
 
           # Option 3: Try a known working ASIO-enabled build
           curl -L https://www.un4seen.com/files/z/1/bass24-win32.zip -o bass_example.zip 2>/dev/null || echo "Alternative audio library not available"

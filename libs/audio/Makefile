@@ -22,7 +22,7 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
     LIBNAME = libaudio.dll
     CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64 -DPA_USE_ASIO=1
 
-    # Critical: Add static linking flags and correct pthread linking
+    # Critical: Add static linking flags and correct pthread linking with linker groups
     LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -static -L/mingw64/lib -m64 -Wl,-Bstatic -lpthread -Wl,-Bdynamic
 
     # Core libraries with full dependency chain (order is critical!)
@@ -53,11 +53,16 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
         ifneq (,$(wildcard /mingw64/lib/libFLAC.a))
             CORE_LIBS += /mingw64/lib/libFLAC.a
         endif
-        ifneq (,$(wildcard /mingw64/lib/libogg.a))
-            CORE_LIBS += /mingw64/lib/libogg.a
-        endif
+
+        # Handle vorbis/ogg dependency chain properly
         ifneq (,$(wildcard /mingw64/lib/libvorbisenc.a))
-            CORE_LIBS += /mingw64/lib/libvorbisenc.a /mingw64/lib/libvorbisfile.a /mingw64/lib/libvorbis.a
+            ifneq (,$(wildcard /mingw64/lib/libogg.a))
+                CORE_LIBS += /mingw64/lib/libvorbisenc.a /mingw64/lib/libvorbisfile.a /mingw64/lib/libvorbis.a /mingw64/lib/libogg.a
+            else
+                $(warning Found vorbis libraries but missing libogg.a - skipping vorbis support)
+            endif
+        else ifneq (,$(wildcard /mingw64/lib/libogg.a))
+            CORE_LIBS += /mingw64/lib/libogg.a
         endif
         ifneq (,$(wildcard /mingw64/lib/libspeex.a))
             CORE_LIBS += /mingw64/lib/libspeex.a
@@ -192,10 +197,10 @@ $(LIBNAME): $(OBJECTS)
 	# Check if we need C++ linking (if libportaudio.a contains C++ code)
 	@if nm ./libportaudio.a 2>/dev/null | grep -q "operator\|__gxx_personality"; then \
 		echo "Detected C++ code in libportaudio.a - using C++ linker"; \
-		$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS); \
+		$(CXX) $(LDFLAGS) -o $@ $^ -Wl,--start-group $(LIBS) -Wl,--end-group; \
 	else \
 		echo "Using C linker"; \
-		$(CC) $(LDFLAGS) -o $@ $^ $(LIBS); \
+		$(CC) $(LDFLAGS) -o $@ $^ -Wl,--start-group $(LIBS) -Wl,--end-group; \
 	fi
 
 %.obj: %.c

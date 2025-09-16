@@ -107,7 +107,7 @@ ffi.cdef("""
 # gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread
 try:
     if platform.system() == "Windows":
-        lib = ffi.dlopen("./libaudio.dll")  # or "libaudio.dll" if that's the compiled name
+        lib = ffi.dlopen("libaudio.dll")  # or "libaudio.dll" if that's the compiled name
     elif platform.system() == "Darwin":
         lib = ffi.dlopen("./libaudio.dylib")
     else:  # Assume Linux/Unix

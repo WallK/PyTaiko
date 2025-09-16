@@ -73,7 +73,9 @@ class ResultScreen:
             self.update_index = 0
             self.is_skipped = False
             self.start_ms = get_current_ms()
-            if session_data.result_bad == 0:
+            if session_data.result_ok == 0 and session_data.result_bad == 0:
+                self.crown_type = 'crown_dfc'
+            elif session_data.result_bad == 0:
                 self.crown_type = 'crown_fc'
             else:
                 self.crown_type = 'crown_clear'

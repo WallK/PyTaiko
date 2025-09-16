@@ -686,13 +686,17 @@ class SongBox:
         if valid_scores:
             highest_key = max(valid_scores.keys())
             score = self.scores[highest_key]
-            if score and score[3] == 0:
+            if score and score[2] == 0 and score[3] == 0:
+                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=highest_key)
+            elif score and score[3] == 0:
                 tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=highest_key)
             elif score and score[4] == 1:
                 tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=highest_key)
         if self.crown: #Folder lamp
             highest_crown = max(self.crown)
-            if self.crown[highest_crown] == 'FC':
+            if self.crown[highest_crown] == 'DFC':
+                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=highest_crown)
+            elif self.crown[highest_crown] == 'FC':
                 tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=highest_crown)
             else:
                 tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=highest_crown)
@@ -844,6 +848,8 @@ class YellowBox:
         for diff in self.tja.metadata.course_data:
             if diff >= 4:
                 continue
+            elif diff in song_box.scores and song_box.scores[diff] is not None and song_box.scores[diff][2] == 0 and song_box.scores[diff][3] == 0:
+                tex.draw_texture('yellow_box', 's_crown_dfc', x=(diff*60), color=color)
             elif diff in song_box.scores and song_box.scores[diff] is not None and song_box.scores[diff][3] == 0:
                 tex.draw_texture('yellow_box', 's_crown_fc', x=(diff*60), color=color)
             elif diff in song_box.scores and song_box.scores[diff] is not None and song_box.scores[diff][4] == 1:
@@ -1955,7 +1961,9 @@ class FileNavigator:
                     all_scores[diff].append(song_obj.box.scores[diff])
 
         for diff in all_scores:
-            if all(score is not None and score[3] == 0 for score in all_scores[diff]):
+            if all(score is not None and score[2] == 0 and score[3] == 0 for score in all_scores[diff]):
+                crowns[diff] = 'DFC'
+            elif all(score is not None and score[3] == 0 for score in all_scores[diff]):
                 crowns[diff] = 'FC'
             elif all(score is not None and score[4] == 1 for score in all_scores[diff]):
                 crowns[diff] = 'CLEAR'

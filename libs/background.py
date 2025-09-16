@@ -55,7 +55,7 @@ class Background:
         is_rainbow = gauge.gauge_length == gauge.gauge_max
         clear_threshold = gauge.clear_start[min(gauge.difficulty, 3)]
         if gauge.gauge_length < clear_threshold:
-            current_milestone = min(self.max_dancers, int(gauge.gauge_length / (clear_threshold / self.max_dancers)))
+            current_milestone = min(self.max_dancers - 1, int(gauge.gauge_length / (clear_threshold / self.max_dancers)))
         else:
             current_milestone = self.max_dancers
         if current_milestone > self.last_milestone and current_milestone < self.max_dancers:

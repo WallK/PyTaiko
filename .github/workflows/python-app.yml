@@ -25,7 +25,6 @@ jobs:
           brew update
           brew install portaudio libsndfile libsamplerate pkg-config
 
-      # Use MSYS2 for Windows audio library build with all codec dependencies
       - name: Set up MSYS2 (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -44,6 +43,30 @@ jobs:
             mingw-w64-x86_64-mpg123
             mingw-w64-x86_64-lame
             mingw-w64-x86_64-speex
+            mingw-w64-x86_64-cmake
+
+      - name: Build PortAudio with ASIO (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          # Download PortAudio source
+          curl -L http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz -o portaudio.tgz
+          tar -xzf portaudio.tgz
+          cd portaudio
+
+          # Configure with ASIO support
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPA_USE_ASIO=ON \
+            -DPA_USE_DS=ON \
+            -DPA_USE_WMME=ON \
+            -DPA_USE_WASAPI=ON \
+            -DCMAKE_INSTALL_PREFIX=/mingw64
+
+          # Build and install
+          make -j$(nproc)
+          make install
 
       - name: Build static audio library (Windows)
         if: runner.os == 'Windows'

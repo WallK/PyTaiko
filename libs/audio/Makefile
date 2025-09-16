@@ -18,7 +18,7 @@ endef
 ifneq (,$(findstring MINGW,$(UNAME_S)))
     CC = x86_64-w64-mingw32-gcc
     LIBNAME = libaudio.dll
-    CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64
+    CFLAGS = -Wall -Wextra -O3 -fPIC -std=c99 -I/mingw64/include -m64 -DPA_USE_ASIO=1
     LDFLAGS = -shared -Wl,--export-all-symbols -static-libgcc -static-libstdc++ -L/mingw64/lib -m64
 
     # Core libraries with full dependency chain (order is critical!)

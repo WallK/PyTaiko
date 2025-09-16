@@ -1,48 +1,57 @@
 #!/bin/bash
+set -e
 
-# Cross-compilation script for Windows
-# Usage: ./build_windows.sh
+echo "Cross-compiling audio library for Windows..."
 
-# Set cross-compiler
-export CC=x86_64-w64-mingw32-gcc
-export CXX=x86_64-w64-mingw32-g++
-export AR=x86_64-w64-mingw32-ar
-export STRIP=x86_64-w64-mingw32-strip
+# Configuration
+MINGW_PREFIX="x86_64-w64-mingw32"
+CC="${MINGW_PREFIX}-gcc"
+WIN_DEPS="win-libs"
 
-# Paths to Windows dependencies
-WIN_DEPS_DIR="win-libs"
-INCLUDE_DIR="$WIN_DEPS_DIR/include"
-LIB_DIR="$WIN_DEPS_DIR/lib"
-
-# Compiler flags
-CFLAGS="-O2 -Wall -I$INCLUDE_DIR -DWIN32 -D_WIN32_WINNT=0x0600"
-LDFLAGS="-L$LIB_DIR -static-libgcc"
-LIBS="-lportaudio -lsndfile -lsamplerate -lwinmm -lole32 -ldsound"
-
-# Source files
-SOURCES="audio.c"
-OUTPUT="libaudio.dll"
-
-echo "Cross-compiling for Windows..."
-echo "CC: $CC"
-echo "Includes: $INCLUDE_DIR"
-echo "Libraries: $LIB_DIR"
-
-# Compile shared library
-$CC $CFLAGS -shared -o $OUTPUT $SOURCES $LDFLAGS $LIBS
-
-if [ $? -eq 0 ]; then
-    echo "✅ Successfully built $OUTPUT"
-    echo "Size: $(ls -lh $OUTPUT | awk '{print $5}')"
-
-    # Strip symbols to reduce size
-    $STRIP $OUTPUT
-    echo "Stripped size: $(ls -lh $OUTPUT | awk '{print $5}')"
-else
-    echo "❌ Build failed"
+# Check if cross-compiler is available
+if ! command -v $CC &> /dev/null; then
+    echo "Error: MinGW-w64 cross-compiler not found!"
+    echo "Install it with: sudo apt-get install mingw-w64"
     exit 1
 fi
 
-# Optional: Create import library
-echo "Creating import library..."
-$AR rcs lib$(basename $OUTPUT .dll).a $OUTPUT
+# Check if Windows dependencies exist
+if [ ! -d "$WIN_DEPS" ]; then
+    echo "Warning: Windows dependencies not found in $WIN_DEPS"
+    echo "You may need to build or download Windows versions of:"
+    echo "  - PortAudio"
+    echo "  - libsndfile"
+    echo "  - libsamplerate"
+fi
+
+# Build command
+CFLAGS="-O2 -Wall -Wextra"
+LDFLAGS="-shared -Wl,--out-implib,libaudio.lib"
+LIBS="-lportaudio -lsndfile -lsamplerate -lwinmm -lole32 -luuid -lksuser -lsetupapi"
+
+if [ -d "$WIN_DEPS" ]; then
+    CFLAGS="$CFLAGS -I${WIN_DEPS}/include"
+    LDFLAGS="$LDFLAGS -L${WIN_DEPS}/lib"
+fi
+
+echo "Compiling with: $CC"
+$CC $CFLAGS $LDFLAGS audio.c -o libaudio.dll $LIBS
+
+if [ $? -eq 0 ]; then
+    echo "Successfully built libaudio.dll"
+    echo "Import library: libaudio.lib"
+
+    # Check if we can get file info
+    if command -v file &> /dev/null; then
+        file libaudio.dll
+    fi
+
+    # List exported functions
+    if command -v ${MINGW_PREFIX}-objdump &> /dev/null; then
+        echo "Exported functions:"
+        ${MINGW_PREFIX}-objdump -p libaudio.dll | grep "\\[.*\\]" | head -20
+    fi
+else
+    echo "Build failed!"
+    exit 1
+fi

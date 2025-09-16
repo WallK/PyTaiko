@@ -25,6 +25,7 @@ jobs:
           brew update
           brew install portaudio libsndfile libsamplerate pkg-config
 
+      # Use MSYS2 for Windows audio library build with ASIO support
       - name: Set up MSYS2 (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
@@ -46,38 +47,40 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-pkg-config
 
-      # Build PortAudio from source with ASIO support (Windows only)
-      - name: Build PortAudio with ASIO support (Windows)
+      # Download pre-built PortAudio with ASIO support (Windows only)
+      - name: Download pre-built PortAudio with ASIO (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          # Download PortAudio source
-          curl -L http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz -o portaudio.tgz
-          tar -xzf portaudio.tgz
-          cd portaudio
+          # Create directory for pre-built libraries
+          mkdir -p /mingw64/prebuilt
+          cd /mingw64/prebuilt
 
-          # Configure with ASIO and other Windows audio APIs
-          cd build
-          cmake .. \
-            -G "MSYS Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPA_USE_ASIO=ON \
-            -DPA_USE_DS=ON \
-            -DPA_USE_WMME=ON \
-            -DPA_USE_WASAPI=ON \
-            -DPA_BUILD_SHARED=ON \
-            -DPA_BUILD_STATIC=ON \
-            -DCMAKE_INSTALL_PREFIX=/mingw64 \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          # Try multiple sources for pre-built PortAudio with ASIO
+          echo "=== Attempting to download pre-built PortAudio with ASIO ==="
 
-          # Build and install (this will fail if ASIO SDK is missing, but continue anyway)
-          make -j$(nproc) || echo "Build failed, likely due to missing ASIO SDK - continuing with system PortAudio"
-          make install 2>/dev/null || echo "Install failed - using system PortAudio"
+          # Option 1: Try PortAudio Windows binaries
+          curl -L https://github.com/PortAudio/portaudio/releases/download/v19.7.0/pa_stable_v190700_20210406_msvc.zip -o portaudio_msvc.zip 2>/dev/null || echo "MSVC binaries not available"
 
-          # Verify what we have
-          echo "=== PortAudio library verification ==="
-          find /mingw64 -name "*portaudio*" -type f | head -10
-          pkg-config --exists portaudio && echo "PortAudio pkg-config found" || echo "No PortAudio pkg-config"
+          # Option 2: Try community builds
+          curl -L https://github.com/spatialaudio/portaudio-binaries/releases/download/v19.7.0/portaudio-v19.7.0-win64.zip -o portaudio_win64.zip 2>/dev/null || echo "Community binaries not available"
+
+          # Option 3: Try a known working ASIO-enabled build
+          curl -L https://www.un4seen.com/files/z/1/bass24-win32.zip -o bass_example.zip 2>/dev/null || echo "Alternative audio library not available"
+
+          # Check what we downloaded
+          ls -la *.zip 2>/dev/null || echo "No zip files downloaded"
+
+          # Extract what we have
+          for zip_file in *.zip; do
+            if [ -f "$zip_file" ]; then
+              echo "Extracting $zip_file"
+              unzip -q "$zip_file" 2>/dev/null || echo "Failed to extract $zip_file"
+            fi
+          done
+
+          # Look for PortAudio files
+          find . -name "*portaudio*" -o -name "*asio*" 2>/dev/null || echo "No PortAudio/ASIO files found in downloads"
 
       - name: Verify ASIO support (Windows)
         if: runner.os == 'Windows'

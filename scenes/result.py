@@ -447,15 +447,24 @@ class HighScoreIndicator:
 class Gauge:
     def __init__(self, player_num: str, gauge_length: int):
         self.player_num = player_num
+        self.difficulty = min(2, session_data.selected_difficulty)
         self.gauge_length = gauge_length
+        self.clear_start = [69, 69, 69]
+        self.gauge_max = 87
+        if self.difficulty >= 2:
+            self.string_diff = "_hard"
+        elif self.difficulty == 1:
+            self.string_diff = "_normal"
+        elif self.difficulty == 0:
+            self.string_diff = "_easy"
         self.rainbow_animation = tex.get_animation(16)
         self.gauge_fade_in = tex.get_animation(17)
         self.rainbow_animation.start()
         self.gauge_fade_in.start()
         self.is_finished = self.gauge_fade_in.is_finished
-        if self.gauge_length == 87:
+        if self.gauge_length == self.gauge_max:
             self.state = State.RAINBOW
-        elif self.gauge_length > 69:
+        elif self.gauge_length > self.clear_start[self.difficulty]:
             self.state = State.CLEAR
         else:
             self.state = State.FAIL
@@ -469,18 +478,18 @@ class Gauge:
 
     def draw(self):
         scale = 10/11
-        tex.draw_texture('gauge', f'{self.player_num}p_unfilled', scale=scale, fade=self.gauge_fade_in.attribute)
+        tex.draw_texture('gauge', f'{self.player_num}p_unfilled' + self.string_diff, scale=scale, fade=self.gauge_fade_in.attribute)
         gauge_length = int(self.gauge_length)
-        if gauge_length == 87:
+        if gauge_length == self.gauge_max:
             if 0 < self.rainbow_animation.attribute < 8:
-                tex.draw_texture('gauge', 'rainbow', frame=self.rainbow_animation.attribute-1, scale=scale, fade=self.gauge_fade_in.attribute)
-            tex.draw_texture('gauge', 'rainbow', frame=self.rainbow_animation.attribute, scale=scale, fade=self.gauge_fade_in.attribute)
+                tex.draw_texture('gauge', 'rainbow'  + self.string_diff, frame=self.rainbow_animation.attribute-1, scale=scale, fade=self.gauge_fade_in.attribute)
+            tex.draw_texture('gauge', 'rainbow'  + self.string_diff, frame=self.rainbow_animation.attribute, scale=scale, fade=self.gauge_fade_in.attribute)
         else:
             for i in range(gauge_length+1):
                 width = int(i * 7.2)
-                if i == 69:
+                if i == self.clear_start[self.difficulty] - 1:
                     tex.draw_texture('gauge', 'bar_clear_transition', x=width, scale=scale, fade=self.gauge_fade_in.attribute)
-                elif i > 69:
+                elif i > self.clear_start[self.difficulty] - 1:
                     if i % 5 == 0:
                         tex.draw_texture('gauge', 'bar_clear_top', x=width, scale=scale, fade=self.gauge_fade_in.attribute)
                         tex.draw_texture('gauge', 'bar_clear_bottom', x=width, scale=scale, fade=self.gauge_fade_in.attribute)
@@ -490,11 +499,11 @@ class Gauge:
                     if i % 5 == 0:
                         tex.draw_texture('gauge', f'{self.player_num}p_bar', x=width, scale=scale, fade=self.gauge_fade_in.attribute)
                     tex.draw_texture('gauge', f'{self.player_num}p_bar', x=width+1, scale=scale, fade=self.gauge_fade_in.attribute)
-        tex.draw_texture('gauge', 'overlay', scale=scale, fade=min(0.15, self.gauge_fade_in.attribute))
+        tex.draw_texture('gauge', 'overlay' + self.string_diff, scale=scale, fade=min(0.15, self.gauge_fade_in.attribute))
         tex.draw_texture('gauge', 'footer', scale=scale, fade=self.gauge_fade_in.attribute)
 
-        if gauge_length >= 69:
-            tex.draw_texture('gauge', 'clear', scale=scale, fade=self.gauge_fade_in.attribute)
+        if gauge_length >= self.clear_start[self.difficulty]:
+            tex.draw_texture('gauge', 'clear', scale=scale, fade=self.gauge_fade_in.attribute, index=self.difficulty)
             tex.draw_texture('gauge', 'tamashii', scale=scale, fade=self.gauge_fade_in.attribute)
         else:
             tex.draw_texture('gauge', 'clear_dark', scale=scale, fade=self.gauge_fade_in.attribute)

@@ -156,7 +156,7 @@ def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> in
             drumroll_sec += (next_note.hit_ms - note.hit_ms) / 1000
         elif isinstance(note, Balloon):
             balloon_num += 1
-            balloon_count += note.count
+            balloon_count += min(100, note.count)
         else:
             total_notes += 1
     if total_notes == 0:

@@ -476,8 +476,6 @@ class SongSelectScreen:
 
         self.ura_switch_animation.draw()
 
-        if self.state == State.BROWSING and self.navigator.items != []:
-            self.navigator.get_current_item().box.draw_score_history()
         if self.diff_sort_selector is not None:
             self.diff_sort_selector.draw()
 
@@ -490,7 +488,6 @@ class SongSelectScreen:
             tex.draw_texture('global', 'song_select', fade=self.text_fade_out.attribute)
 
         offset = 0
-        direction = 1
         if self.neiro_selector is not None:
             offset = self.neiro_selector.move.attribute
             if self.neiro_selector.is_confirmed:
@@ -509,6 +506,9 @@ class SongSelectScreen:
         else:
             self.nameplate.draw(950, 640)
             self.chara.draw(mirror=True, x=950, y=410 + (offset*0.6))
+
+        if self.state == State.BROWSING and self.navigator.items != []:
+            self.navigator.get_current_item().box.draw_score_history()
 
         self.indicator.draw(410, 575)
 

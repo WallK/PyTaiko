@@ -144,7 +144,7 @@ class GameScreen:
                         self.tja.metadata.title.get('ja', ''), self.player_1.difficulty,
                         session_data.result_score, session_data.result_good,
                         session_data.result_ok, session_data.result_bad,
-                        session_data.result_total_drumroll, session_data.result_max_combo, int(self.player_1.gauge.gauge_length > self.player_1.gauge.clear_start[min(self.player_1.difficulty, 3)]))
+                        session_data.result_total_drumroll, session_data.result_max_combo, int(self.player_1.gauge.is_clear))
                 cursor.execute(insert_query, data)
                 con.commit()
 
@@ -218,6 +218,10 @@ class Player:
     TIMING_GOOD = 25.0250015258789
     TIMING_OK = 75.0750045776367
     TIMING_BAD = 108.441665649414
+
+    TIMING_GOOD_EASY = 41.7083358764648
+    TIMING_OK_EASY = 108.441665649414
+    TIMING_BAD_EASY = 125.125
 
     def __init__(self, tja: Optional[TJAParser], player_number: int, difficulty: int):
 
@@ -459,6 +463,14 @@ class Player:
         if len(self.play_notes) == 0:
             return
 
+        if self.difficulty < 2:
+            good_window_ms = Player.TIMING_GOOD_EASY
+            ok_window_ms = Player.TIMING_OK_EASY
+            bad_window_ms = Player.TIMING_BAD_EASY
+        else:
+            good_window_ms = Player.TIMING_GOOD
+            ok_window_ms = Player.TIMING_OK
+            bad_window_ms = Player.TIMING_BAD
         curr_note = self.play_notes[0]
         if self.is_drumroll:
             self.check_drumroll(drum_type, game_screen.background, current_time)
@@ -481,10 +493,10 @@ class Player:
             if drum_type == 2 and curr_note.type not in {2, 4}:
                 return
             #If the note is too far away, stop checking
-            if game_screen.current_ms > (curr_note.hit_ms + Player.TIMING_BAD):
+            if game_screen.current_ms > (curr_note.hit_ms + bad_window_ms):
                 return
             big = curr_note.type == 3 or curr_note.type == 4
-            if (curr_note.hit_ms - Player.TIMING_GOOD) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_GOOD):
+            if (curr_note.hit_ms - good_window_ms) <= game_screen.current_ms <= (curr_note.hit_ms + good_window_ms):
                 self.draw_judge_list.append(Judgement('GOOD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.lane_hit_effect = LaneHitEffect('GOOD')
                 self.good_count += 1
@@ -495,7 +507,7 @@ class Player:
                 if game_screen.background is not None:
                     game_screen.background.add_chibi(False)
 
-            elif (curr_note.hit_ms - Player.TIMING_OK) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_OK):
+            elif (curr_note.hit_ms - ok_window_ms) <= game_screen.current_ms <= (curr_note.hit_ms + ok_window_ms):
                 self.draw_judge_list.append(Judgement('OK', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.ok_count += 1
                 self.score += 10 * math.floor(self.base_score / 2 / 10)
@@ -505,7 +517,7 @@ class Player:
                 if game_screen.background is not None:
                     game_screen.background.add_chibi(False)
 
-            elif (curr_note.hit_ms - Player.TIMING_BAD) <= game_screen.current_ms <= (curr_note.hit_ms + Player.TIMING_BAD):
+            elif (curr_note.hit_ms - bad_window_ms) <= game_screen.current_ms <= (curr_note.hit_ms + bad_window_ms):
                 self.draw_judge_list.append(Judgement('BAD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.bad_count += 1
                 self.combo = 0
@@ -1332,13 +1344,20 @@ class ResultTransition:
 class Gauge:
     def __init__(self, player_num: str, difficulty: int, level: int, total_notes: int):
         self.player_num = player_num
+        self.string_diff = "_hard"
         self.gauge_length = 0
         self.previous_length = 0
         self.total_notes = total_notes
         self.difficulty = min(3, difficulty)
-        self.clear_start = [68, 68, 68, 68]
+        self.clear_start = [52, 60, 69, 69]
         self.gauge_max = 87
         self.level = min(10, level)
+        if self.difficulty == 2:
+            self.string_diff = "_hard"
+        elif self.difficulty == 1:
+            self.string_diff = "_normal"
+        elif self.difficulty == 0:
+            self.string_diff = "_easy"
         self.is_clear = False
         self.is_rainbow = False
         self.table = [
@@ -1393,15 +1412,15 @@ class Gauge:
         self.gauge_update_anim.start()
         self.previous_length = int(self.gauge_length)
         self.gauge_length += (1 / self.total_notes) * (100 * (self.clear_start[self.difficulty] / self.table[self.difficulty][self.level]["clear_rate"]))
-        if self.gauge_length > 87:
-            self.gauge_length = 87
+        if self.gauge_length > self.gauge_max:
+            self.gauge_length = self.gauge_max
 
     def add_ok(self):
         self.gauge_update_anim.start()
         self.previous_length = int(self.gauge_length)
         self.gauge_length += ((1 * self.table[self.difficulty][self.level]["ok_multiplier"]) / self.total_notes) * (100 * (self.clear_start[self.difficulty] / self.table[self.difficulty][self.level]["clear_rate"]))
-        if self.gauge_length > 87:
-            self.gauge_length = 87
+        if self.gauge_length > self.gauge_max:
+            self.gauge_length = self.gauge_max
 
     def add_bad(self):
         self.previous_length = int(self.gauge_length)
@@ -1410,9 +1429,9 @@ class Gauge:
             self.gauge_length = 0
 
     def update(self, current_ms: float):
-        self.is_clear = self.gauge_length > self.clear_start[min(self.difficulty, 3)]
+        self.is_clear = self.gauge_length > self.clear_start[min(self.difficulty, 2)]
         self.is_rainbow = self.gauge_length == self.gauge_max
-        if self.gauge_length == 87 and self.rainbow_fade_in is None:
+        if self.gauge_length == self.gauge_max and self.rainbow_fade_in is None:
             self.rainbow_fade_in = Animation.create_fade(450, initial_opacity=0.0, final_opacity=1.0)
             self.rainbow_fade_in.start()
         self.gauge_update_anim.update(current_ms)
@@ -1429,32 +1448,32 @@ class Gauge:
                 self.rainbow_animation = None
 
     def draw(self):
-        tex.draw_texture('gauge', 'border')
-        tex.draw_texture('gauge', f'{self.player_num}p_unfilled')
+        tex.draw_texture('gauge', 'border' + self.string_diff)
+        tex.draw_texture('gauge', f'{self.player_num}p_unfilled' + self.string_diff)
         gauge_length = int(self.gauge_length)
         for i in range(gauge_length):
-            if i == 68:
+            if i == self.clear_start[self.difficulty] - 1:
                 tex.draw_texture('gauge', 'bar_clear_transition', x=i*8)
-            elif i > 68:
+            elif i > self.clear_start[self.difficulty] - 1:
                 tex.draw_texture('gauge', 'bar_clear_top', x=i*8)
                 tex.draw_texture('gauge', 'bar_clear_bottom', x=i*8)
             else:
                 tex.draw_texture('gauge', f'{self.player_num}p_bar', x=i*8)
-        if gauge_length == 87 and self.rainbow_fade_in is not None and self.rainbow_animation is not None:
+        if gauge_length == self.gauge_max and self.rainbow_fade_in is not None and self.rainbow_animation is not None:
             if 0 < self.rainbow_animation.attribute < 8:
-                tex.draw_texture('gauge', 'rainbow', frame=self.rainbow_animation.attribute-1, fade=self.rainbow_fade_in.attribute)
-            tex.draw_texture('gauge', 'rainbow', frame=self.rainbow_animation.attribute, fade=self.rainbow_fade_in.attribute)
-        if self.gauge_update_anim is not None and gauge_length < 88 and gauge_length > self.previous_length:
-            if gauge_length == 69:
+                tex.draw_texture('gauge', 'rainbow' + self.string_diff, frame=self.rainbow_animation.attribute-1, fade=self.rainbow_fade_in.attribute)
+            tex.draw_texture('gauge', 'rainbow' + self.string_diff, frame=self.rainbow_animation.attribute, fade=self.rainbow_fade_in.attribute)
+        if self.gauge_update_anim is not None and gauge_length <= self.gauge_max and gauge_length > self.previous_length:
+            if gauge_length == self.clear_start[self.difficulty]:
                 tex.draw_texture('gauge', 'bar_clear_transition_fade', x=gauge_length*8, fade=self.gauge_update_anim.attribute)
-            elif gauge_length > 69:
+            elif gauge_length > self.clear_start[self.difficulty]:
                 tex.draw_texture('gauge', 'bar_clear_fade', x=gauge_length*8, fade=self.gauge_update_anim.attribute)
             else:
                 tex.draw_texture('gauge', f'{self.player_num}p_bar_fade', x=gauge_length*8, fade=self.gauge_update_anim.attribute)
-        tex.draw_texture('gauge', 'overlay', fade=0.15)
-        if gauge_length >= 69:
-            tex.draw_texture('gauge', 'clear')
+        tex.draw_texture('gauge', 'overlay' + self.string_diff, fade=0.15)
+        if gauge_length >= self.clear_start[self.difficulty]:
+            tex.draw_texture('gauge', 'clear', index=min(2, self.difficulty))
             tex.draw_texture('gauge', 'tamashii')
         else:
-            tex.draw_texture('gauge', 'clear_dark')
+            tex.draw_texture('gauge', 'clear_dark', index=min(2, self.difficulty))
             tex.draw_texture('gauge', 'tamashii_dark')

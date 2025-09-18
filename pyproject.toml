@@ -8,8 +8,6 @@ dependencies = [
     "moviepy>=2.1.2",
     "raylib-sdl>=5.5.0.2",
     "tomlkit>=0.13.3",
-    "dotenv>=0.9.9",
-    "gitpython>=3.1.44",
 ]
 
 [tool.vulture]

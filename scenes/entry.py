@@ -282,16 +282,11 @@ class Box:
 
     def _draw_highlighted(self, color):
         texture_left = tex.textures['mode_select']['box_highlight_left'].texture
-        texture_center = tex.textures['mode_select']['box_highlight_center'].texture
-        texture_right = tex.textures['mode_select']['box_highlight_right'].texture
-        if isinstance(texture_center, list) or isinstance(texture_left, list):
+        if isinstance(texture_left, list):
             raise Exception("highlight textures cannot be iterable")
-        center_src = ray.Rectangle(0, 0, texture_center.width, texture_center.height)
-        center_dest = ray.Rectangle(self.left_x + texture_left.width, self.y, self.right_x - self.left_x, texture_center.height)
-        ray.draw_texture_pro(texture_center, center_src, center_dest, ray.Vector2(0, 0), 0, color)
-        ray.draw_texture(texture_center, self.left_x, self.y, color)
-        ray.draw_texture(texture_left, self.left_x, self.y, color)
-        ray.draw_texture(texture_right, self.right_x, self.y, color)
+        tex.draw_texture('mode_select', 'box_highlight_center', x=self.left_x + texture_left.width, y=self.y, x2=self.right_x - self.left_x -15, color=color)
+        tex.draw_texture('mode_select', 'box_highlight_left', x=self.left_x, y=self.y, color=color)
+        tex.draw_texture('mode_select', 'box_highlight_right', x=self.right_x, y=self.y, color=color)
 
     def _draw_text(self, color):
         text_x = self.x + (self.texture.width//2) - (self.text.texture.width//2)

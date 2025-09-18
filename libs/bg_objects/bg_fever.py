@@ -51,12 +51,25 @@ class BGFever1(BGFeverBase):
         self.overlay_move_down.delay_saved = 300
 
         self.wave_spin = tex.get_animation(28)
+        self.wave_origin = ray.Vector2(tex.textures[self.name]['wave'].width/2,tex.textures[self.name]['wave'].height/2)
         self.circle = {
             "center_x": 100,
             "center_y": 130,
             "radius": 200,
         }
+        self.lookup_table_size = 360  # One entry per degree
+        self._precomputed_positions: list[tuple[float, float]] = []
+        for i in range(self.lookup_table_size):
+            angle = (i / self.lookup_table_size) * 2 * math.pi
+            x = self.circle["center_x"] + math.cos(angle) * self.circle["radius"]
+            y = self.circle["center_y"] + math.sin(angle) * self.circle["radius"]
+            self._precomputed_positions.append((x, y))
         self.bg_move = tex.get_animation(16)
+
+    def _get_wave_position(self):
+        normalized = (self.wave_spin.attribute % 180) / 180.0
+        index = int(normalized * (self.lookup_table_size - 1))
+        return self._precomputed_positions[index]
 
     def start(self):
         self.corner_move_up.start()
@@ -94,11 +107,8 @@ class BGFever1(BGFeverBase):
         for i, tile in enumerate(self.bg_tiles):
             tile.draw(tex, self.name, (i*128)-self.bg_move.attribute, i % 10)
         tex.draw_texture(self.name, 'mountain', y=-self.mountain_move_up.attribute+self.mountain_move_down.attribute)
-        angle = math.radians(self.wave_spin.attribute*2)
-        wave_x = self.circle["center_x"] + math.cos(angle) * self.circle["radius"]
-        wave_y = self.circle["center_y"] + math.sin(angle) * self.circle["radius"]
-        wave_origin = ray.Vector2(tex.textures[self.name]['wave'].width/2,tex.textures[self.name]['wave'].height/2)
-        tex.draw_texture(self.name, 'wave', x=wave_x, y=wave_y, origin=wave_origin)
+        wave_x, wave_y = self._get_wave_position()
+        tex.draw_texture(self.name, 'wave', x=wave_x, y=wave_y, origin=self.wave_origin)
         tex.draw_texture(self.name, 'footer', y=-self.footer_move_up.attribute+self.footer_move_down.attribute)
         tex.draw_texture(self.name, 'corner', y=-self.corner_move_up.attribute+self.corner_move_down.attribute)
         tex.draw_texture(self.name, 'overlay', y=self.overlay_move_up.attribute-self.overlay_move_down.attribute)
@@ -112,6 +122,7 @@ class BGFever2(BGFeverBase):
         self.ship_rotation.start()
         self.move_in = tex.get_animation(22)
         self.move_out = tex.get_animation(23)
+        self.ship_origin = ray.Vector2(tex.textures[self.name]['ship'].width/2, tex.textures[self.name]['ship'].height/2)
 
     def start(self):
         self.fadein.start()
@@ -133,8 +144,7 @@ class BGFever2(BGFeverBase):
         tex.draw_texture(self.name, 'footer_2', y=self.move_in.attribute-self.move_out.attribute, fade=self.fadein.attribute)
         tex.draw_texture(self.name, 'bird', index=0, x=self.move_in.attribute-self.move_out.attribute, mirror='horizontal', y=self.ship_rotation.attribute*180)
         tex.draw_texture(self.name, 'bird', index=1, x=-self.move_in.attribute+self.move_out.attribute, y=self.ship_rotation.attribute*180)
-        origin = ray.Vector2(tex.textures[self.name]['ship'].width/2, tex.textures[self.name]['ship'].height/2)
-        tex.draw_texture(self.name, 'ship', x=origin.x, y=origin.y + self.move_in.attribute-self.move_out.attribute, origin=origin, rotation=self.ship_rotation.attribute*100, center=True)
+        tex.draw_texture(self.name, 'ship', x=self.ship_origin.x, y=self.ship_origin.y + self.move_in.attribute-self.move_out.attribute, origin=self.ship_origin, rotation=self.ship_rotation.attribute*100, center=True)
 
 class BGFever3(BGFeverBase):
     def __init__(self, tex: TextureWrapper, index: int, path: str):
@@ -152,9 +162,52 @@ class BGFever3(BGFeverBase):
             "center_y": 300,
             "radius": 300,
         }
-
         self.num_fish = 8
         self.fish_spacing = (2 * math.pi) / self.num_fish  # 45 degrees in radians
+
+        self.wave_origin = ray.Vector2(tex.textures[self.name]['wave'].width/2, tex.textures[self.name]['wave'].height/2)
+        self.fish_origin = ray.Vector2(tex.textures[self.name]['fish'].width/2, tex.textures[self.name]['fish'].height/2)
+        self.circle_origin = ray.Vector2(tex.textures[self.name]['circle'].width/2,tex.textures[self.name]['circle'].height/2)
+
+        self.fish_phase_offsets = [i * self.fish_spacing for i in range(self.num_fish)]
+        self.lookup_table_size = 360  # One entry per degree
+
+        self._precomputed_main_positions: list[tuple[float, float]] = []
+        for i in range(self.lookup_table_size):
+            angle = (i / self.lookup_table_size) * 2 * math.pi
+            x = self.circle["center_x"] + math.cos(angle) * self.circle["radius"]
+            y = self.circle["center_y"] + math.sin(angle) * self.circle["radius"]
+            self._precomputed_main_positions.append((x, y))
+
+        self._precomputed_small_positions: list[tuple[float, float]] = []
+        for i in range(self.lookup_table_size):
+            angle = (i / self.lookup_table_size) * 2 * math.pi
+            x = self.circle["center_x"] + math.cos(angle) * 20
+            y = self.circle["center_y"] + math.sin(angle) * 20
+            self._precomputed_small_positions.append((x, y))
+
+        self._precomputed_rotations: list[float] = []
+        for i in range(self.lookup_table_size):
+            angle = (i / self.lookup_table_size) * 2 * math.pi
+            swimming_angle = angle + math.pi/2
+            swimming_rotation = math.degrees(swimming_angle)
+            self._precomputed_rotations.append(swimming_rotation)
+
+    def _get_main_circle_position(self, spin_value: float, multiplier: float = 1.0):
+        normalized = ((spin_value * multiplier) % 360) / 360.0
+        index = int(normalized * (self.lookup_table_size - 1))
+        return self._precomputed_main_positions[index]
+
+    def _get_small_circle_position(self, spin_value: float, multiplier: float = 1.0):
+        normalized = ((spin_value * multiplier) % 360) / 360.0
+        index = int(normalized * (self.lookup_table_size - 1))
+        return self._precomputed_small_positions[index]
+
+    def _get_fish_position_and_rotation(self, spin_value: float, phase_offset: float):
+        angle_degrees = spin_value + math.degrees(phase_offset)
+        normalized = (angle_degrees % 360) / 360.0
+        index = int(normalized * (self.lookup_table_size - 1))
+        return self._precomputed_main_positions[index], self._precomputed_rotations[index]
 
     def start(self):
         self.fadein.start()
@@ -174,43 +227,26 @@ class BGFever3(BGFeverBase):
     def draw(self, tex: TextureWrapper):
         tex.draw_texture(self.name, 'background', x=-self.move_in.attribute)
         tex.draw_texture(self.name, 'overlay', frame=self.overlay_tc.attribute, fade=self.fadein.attribute)
-        origin = ray.Vector2(tex.textures[self.name]['circle'].width/2, tex.textures[self.name]['circle'].height/2)
-        tex.draw_texture(self.name, 'circle', x=origin.x, y=origin.y, fade=self.fadein.attribute, origin=origin, rotation=self.circle_rotate.attribute)
-
-        angle = math.radians(self.fish_spin.attribute*2)
-        wave_x = self.circle["center_x"] + math.cos(angle) * self.circle["radius"]
-        wave_y = self.circle["center_y"] + math.sin(angle) * self.circle["radius"]
-        wave_origin = ray.Vector2(tex.textures[self.name]['wave'].width/2,tex.textures[self.name]['wave'].height/2)
-        tex.draw_texture(self.name, 'wave', x=wave_x, y=wave_y, fade=self.fadein.attribute, origin=wave_origin)
-
+        tex.draw_texture(self.name, 'circle', x=self.circle_origin.x, y=self.circle_origin.y, fade=self.fadein.attribute, origin=self.circle_origin, rotation=self.circle_rotate.attribute)
+        wave_x, wave_y = self._get_main_circle_position(self.fish_spin.attribute, 2.0)
+        tex.draw_texture(self.name, 'wave', x=wave_x, y=wave_y, fade=self.fadein.attribute, origin=self.wave_origin)
         for j in range(2):
             for i in range(self.num_fish):
-                fish_phase_offset = i * self.fish_spacing
-                angle = math.radians(self.fish_spin.attribute) + fish_phase_offset
-                fish_x = self.circle["center_x"] + math.cos(angle) * self.circle["radius"]
-                fish_y = self.circle["center_y"] + math.sin(angle) * self.circle["radius"]
+                fish_pos, fish_rotation = self._get_fish_position_and_rotation(
+                    self.fish_spin.attribute, self.fish_phase_offsets[i])
+                fish_x, fish_y = fish_pos
 
-                # Fish should face the direction they're swimming (tangent to circle)
-                swimming_angle = angle + math.pi/2  # Perpendicular to radius
-                swimming_rotation = math.degrees(swimming_angle)
+                tex.draw_texture(self.name, 'fish', x=fish_x, y=fish_y, fade=self.fadein.attribute, origin=self.fish_origin, rotation=fish_rotation, index=j)
 
-                fish_origin = ray.Vector2(tex.textures[self.name]['fish'].width/2,tex.textures[self.name]['fish'].height/2)
-
-                tex.draw_texture(self.name, 'fish', x=fish_x, y=fish_y, fade=self.fadein.attribute,
-                    origin=fish_origin,
-                    rotation=swimming_rotation,
-                    index=j
-                )
-
-        angle = math.radians(self.fish_spin.attribute*3)
-        wave_x = self.circle["center_x"] + math.cos(angle) * 20
-        wave_y = self.circle["center_y"] + math.sin(angle) * 20
-        wave_origin = ray.Vector2(tex.textures[self.name]['wave'].width/2,tex.textures[self.name]['wave'].height/2)
+        footer_wave_x, footer_wave_y = self._get_small_circle_position(self.fish_spin.attribute, 3.0)
         for i in range(3):
-            tex.draw_texture(self.name, 'footer_2', x=wave_x + (i*600), y=wave_y, fade=self.fadein.attribute, origin=wave_origin)
+            tex.draw_texture(self.name, 'footer_2',
+                           x=footer_wave_x + (i*600), y=footer_wave_y,
+                           fade=self.fadein.attribute, origin=self.wave_origin)
 
         for i in range(3):
             tex.draw_texture(self.name, 'footer_1', x=i*450, y=-self.footer_move_up.attribute)
+
         tex.draw_texture(self.name, 'bird', frame=self.bird_tc.attribute, index=0, x=-self.move_in.attribute)
         tex.draw_texture(self.name, 'bird', frame=self.bird_tc.attribute, index=1, x=-self.move_in.attribute)
 

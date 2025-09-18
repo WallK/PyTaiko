@@ -284,17 +284,10 @@ class Player:
         self.autoplay_hit_side = 'L'
         self.last_subdivision = -1
 
-        # Performance optimization: cache frequently used string conversions
-        self._cached_combo_str = ""
-        self._cached_combo = -1
-        self._cached_score_str = ""
-        self._cached_score = -1
-
     def get_result_score(self):
         return self.score, self.good_count, self.ok_count, self.bad_count, self.max_combo, self.total_drumroll
 
     def get_position_x(self, width: int, current_ms: float, load_ms: float, pixels_per_frame: float) -> int:
-        # Cache frequently used calculations
         time_diff = load_ms - current_ms
         return int(width + pixels_per_frame * 0.06 * time_diff - 64) - self.visual_offset
 
@@ -306,16 +299,15 @@ class Player:
         if not animation_list:
             return
 
-        # More efficient: collect finished animations and remove them in one pass
-        finished_indices = []
-        for i, animation in enumerate(animation_list):
+        # More efficient: use list comprehension to filter out finished animations
+        remaining_animations = []
+        for animation in animation_list:
             animation.update(current_time)
-            if animation.is_finished:
-                finished_indices.append(i)
+            if not animation.is_finished:
+                remaining_animations.append(animation)
 
-        # Remove in reverse order to maintain indices
-        for i in reversed(finished_indices):
-            animation_list.pop(i)
+        # Replace the original list contents
+        animation_list[:] = remaining_animations
 
     def bar_manager(self, current_ms: float):
         #Add bar to current_bars list if it is ready to be shown on screen
@@ -370,7 +362,7 @@ class Player:
             if 5 <= current_note.type <= 7:
                 bisect.insort_left(self.current_notes_draw, current_note, key=lambda x: x.index)
                 try:
-                    tail_note = next(note for note in self.draw_note_list if note.type == 8)
+                    tail_note = next((note for note in self.draw_note_list if note.type == 8))
                     bisect.insort_left(self.current_notes_draw, tail_note, key=lambda x: x.index)
                     self.draw_note_list.remove(tail_note)
                 except Exception as e:
@@ -648,11 +640,12 @@ class Player:
         length = end_position - start_position
         color = ray.Color(255, head.color, head.color, 255)
         if head.display:
-            tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-64-32, color=color)
-            if is_big:
-                tex.draw_texture('notes', "drumroll_big_tail", x=end_position, y=192, color=color)
-            else:
-                tex.draw_texture('notes', "drumroll_tail", x=end_position, y=192, color=color)
+            if length > 0:
+                tex.draw_texture('notes', "8", frame=is_big, x=start_position+64, y=192, x2=length-47, color=color)
+                if is_big:
+                    tex.draw_texture('notes', "drumroll_big_tail", x=end_position+64, y=192, color=color)
+                else:
+                    tex.draw_texture('notes', "drumroll_tail", x=end_position+64, y=192, color=color)
             tex.draw_texture('notes', str(head.type), frame=current_eighth % 2, x=start_position, y=192, color=color)
 
         tex.draw_texture('notes', 'moji_drumroll_mid', x=start_position + 60, y=323, x2=length)
@@ -679,12 +672,18 @@ class Player:
         if not self.current_bars:
             return
 
+        # Batch bar draws by pre-calculating positions
+        bar_draws = []
         for bar in reversed(self.current_bars):
             if not bar.display:
                 continue
             x_position = self.get_position_x(SCREEN_WIDTH, current_ms, bar.load_ms, bar.pixels_per_frame_x)
             y_position = self.get_position_y(current_ms, bar.load_ms, bar.pixels_per_frame_y, bar.pixels_per_frame_x)
-            tex.draw_texture('notes', str(bar.type), x=x_position+60, y=y_position+190)
+            bar_draws.append((str(bar.type), x_position+60, y_position+190))
+
+        # Draw all bars in one batch
+        for bar_type, x, y in bar_draws:
+            tex.draw_texture('notes', bar_type, x=x, y=y)
 
     def draw_notes(self, current_ms: float, start_ms: float):
         if not self.current_notes_draw:
@@ -695,71 +694,116 @@ class Player:
         if self.combo >= 50 and eighth_in_ms != 0:
             current_eighth = int((current_ms - start_ms) // eighth_in_ms)
 
+        # Separate notes by type for better batching
+        regular_notes = []
+        drumrolls = []
+        balloons = []
+
         for note in reversed(self.current_notes_draw):
             if self.is_balloon and note == self.current_notes_draw[0]:
                 continue
             if note.type == 8:
                 continue
+
+            if isinstance(note, Drumroll):
+                drumrolls.append(note)
+            elif isinstance(note, Balloon) and not note.is_kusudama:
+                balloons.append(note)
+            else:
+                regular_notes.append(note)
+
+        # Draw drumrolls first
+        for note in drumrolls:
+            self.draw_drumroll(current_ms, note, current_eighth)
+
+        # Draw balloons
+        for note in balloons:
             x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
             y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
-            if isinstance(note, Drumroll):
-                self.draw_drumroll(current_ms, note, current_eighth)
-            elif isinstance(note, Balloon) and not note.is_kusudama:
-                self.draw_balloon(current_ms, note, current_eighth)
-                tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
-            else:
-                if note.display:
-                    tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
-                tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
+            self.draw_balloon(current_ms, note, current_eighth)
+            tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
+
+        # Draw regular notes in batches
+        for note in regular_notes:
+            x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
+            y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
+            if note.display:
+                tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
+            tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
 
     def draw_modifiers(self):
-        tex.draw_texture('lane', 'mod_shinuchi')
+        # Batch modifier texture draws to reduce state changes
+        modifiers_to_draw = ['mod_shinuchi']
+
+        # Speed modifiers
         if global_data.modifiers.speed >= 4:
-            tex.draw_texture('lane', 'mod_yonbai')
+            modifiers_to_draw.append('mod_yonbai')
         elif global_data.modifiers.speed >= 3:
-            tex.draw_texture('lane', 'mod_sanbai')
+            modifiers_to_draw.append('mod_sanbai')
         elif global_data.modifiers.speed > 1:
-            tex.draw_texture('lane', 'mod_baisaku')
+            modifiers_to_draw.append('mod_baisaku')
+
+        # Other modifiers
         if global_data.modifiers.display:
-            tex.draw_texture('lane', 'mod_doron')
+            modifiers_to_draw.append('mod_doron')
         if global_data.modifiers.inverse:
-            tex.draw_texture('lane', 'mod_abekobe')
+            modifiers_to_draw.append('mod_abekobe')
         if global_data.modifiers.random == 2:
-            tex.draw_texture('lane', 'mod_detarame')
+            modifiers_to_draw.append('mod_detarame')
         elif global_data.modifiers.random == 1:
-            tex.draw_texture('lane', 'mod_kimagure')
+            modifiers_to_draw.append('mod_kimagure')
+
+        # Draw all modifiers in one batch
+        for modifier in modifiers_to_draw:
+            tex.draw_texture('lane', modifier)
 
     def draw(self, game_screen: GameScreen):
+        current_ms = game_screen.current_ms
+
+        # Group 1: Background and lane elements
         tex.draw_texture('lane', 'lane_background')
         self.gauge.draw()
         if self.lane_hit_effect is not None:
             self.lane_hit_effect.draw()
         tex.draw_texture('lane', 'lane_hit_circle')
+
+        # Group 2: Judgement and hit effects
         for anim in self.draw_judge_list:
             anim.draw()
-        current_ms = game_screen.current_ms
+
+        # Group 3: Notes and bars (game content)
         self.draw_bars(current_ms)
         self.draw_notes(current_ms, game_screen.start_ms)
+
+        # Group 4: Lane covers and UI elements (batch similar textures)
         tex.draw_texture('lane', f'{self.player_number}p_lane_cover')
         tex.draw_texture('lane', 'drum')
         if global_data.modifiers.auto:
             tex.draw_texture('lane', 'auto_icon')
+
+        # Group 5: Hit effects and animations
         for anim in self.draw_drum_hit_list:
             anim.draw()
-        self.combo_display.draw()
-        tex.draw_texture('lane', 'lane_score_cover')
-        tex.draw_texture('lane', f'{self.player_number}p_icon')
-        tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
-        if not global_data.modifiers.auto:
-            self.nameplate.draw(-62, 285)
-        self.draw_modifiers()
-        self.chara.draw()
-        if self.drumroll_counter is not None:
-            self.drumroll_counter.draw()
         for anim in self.draw_arc_list:
             anim.draw(game_screen)
         for anim in self.gauge_hit_effect:
             anim.draw()
+
+        # Group 6: UI overlays
+        self.combo_display.draw()
+        tex.draw_texture('lane', 'lane_score_cover')
+        tex.draw_texture('lane', f'{self.player_number}p_icon')
+        tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
+
+        # Group 7: Player-specific elements
+        if not global_data.modifiers.auto:
+            self.nameplate.draw(-62, 285)
+        self.draw_modifiers()
+        self.chara.draw()
+
+        # Group 8: Special animations and counters
+        if self.drumroll_counter is not None:
+            self.drumroll_counter.draw()
         if self.balloon_anim is not None:
             self.balloon_anim.draw()
         if self.kusudama_anim is not None:
@@ -791,7 +835,6 @@ class Judgement:
         self.texture_animation.start()
 
     def update(self, current_ms):
-        # Batch animation updates for better performance
         animations = [self.fade_animation_1, self.fade_animation_2, self.move_animation, self.texture_animation]
         for anim in animations:
             anim.update(current_ms)
@@ -801,32 +844,27 @@ class Judgement:
 
     def draw(self):
         y = self.move_animation.attribute
-        index = int(self.texture_animation.attribute)
-        hit_color = ray.fade(ray.WHITE, self.fade_animation_1.attribute)
-        color = ray.fade(ray.WHITE, self.fade_animation_2.attribute)
-        if self.curr_hit_ms is not None:
-            if float(self.curr_hit_ms) < -(global_data.config['general']['hard_judge']):
-                color = ray.fade(ray.BLUE, self.fade_animation_2.attribute)
-            elif float(self.curr_hit_ms) > (global_data.config['general']['hard_judge']):
-                color = ray.fade(ray.RED, self.fade_animation_2.attribute)
+        index = self.texture_animation.attribute
+        hit_fade = self.fade_animation_1.attribute
+        fade = self.fade_animation_2.attribute
         if self.type == 'GOOD':
             if self.big:
-                tex.draw_texture('hit_effect', 'hit_effect_good_big', color=color)
-                tex.draw_texture('hit_effect', 'outer_good_big', frame=index, color=hit_color)
+                tex.draw_texture('hit_effect', 'hit_effect_good_big', fade=fade)
+                tex.draw_texture('hit_effect', 'outer_good_big', frame=index, fade=hit_fade)
             else:
-                tex.draw_texture('hit_effect', 'hit_effect_good', color=color)
-                tex.draw_texture('hit_effect', 'outer_good', frame=index, color=hit_color)
-            tex.draw_texture('hit_effect', 'judge_good', y=y, color=color)
+                tex.draw_texture('hit_effect', 'hit_effect_good', fade=fade)
+                tex.draw_texture('hit_effect', 'outer_good', frame=index, fade=hit_fade)
+            tex.draw_texture('hit_effect', 'judge_good', y=y, fade=fade)
         elif self.type == 'OK':
             if self.big:
-                tex.draw_texture('hit_effect', 'hit_effect_ok_big', color=color)
-                tex.draw_texture('hit_effect', 'outer_ok_big', frame=index, color=hit_color)
+                tex.draw_texture('hit_effect', 'hit_effect_ok_big', fade=fade)
+                tex.draw_texture('hit_effect', 'outer_ok_big', frame=index, fade=hit_fade)
             else:
-                tex.draw_texture('hit_effect', 'hit_effect_ok', color=color)
-                tex.draw_texture('hit_effect', 'outer_ok', frame=index, color=hit_color)
-            tex.draw_texture('hit_effect', 'judge_ok', y=y, color=color)
+                tex.draw_texture('hit_effect', 'hit_effect_ok', fade=fade)
+                tex.draw_texture('hit_effect', 'outer_ok', frame=index, fade=hit_fade)
+            tex.draw_texture('hit_effect', 'judge_ok', y=y, fade=fade)
         elif self.type == 'BAD':
-            tex.draw_texture('hit_effect', 'judge_bad', y=y, color=color)
+            tex.draw_texture('hit_effect', 'judge_bad', y=y, fade=fade)
 
 class LaneHitEffect:
     def __init__(self, type: str):
@@ -874,6 +912,9 @@ class DrumHitEffect:
                 tex.draw_texture('lane', 'drum_kat_r', fade=self.fade.attribute)
 
 class GaugeHitEffect:
+    # Pre-define color thresholds for better performance
+    _COLOR_THRESHOLDS = [(0.70, ray.WHITE), (0.80, ray.YELLOW), (0.90, ray.ORANGE), (1.00, ray.RED)]
+
     def __init__(self, note_type: int, big: bool):
         self.note_type = note_type
         self.is_big = big
@@ -889,53 +930,104 @@ class GaugeHitEffect:
         self.rotation.start()
         self.color = ray.fade(ray.YELLOW, self.circle_fadein.attribute)
         self.is_finished = False
+
+        self.texture_color = ray.WHITE
+        self.dest_width = 152
+        self.dest_height = 152
+        self.origin = ray.Vector2(76, 76)  # 152/2
+        self.rotation_angle = 0
+        self.x2_pos = -152
+        self.y2_pos = -152
+
+        # Cache for texture selection
+        self.circle_texture = 'hit_effect_circle_big' if self.is_big else 'hit_effect_circle'
+        self._last_resize_value = -1
+        self._cached_texture_color = ray.WHITE
+
+    def _get_texture_color_for_resize(self, resize_value):
+        """Calculate texture color based on resize attribute value with caching"""
+        # Use cached value if resize hasn't changed significantly
+        if abs(resize_value - self._last_resize_value) < 0.01:
+            return self._cached_texture_color
+
+        self._last_resize_value = resize_value
+
+        if resize_value >= 1.00:
+            self._cached_texture_color = ray.RED
+        else:
+            # Use pre-defined thresholds for faster lookup
+            self._cached_texture_color = ray.WHITE
+            for threshold, color in self._COLOR_THRESHOLDS:
+                if resize_value <= threshold:
+                    self._cached_texture_color = color
+                    break
+
+        return self._cached_texture_color
+
     def update(self, current_ms):
+        # Update all animations
         self.texture_change.update(current_ms)
         self.circle_fadein.update(current_ms)
         self.fade_out.update(current_ms)
         self.resize.update(current_ms)
         self.rotation.update(current_ms)
-        color = ray.YELLOW
-        if self.circle_fadein.is_finished:
-            color = ray.WHITE
-        self.color = ray.fade(color, min(self.fade_out.attribute, self.circle_fadein.attribute))
+
+        # Update circle color with optimized calculation
+        base_color = ray.WHITE if self.circle_fadein.is_finished else ray.YELLOW
+        fade_value = min(self.fade_out.attribute, self.circle_fadein.attribute)
+        self.color = ray.fade(base_color, fade_value)
+
+        # Pre-compute drawing values only when resize changes significantly
+        resize_val = self.resize.attribute
+        if abs(resize_val - getattr(self, '_last_resize_calc', -1)) > 0.005:
+            self._last_resize_calc = resize_val
+            self.texture_color = self._get_texture_color_for_resize(resize_val)
+            self.dest_width = 152 * resize_val
+            self.dest_height = 152 * resize_val
+            self.origin = ray.Vector2(self.dest_width / 2, self.dest_height / 2)
+            self.x2_pos = -152 + (152 * resize_val)
+            self.y2_pos = -152 + (152 * resize_val)
+
+        self.rotation_angle = self.rotation.attribute * 100
+
+        # Check if finished
         if self.fade_out.is_finished:
             self.is_finished = True
-    def draw(self):
-        color_map = {0.70: ray.WHITE, 0.80: ray.YELLOW, 0.90: ray.ORANGE, 1.00: ray.RED}
-        texture_color = ray.WHITE
-        for upper_bound, color in color_map.items():
-            lower_bound = list(color_map.keys())[list(color_map.keys()).index(upper_bound) - 1] if list(color_map.keys()).index(upper_bound) > 0 else 0.70
 
-            if lower_bound <= self.resize.attribute <= upper_bound:
-                texture_color = color
-            elif self.resize.attribute >= upper_bound:
-                texture_color = ray.RED
-        dest_width = 152 * self.resize.attribute
-        dest_height = 152 * self.resize.attribute
-        origin = ray.Vector2(dest_width / 2, dest_height / 2)
-        rotation = self.rotation.attribute*100
-        tex.draw_texture('gauge', 'hit_effect', frame=self.texture_change.attribute, x2=-152 + (152 * self.resize.attribute), y2=-152 + (152 * self.resize.attribute), color=ray.fade(texture_color, self.fade_out.attribute), origin=origin, rotation=rotation, center=True)
-        tex.draw_texture('notes', str(self.note_type), x=1158, y=101, fade=self.fade_out.attribute)
-        if self.is_big:
-            tex.draw_texture('gauge', 'hit_effect_circle_big', color=self.color)
-        else:
-            tex.draw_texture('gauge', 'hit_effect_circle', color=self.color)
+    def draw(self):
+        fade_value = self.fade_out.attribute
+
+        # Main hit effect texture
+        tex.draw_texture('gauge', 'hit_effect',
+                        frame=self.texture_change.attribute,
+                        x2=self.x2_pos,
+                        y2=self.y2_pos,
+                        color=ray.fade(self.texture_color, fade_value),
+                        origin=self.origin,
+                        rotation=self.rotation_angle,
+                        center=True)
+
+        # Note type texture
+        tex.draw_texture('notes', str(self.note_type),
+                        x=1158, y=101,
+                        fade=fade_value)
+
+        # Circle effect texture (use cached texture name)
+        tex.draw_texture('gauge', self.circle_texture, color=self.color)
 
 class NoteArc:
     def __init__(self, note_type: int, current_ms: float, player_number: int, big: bool, is_balloon: bool):
         self.note_type = note_type
         self.is_big = big
         self.is_balloon = is_balloon
-        self.arc_points = 22
+        self.arc_points = 100
+        self.arc_duration = 22
         self.current_progress = 0
         self.create_ms = current_ms
         self.player_number = player_number
         curve_height = 425
-
         self.start_x, self.start_y = 350, 192
         self.end_x, self.end_y = 1158, 101
-
         if self.player_number == 1:
             # Control point influences the curve shape
             self.control_x = (self.start_x + self.end_x) // 2
@@ -944,34 +1036,31 @@ class NoteArc:
             # For player 2 (assumed to be a downward arc)
             self.control_x = (self.start_x + self.end_x) // 2
             self.control_y = max(self.start_y, self.end_y) + curve_height  # Arc downward
-
         self.x_i = self.start_x
         self.y_i = self.start_y
         self.is_finished = False
-
-        self.total_path_length = math.sqrt((self.end_x - self.start_x)**2 + (self.end_y - self.start_y)**2) * 1.2  # Approximate arc length
-        self.x_i = self.start_x
-        self.y_i = self.start_y
-        self.is_finished = False
+        # Pre-calculate all arc points for better performance
+        self.arc_points_cache = []
+        for i in range(self.arc_points + 1):
+            t = i / self.arc_points
+            t_inv = 1.0 - t
+            x = int(t_inv * t_inv * self.start_x + 2 * t_inv * t * self.control_x + t * t * self.end_x)
+            y = int(t_inv * t_inv * self.start_y + 2 * t_inv * t * self.control_y + t * t * self.end_y)
+            self.arc_points_cache.append((x, y))
 
     def update(self, current_ms: float):
-        if self.x_i >= self.end_x:
-            self.is_finished = True
-            self.x_i = self.end_x
-            self.y_i = self.end_y
-            return
-
         ms_since_call = (current_ms - self.create_ms) / 16.67
-        ms_since_call = max(0, min(ms_since_call, self.arc_points))
-
-        self.current_progress = ms_since_call / self.arc_points
-
-        t = self.current_progress
-        t_inv = 1.0 - t
-
-        # Quadratic Bezier: B(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
-        self.x_i = int(t_inv * t_inv * self.start_x + 2 * t_inv * t * self.control_x + t * t * self.end_x)
-        self.y_i = int(t_inv * t_inv * self.start_y + 2 * t_inv * t * self.control_y + t * t * self.end_y)
+        ms_since_call = max(0, min(ms_since_call, self.arc_duration))
+        self.current_progress = ms_since_call / self.arc_duration
+        if self.current_progress >= 1.0:
+            self.is_finished = True
+            self.x_i, self.y_i = self.arc_points_cache[-1]
+            return
+        point_index = int(self.current_progress * self.arc_points)
+        if point_index < len(self.arc_points_cache):
+            self.x_i, self.y_i = self.arc_points_cache[point_index]
+        else:
+            self.x_i, self.y_i = self.arc_points_cache[-1]
 
     def draw(self, game_screen: GameScreen):
         if self.is_balloon:
@@ -1250,10 +1339,16 @@ class ScoreCounterAnimation:
         self.move_animation_4.start()
 
         if player_num == '2':
-            self.color = ray.fade(ray.Color(84, 250, 238, 255), 1.0)
+            self.base_color = ray.Color(84, 250, 238, 255)
         else:
-            self.color = ray.fade(ray.Color(254, 102, 0, 255), 1.0)
+            self.base_color = ray.Color(254, 102, 0, 255)
+        self.color = ray.fade(self.base_color, 1.0)
         self.is_finished = False
+
+        # Cache string and layout calculations
+        self.counter_str = str(counter)
+        self.margin = 20
+        self.total_width = len(self.counter_str) * self.margin
         self.y_pos_list = []
 
     def update(self, current_ms: float):
@@ -1264,35 +1359,34 @@ class ScoreCounterAnimation:
         self.move_animation_4.update(current_ms)
         self.fade_animation_2.update(current_ms)
 
-        if self.fade_animation_1.is_finished:
-            self.color = ray.fade(self.color, self.fade_animation_2.attribute)
-        else:
-            self.color = ray.fade(self.color, self.fade_animation_1.attribute)
+        fade_value = self.fade_animation_2.attribute if self.fade_animation_1.is_finished else self.fade_animation_1.attribute
+        self.color = ray.fade(self.base_color, fade_value)
+
         if self.fade_animation_2.is_finished:
             self.is_finished = True
-        self.y_pos_list = []
-        for i in range(1, len(str(self.counter))+1):
-            self.y_pos_list.append(self.move_animation_4.attribute + i*5)
+
+        # Cache y positions
+        self.y_pos_list = [self.move_animation_4.attribute + i*5 for i in range(1, len(self.counter_str)+1)]
 
     def draw(self):
-        if self.move_animation_1.is_finished:
-            x = self.move_animation_2.attribute
-        else:
-            x = self.move_animation_1.attribute
+        x = self.move_animation_2.attribute if self.move_animation_1.is_finished else self.move_animation_1.attribute
         if x == 0:
             return
-        counter = str(self.counter)
-        margin = 20
-        total_width = len(counter) * margin
-        start_x = x - total_width
-        for i, digit in enumerate(counter):
+
+        start_x = x - self.total_width
+
+        for i, digit in enumerate(self.counter_str):
             if self.move_animation_3.is_finished:
                 y = self.y_pos_list[i]
             elif self.move_animation_2.is_finished:
                 y = self.move_animation_3.attribute
             else:
                 y = 148
-            tex.draw_texture('lane', 'score_number', frame=int(digit), x=start_x + (i * margin), y=y, color=self.color)
+            tex.draw_texture('lane', 'score_number',
+                           frame=int(digit),
+                           x=start_x + (i * self.margin),
+                           y=y,
+                           color=self.color)
 
 class SongInfo:
     def __init__(self, song_name: str, genre: int):
@@ -1451,14 +1545,30 @@ class Gauge:
         tex.draw_texture('gauge', 'border' + self.string_diff)
         tex.draw_texture('gauge', f'{self.player_num}p_unfilled' + self.string_diff)
         gauge_length = int(self.gauge_length)
-        for i in range(gauge_length):
-            if i == self.clear_start[self.difficulty] - 1:
-                tex.draw_texture('gauge', 'bar_clear_transition', x=i*8)
-            elif i > self.clear_start[self.difficulty] - 1:
-                tex.draw_texture('gauge', 'bar_clear_top', x=i*8)
-                tex.draw_texture('gauge', 'bar_clear_bottom', x=i*8)
-            else:
-                tex.draw_texture('gauge', f'{self.player_num}p_bar', x=i*8)
+        clear_point = self.clear_start[self.difficulty]
+
+        # Batch draw gauge bars by type instead of individual draws
+        if gauge_length > 0:
+            # Draw pre-clear bars as a batch
+            pre_clear_length = min(gauge_length, clear_point - 1)
+            if pre_clear_length > 0:
+                for i in range(pre_clear_length):
+                    tex.draw_texture('gauge', f'{self.player_num}p_bar', x=i*8)
+
+            # Draw clear transition bar if applicable
+            if gauge_length >= clear_point - 1:
+                tex.draw_texture('gauge', 'bar_clear_transition', x=(clear_point - 1)*8)
+
+            # Draw post-clear bars as a batch
+            if gauge_length > clear_point:
+                post_clear_start = clear_point
+                post_clear_length = gauge_length - post_clear_start
+                for i in range(post_clear_length):
+                    x_pos = (post_clear_start + i) * 8
+                    tex.draw_texture('gauge', 'bar_clear_top', x=x_pos)
+                    tex.draw_texture('gauge', 'bar_clear_bottom', x=x_pos)
+
+        # Rainbow effect for full gauge
         if gauge_length == self.gauge_max and self.rainbow_fade_in is not None and self.rainbow_animation is not None:
             if 0 < self.rainbow_animation.attribute < 8:
                 tex.draw_texture('gauge', 'rainbow' + self.string_diff, frame=self.rainbow_animation.attribute-1, fade=self.rainbow_fade_in.attribute)
@@ -1471,7 +1581,9 @@ class Gauge:
             else:
                 tex.draw_texture('gauge', f'{self.player_num}p_bar_fade', x=gauge_length*8, fade=self.gauge_update_anim.attribute)
         tex.draw_texture('gauge', 'overlay' + self.string_diff, fade=0.15)
-        if gauge_length >= self.clear_start[self.difficulty]:
+
+        # Draw clear status indicators
+        if gauge_length >= clear_point:
             tex.draw_texture('gauge', 'clear', index=min(2, self.difficulty))
             tex.draw_texture('gauge', 'tamashii')
         else:

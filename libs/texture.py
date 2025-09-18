@@ -153,6 +153,7 @@ class TextureWrapper:
             self.load_zip(screen_name, zip.name)
 
     def control(self, tex_object: Texture, index: int = 0):
+        '''debug function'''
         distance = 1
         if ray.is_key_down(ray.KeyboardKey.KEY_LEFT_SHIFT):
             distance = 10

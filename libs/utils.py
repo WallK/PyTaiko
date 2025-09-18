@@ -39,27 +39,6 @@ def force_dedicated_gpu():
         except Exception as e:
             print(e)
 
-def load_all_textures_from_zip(zip_path: Path) -> dict[str, list[ray.Texture]]:
-    result_dict = dict()
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        files = zip_ref.namelist()
-        for file in files:
-            with zip_ref.open(file) as image_file:
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                    temp_file.write(image_file.read())
-                    temp_file_path = temp_file.name
-            texture = ray.load_texture(temp_file_path)
-            os.remove(temp_file_path)
-
-            true_filename, index = file.split('_img')
-            index = int(index.split('.')[0])
-            if true_filename not in result_dict:
-                result_dict[true_filename] = []
-            while len(result_dict[true_filename]) <= index:
-                result_dict[true_filename].append(None)
-            result_dict[true_filename][index] = texture
-    return result_dict
-
 def rounded(num: float) -> int:
     sign = 1 if (num >= 0) else -1
     num = abs(num)
@@ -143,6 +122,8 @@ def is_r_don_pressed() -> bool:
             if ray.is_gamepad_button_pressed(0, button):
                 return True
 
+    if not global_data.config["general"]["touch_enabled"]:
+        return False
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
     if ray.get_gesture_detected() in allowed_gestures and ray.is_gesture_detected(ray.get_gesture_detected()):
@@ -165,6 +146,8 @@ def is_l_kat_pressed() -> bool:
             if ray.is_gamepad_button_pressed(0, button):
                 return True
 
+    if not global_data.config["general"]["touch_enabled"]:
+        return False
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
     if ray.get_gesture_detected() in allowed_gestures and ray.is_gesture_detected(ray.get_gesture_detected()):
@@ -187,6 +170,8 @@ def is_r_kat_pressed() -> bool:
             if ray.is_gamepad_button_pressed(0, button):
                 return True
 
+    if not global_data.config["general"]["touch_enabled"]:
+        return False
     mid_x, mid_y = (1280//2, 720)
     allowed_gestures = {ray.Gesture.GESTURE_TAP, ray.Gesture.GESTURE_DOUBLETAP}
     if ray.get_gesture_detected() in allowed_gestures and ray.is_gesture_detected(ray.get_gesture_detected()):

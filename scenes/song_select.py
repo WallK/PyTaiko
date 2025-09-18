@@ -601,7 +601,7 @@ class SongBox:
             cursor = con.cursor()
             # Batch database query for all diffs at once
             if self.tja.metadata.course_data:
-                hash_values = [self.hash[diff] for diff in self.tja.metadata.course_data]
+                hash_values = [self.hash[diff] for diff in self.tja.metadata.course_data if diff in self.hash]
                 placeholders = ','.join('?' * len(hash_values))
 
                 batch_query = f"""
@@ -614,6 +614,8 @@ class SongBox:
                 hash_to_score = {row[0]: row[1:] for row in cursor.fetchall()}
 
                 for diff in self.tja.metadata.course_data:
+                    if diff not in self.hash:
+                        continue
                     diff_hash = self.hash[diff]
                     self.scores[diff] = hash_to_score.get(diff_hash)
 
@@ -707,19 +709,19 @@ class SongBox:
             highest_key = max(valid_scores.keys())
             score = self.scores[highest_key]
             if score and score[2] == 0 and score[3] == 0:
-                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=highest_key)
+                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=min(4, highest_key))
             elif score and score[3] == 0:
-                tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=highest_key)
+                tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=min(4, highest_key))
             elif score and score[4] == 1:
-                tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=highest_key)
+                tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=min(4, highest_key))
         if self.crown: #Folder lamp
             highest_crown = max(self.crown)
             if self.crown[highest_crown] == 'DFC':
-                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=highest_crown)
+                tex.draw_texture('yellow_box', 'crown_dfc', x=x, y=y, frame=min(4, highest_crown))
             elif self.crown[highest_crown] == 'FC':
-                tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=highest_crown)
+                tex.draw_texture('yellow_box', 'crown_fc', x=x, y=y, frame=min(4, highest_crown))
             else:
-                tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=highest_crown)
+                tex.draw_texture('yellow_box', 'crown_clear', x=x, y=y, frame=min(4, highest_crown))
 
     def _draw_open(self, x: int, y: int, fade_override: Optional[float]):
         color = ray.WHITE

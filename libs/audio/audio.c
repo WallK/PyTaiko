@@ -114,7 +114,7 @@ typedef struct AudioData {
 // Function declarations
 // Device management
 void list_host_apis(void);
-void init_audio_device(PaHostApiIndex host_api, double sample_rate);
+void init_audio_device(PaHostApiIndex host_api, double sample_rate, unsigned long buffer_size);
 void close_audio_device(void);
 bool is_audio_device_ready(void);
 void set_master_volume(float volume);
@@ -322,7 +322,7 @@ PaDeviceIndex get_best_output_device_for_host_api(PaHostApiIndex hostApi)
 }
 
 // Device management implementations
-void init_audio_device(PaHostApiIndex host_api, double sample_rate)
+void init_audio_device(PaHostApiIndex host_api, double sample_rate, unsigned long buffer_size)
 {
     // Initialize PortAudio
     PaError err = Pa_Initialize();
@@ -358,7 +358,7 @@ void init_audio_device(PaHostApiIndex host_api, double sample_rate)
                         NULL,                               // No input
                         &AUDIO.System.outputParameters,     // Output parameters
                         sample_rate,          // Sample rate
-                        paFramesPerBufferUnspecified,      // Frames per buffer (let PortAudio decide)
+                        buffer_size,      // Frames per buffer (let PortAudio decide)
                         paClipOff,                         // No clipping
                         port_audio_callback,                 // Callback function
                         NULL);                             // User data

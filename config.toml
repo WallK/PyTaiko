@@ -4,6 +4,7 @@ judge_offset = 0
 visual_offset = 0
 language = "ja"
 hard_judge = 108
+touch_enabled = false
 
 [nameplate]
 name = 'どんちゃん'
@@ -31,6 +32,7 @@ right_kat = [12]
 [audio]
 device_type = 0
 sample_rate = -1
+buffer_size = 0
 exclusive = false
 
 [video]

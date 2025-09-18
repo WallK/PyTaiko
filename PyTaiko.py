@@ -68,7 +68,7 @@ def main():
     if global_data.config["video"]["target_fps"] != -1:
         ray.set_target_fps(global_data.config["video"]["target_fps"])
     ray.set_config_flags(ray.ConfigFlags.FLAG_MSAA_4X_HINT)
-    ray.set_trace_log_level(ray.TraceLogLevel.LOG_WARNING)
+    ray.set_trace_log_level(ray.TraceLogLevel.LOG_INFO)
 
     camera = ray.Camera3D()
     camera.position = ray.Vector3(0.0, 0.0, 10.0)  # Camera position

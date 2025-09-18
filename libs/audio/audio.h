@@ -79,7 +79,7 @@ void list_host_apis(void);
  * Initialize the audio device and system
  * Must be called before using any other audio functions
  */
-void init_audio_device(PaHostApiIndex host_api, double sample_rate);
+void init_audio_device(PaHostApiIndex host_api, double sample_rate, unsigned long buffer_size);
 
 /**
  * Close the audio device and cleanup resources

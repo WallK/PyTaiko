@@ -215,6 +215,7 @@
         "duration": 1000,
         "initial_opacity": 0.0,
         "final_opacity": 1.0,
+        "lock_input": true,
         "comment": "screen fade out on don press"
     }
 ]

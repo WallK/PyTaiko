@@ -12,6 +12,7 @@
         "type": "move",
         "duration": 233,
         "total_distance": 500,
+        "lock_input": true,
         "comment": "move song select boxes out of view on select"
     },
     {
@@ -202,6 +203,7 @@
         "initial_opacity": 0.0,
         "final_opacity": 1.0,
         "ease_out": "quadratic",
+        "lock_input": true,
         "comment": "diff sort diff select fade in"
     },
     {
@@ -288,6 +290,7 @@
         "duration": 316.67,
         "total_distance": 370,
         "ease_out": "quadratic",
+        "lock_input": true,
         "comment": "neiro move up"
     },
     {

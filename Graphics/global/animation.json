@@ -5,6 +5,7 @@
     "duration": 266,
     "total_distance": 816,
     "ease_in": "cubic",
+    "lock_input": true,
     "comment": "rainbow transition up"
   },
   {
@@ -47,6 +48,7 @@
       "reference_id": 0,
       "property": "duration"
     },
+    "lock_input": true,
     "comment": "song text fade in"
   },
   {

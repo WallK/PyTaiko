@@ -6,6 +6,7 @@
         "initial_opacity": 0.0,
         "final_opacity": 1.0,
         "delay": 20,
+        "lock_input": true,
         "comment": "fade in the side select box"
     },
     {
@@ -24,6 +25,7 @@
         "duration": 350,
         "total_distance": -295,
         "ease_out": "quadratic",
+        "lock_input": true,
         "comment": "move donchan's drum up"
     },
     {
@@ -36,6 +38,7 @@
             "property": "duration"
         },
         "ease_in": "quadratic",
+        "lock_input": true,
         "comment": "move donchan's drum a little down"
     },
     {
@@ -52,6 +55,7 @@
             "property": "duration"
         },
         "ease_out": "quadratic",
+        "lock_input": true,
         "comment": "move donchan's drum to the left/right"
     },
     {
@@ -114,6 +118,7 @@
         "id": 9,
         "type": "fade",
         "duration": 160,
+        "lock_input": true,
         "comment": "fade out the mode select boxes"
     },
     {

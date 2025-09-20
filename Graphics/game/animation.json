@@ -1,198 +1,227 @@
 [
-    {
-        "id": 0,
-        "type": "fade",
-        "duration": 150,
-        "delay": 83,
-        "initial_opacity": 0.5,
-        "comment": "lane hit effect fade out"
+  {
+    "id": 0,
+    "type": "fade",
+    "duration": 150,
+    "delay": 83,
+    "initial_opacity": 0.5,
+    "comment": "lane hit effect fade out"
+  },
+  {
+    "id": 1,
+    "type": "fade",
+    "duration": 100,
+    "delay": 67,
+    "comment": "drum hit effect fade out"
+  },
+  {
+    "id": 2,
+    "type": "texture_change",
+    "duration": 116.67,
+    "textures": [
+      [0, 33.33, 0],
+      [33.33, 66.66, 1],
+      [66.66, 116.67, 2]
+    ],
+    "comment": "gauge hit effect texture change"
+  },
+  {
+    "id": 3,
+    "type": "fade",
+    "duration": 366,
+    "delay": 3332,
+    "reverse_delay": 3332,
+    "loop": true,
+    "comment": "song name/number fade in/out"
+  },
+  {
+    "id": 4,
+    "type": "text_stretch",
+    "duration": 50,
+    "comment": "score counter text stretch"
+  },
+  {
+    "id": 5,
+    "type": "text_stretch",
+    "duration": 50,
+    "comment": "combo text stretch"
+  },
+  {
+    "id": 6,
+    "type": "text_stretch",
+    "duration": 50,
+    "comment": "balloon counter text stretch"
+  },
+  {
+    "id": 7,
+    "type": "fade",
+    "duration": 166,
+    "comment": "balloon counter fade out"
+  },
+  {
+    "id": 8,
+    "type": "fade",
+    "duration": 166,
+    "delay": 1183,
+    "comment": "drumroll counter fade out"
+  },
+  {
+    "id": 9,
+    "type": "text_stretch",
+    "duration": 50,
+    "comment": "drumroll counter text stretch"
+  },
+  {
+    "id": 10,
+    "type": "fade",
+    "duration": 450,
+    "comment": "gauge up fade effect"
+  },
+  {
+    "id": 11,
+    "type": "move",
+    "duration": 250,
+    "total_distance": 720,
+    "ease_out": "quadratic",
+    "comment": "kusudama move down"
+  },
+  {
+    "id": 12,
+    "type": "move",
+    "duration": 83.33,
+    "total_distance": 100,
+    "delay": {
+      "reference_id": 11,
+      "property": "duration"
     },
-    {
-        "id": 1,
-        "type": "fade",
-        "duration": 100,
-        "delay": 67,
-        "comment": "drum hit effect fade out"
+    "ease_in": "quadratic",
+    "comment": "kusudama move up"
+  },
+  {
+    "id": 13,
+    "type": "move",
+    "duration": 116.67,
+    "total_distance": 280,
+    "ease_out": "quadratic",
+    "delay": {
+      "init_val": {
+        "reference_id": 11,
+        "property": "duration"
+      },
+      "reference_id": 12,
+      "property": "duration"
     },
-    {
-        "id": 2,
-        "type": "texture_change",
-        "duration": 116.67,
-        "textures": [
-            [0, 33.33, 0],
-            [33.33, 66.66, 1],
-            [66.66, 116.67, 2]
-        ],
-        "comment": "gauge hit effect texture change"
+    "comment": "kusudama renda move up"
+  },
+  {
+    "id": 14,
+    "type": "fade",
+    "duration": 83.33,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "delay": {
+      "init_val": {
+        "reference_id": 11,
+        "property": "duration"
+      },
+      "reference_id": 12,
+      "property": "duration"
     },
-    {
-        "id": 3,
-        "type": "fade",
-        "duration": 366,
-        "delay": 3332,
-        "reverse_delay": 3332,
-        "loop": true,
-        "comment": "song name/number fade in/out"
+    "comment": "kusudama renda fade in"
+  },
+  {
+    "id": 15,
+    "type": "text_stretch",
+    "duration": 50,
+    "comment": "kusudama counter text stretch"
+  },
+  {
+    "id": 16,
+    "type": "texture_resize",
+    "duration": 100,
+    "reverse_delay": 100,
+    "initial_size": 1.0,
+    "final_size": 1.05,
+    "comment": "kusudama breathing"
+  },
+  {
+    "id": 17,
+    "type": "move",
+    "duration": 500,
+    "reverse_delay": 0,
+    "total_distance": 40,
+    "loop": true,
+    "comment": "renda breathing"
+  },
+  {
+    "id": 18,
+    "type": "move",
+    "duration": 116.67,
+    "total_distance": 40,
+    "delay": {
+      "init_val": {
+        "reference_id": 13,
+        "property": "duration"
+      },
+      "reference_id": 13,
+      "property": "delay"
     },
-    {
-        "id": 4,
-        "type": "text_stretch",
-        "duration": 50,
-        "comment": "score counter text stretch"
-    },
-    {
-        "id": 5,
-        "type": "text_stretch",
-        "duration": 50,
-        "comment": "combo text stretch"
-    },
-    {
-        "id": 6,
-        "type": "text_stretch",
-        "duration": 50,
-        "comment": "balloon counter text stretch"
-    },
-    {
-        "id": 7,
-        "type": "fade",
-        "duration": 166,
-        "comment": "balloon counter fade out"
-    },
-    {
-        "id": 8,
-        "type": "fade",
-        "duration": 166,
-        "delay": 1183,
-        "comment": "drumroll counter fade out"
-    },
-    {
-        "id": 9,
-        "type": "text_stretch",
-        "duration": 50,
-        "comment": "drumroll counter text stretch"
-    },
-    {
-        "id": 10,
-        "type": "fade",
-        "duration": 450,
-        "comment": "gauge up fade effect"
-    },
-    {
-        "id": 11,
-        "type": "move",
-        "duration": 250,
-        "total_distance": 720,
-        "ease_out": "quadratic",
-        "comment": "kusudama move down"
-    },
-    {
-        "id": 12,
-        "type": "move",
-        "duration": 83.33,
-        "total_distance": 100,
-        "delay": {
-            "reference_id": 11,
-            "property": "duration"
-        },
-        "ease_in": "quadratic",
-        "comment": "kusudama move up"
-    },
-    {
-        "id": 13,
-        "type": "move",
-        "duration": 116.67,
-        "total_distance": 280,
-        "ease_out": "quadratic",
-        "delay": {
-            "init_val": {
-                "reference_id": 11,
-                "property": "duration"
-            },
-            "reference_id": 12,
-            "property": "duration"
-        },
-        "comment": "kusudama renda move up"
-    },
-    {
-        "id": 14,
-        "type": "fade",
-        "duration": 83.33,
-        "initial_opacity": 0.0,
-        "final_opacity": 1.0,
-        "delay": {
-            "init_val": {
-                "reference_id": 11,
-                "property": "duration"
-            },
-            "reference_id": 12,
-            "property": "duration"
-        },
-        "comment": "kusudama renda fade in"
-    },
-    {
-        "id": 15,
-        "type": "text_stretch",
-        "duration": 50,
-        "comment": "kusudama counter text stretch"
-    },
-    {
-        "id": 16,
-        "type": "texture_resize",
-        "duration": 100,
-        "reverse_delay": 100,
-        "initial_size": 1.0,
-        "final_size": 1.05,
-        "comment": "kusudama breathing"
-    },
-    {
-        "id": 17,
-        "type": "move",
-        "duration": 500,
-        "reverse_delay": 0,
-        "total_distance": 40,
-        "loop": true,
-        "comment": "renda breathing"
-    },
-    {
-        "id": 18,
-        "type": "move",
-        "duration": 116.67,
-        "total_distance": 40,
-        "delay": {
-            "init_val": {
-                "reference_id": 13,
-                "property": "duration"
-            },
-            "reference_id": 13,
-            "property": "delay"
-        },
-        "ease_out": "quadratic",
-        "comment": "kusudama renda move down"
-    },
-    {
-        "id": 19,
-        "type": "texture_change",
-        "duration": 401,
-        "textures": [
-            [0, 0, 0],
-            [0, 100, 1],
-            [100, 200, 2],
-            [200, 300, 3],
-            [300, 400, 4]
-        ],
-        "comment": "kusudama open"
-    },
-    {
-        "id": 20,
-        "type": "fade",
-        "duration": 200,
-        "comment": "kusudama renda fade out"
-    },
-    {
-        "id": 21,
-        "type": "fade",
-        "duration": 150,
-        "delay": 666,
-        "comment": "kusudama fade out"
-    }
+    "ease_out": "quadratic",
+    "comment": "kusudama renda move down"
+  },
+  {
+    "id": 19,
+    "type": "texture_change",
+    "duration": 401,
+    "textures": [
+      [0, 0, 0],
+      [0, 100, 1],
+      [100, 200, 2],
+      [200, 300, 3],
+      [300, 400, 4]
+    ],
+    "comment": "kusudama open"
+  },
+  {
+    "id": 20,
+    "type": "fade",
+    "duration": 200,
+    "comment": "kusudama renda fade out"
+  },
+  {
+    "id": 21,
+    "type": "fade",
+    "duration": 150,
+    "delay": 666,
+    "comment": "kusudama fade out"
+  },
+  {
+    "id": 22,
+    "type": "texture_change",
+    "duration": 87,
+    "textures": [
+      [0.0, 4.1675, 0],
+      [4.1675, 8.335, 1],
+      [8.335, 12.502500000000001, 2],
+      [12.502500000000001, 16.67, 3],
+      [16.67, 20.837500000000002, 4],
+      [20.837500000000002, 25.005000000000003, 5],
+      [25.005000000000003, 29.172500000000003, 6],
+      [29.172500000000003, 33.34, 7],
+      [33.34, 37.50750000000001, 8],
+      [37.50750000000001, 41.675000000000004, 9],
+      [41.675000000000004, 45.8425, 10],
+      [45.8425, 50.010000000000005, 11],
+      [50.010000000000005, 54.17750000000001, 12],
+      [54.17750000000001, 58.345000000000006, 13],
+      [58.345000000000006, 62.5125, 14],
+      [62.5125, 66.68, 15],
+      [66.68, 70.84750000000001, 16],
+      [70.84750000000001, 75.01500000000001, 17],
+      [75.01500000000001, 79.1825, 18],
+      [79.1825, 83.35000000000001, 19],
+      [83.35000000000001, 87.51750000000001, 20]
+    ],
+    "comment": "balloon explosion effect"
+  }
 ]

@@ -270,6 +270,7 @@ class Player:
         self.combo_display = Combo(self.combo, 0)
         self.score_counter = ScoreCounter(self.score)
         self.gogo_time: Optional[GogoTime] = None
+        self.combo_announce = ComboAnnounce(self.combo, 0)
         self.is_gogo_time = self.play_notes[0].gogo_time if self.play_notes else False
         plate_info = global_data.config['nameplate']
         self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
@@ -401,6 +402,8 @@ class Player:
             self.combo += 1
             if self.combo % 10 == 0:
                 self.chara.set_animation('10_combo')
+            if self.combo % 100 == 0:
+                self.combo_announce = ComboAnnounce(self.combo, current_time)
             if self.combo > self.max_combo:
                 self.max_combo = self.combo
 
@@ -607,6 +610,7 @@ class Player:
     def update(self, game_screen: GameScreen, current_time: float):
         self.note_manager(game_screen.current_ms, game_screen.background, current_time)
         self.combo_display.update(current_time, self.combo)
+        self.combo_announce.update(current_time)
         self.drumroll_counter_manager(current_time)
         self.animation_manager(self.draw_judge_list, current_time)
         self.balloon_manager(current_time)
@@ -806,6 +810,7 @@ class Player:
 
         # Group 6: UI overlays
         self.combo_display.draw()
+        self.combo_announce.draw()
         tex.draw_texture('lane', 'lane_score_cover')
         tex.draw_texture('lane', f'{self.player_number}p_icon')
         tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
@@ -1499,6 +1504,49 @@ class GogoTime:
         if not self.explosion_anim.is_finished:
             for i in range(5):
                 tex.draw_texture('gogo_time', 'explosion', frame=self.explosion_anim.attribute, index=i)
+
+class ComboAnnounce:
+    def __init__(self, combo: int, current_time_ms: float):
+        self.combo = combo
+        self.wait = current_time_ms
+        self.fade = Animation.create_fade(100)
+        self.fade.start()
+        self.is_finished = False
+
+    def update(self, current_time_ms: float):
+        if current_time_ms >= self.wait + 1666.67 and not self.is_finished:
+            self.fade.start()
+            self.is_finished = True
+
+        self.fade.update(current_time_ms)
+
+    def draw(self):
+        if self.combo == 0:
+            return
+        if not self.is_finished:
+            fade = 1 - self.fade.attribute
+        else:
+            fade = self.fade.attribute
+        tex.draw_texture('combo', f'announce_bg_{global_data.player_num}p', fade=fade)
+
+        if self.combo >= 1000:
+            thousands = self.combo // 1000
+            remaining_hundreds = (self.combo % 1000) // 100
+            thousands_offset = -110
+            hundreds_offset = 20
+            if self.combo % 1000 == 0:
+                tex.draw_texture('combo', 'announce_number', frame=thousands-1, x=-23, fade=fade)
+                tex.draw_texture('combo', 'announce_add', frame=0, x=435, fade=fade)
+            else:
+                if thousands <= 5:
+                    tex.draw_texture('combo', 'announce_add', frame=thousands, x=429 + thousands_offset, fade=fade)
+                if remaining_hundreds > 0:
+                    tex.draw_texture('combo', 'announce_number', frame=remaining_hundreds-1, x=hundreds_offset, fade=fade)
+            text_offset = -30
+        else:
+            text_offset = 0
+            tex.draw_texture('combo', 'announce_number', frame=self.combo // 100 - 1, x=0, fade=fade)
+        tex.draw_texture('combo', 'announce_text', x=-text_offset/2, fade=fade)
 
 class Gauge:
     def __init__(self, player_num: str, difficulty: int, level: int, total_notes: int):

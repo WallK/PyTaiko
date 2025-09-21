@@ -2,7 +2,7 @@ import pyray as ray
 
 from libs.utils import get_current_ms
 from libs.texture import tex
-from scenes.game import GogoTime, NoteArc
+from scenes.game import ComboAnnounce
 
 
 class DevScreen:
@@ -16,7 +16,7 @@ class DevScreen:
         if not self.screen_init:
             self.screen_init = True
             tex.load_screen_textures('game')
-            self.obj = GogoTime()
+            self.obj = ComboAnnounce(0, get_current_ms())
 
     def on_screen_end(self, next_screen: str):
         self.screen_init = False
@@ -28,7 +28,7 @@ class DevScreen:
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
             return self.on_screen_end('GAME')
         elif ray.is_key_pressed(ray.KeyboardKey.KEY_SPACE):
-            self.obj = GogoTime()
+            self.obj = ComboAnnounce(100, get_current_ms())
 
     def draw(self):
         ray.draw_rectangle(0, 0, 1280, 720, ray.GREEN)

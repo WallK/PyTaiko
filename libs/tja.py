@@ -551,6 +551,7 @@ class TJAParser:
                     bar_line.load_ms = bar_line.hit_ms - (self.distance / pixels_per_ms)
                 bar_line.type = 0
                 bar_line.display = barline_display
+                bar_line.gogo_time = gogo_time
                 bar_line.bpm = bpm
                 if barline_added:
                     bar_line.display = False

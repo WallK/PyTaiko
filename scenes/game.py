@@ -785,10 +785,10 @@ class Player:
         tex.draw_texture('lane', 'lane_hit_circle')
 
         # Group 2: Judgement and hit effects
-        for anim in self.draw_judge_list:
-            anim.draw()
         if self.gogo_time is not None:
             self.gogo_time.draw()
+        for anim in self.draw_judge_list:
+            anim.draw()
 
         # Group 3: Notes and bars (game content)
         self.draw_bars(current_ms)

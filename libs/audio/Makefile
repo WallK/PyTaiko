@@ -27,9 +27,9 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
 
     # Core libraries with full dependency chain (order is critical!)
     CORE_LIBS =
-    # Check for local libportaudio.a first, then system location
-    ifneq (,$(wildcard ./libportaudio.a))
-        CORE_LIBS += ./libportaudio.a
+    # Check for local Windows-specific libportaudio first, then system location
+    ifneq (,$(wildcard ./libportaudio-win.a))
+        CORE_LIBS += ./libportaudio-win.a
     else ifneq (,$(wildcard /mingw64/lib/libportaudio.a))
         CORE_LIBS += /mingw64/lib/libportaudio.a
     else
@@ -95,11 +95,18 @@ else ifeq ($(UNAME_S),Darwin)
     CFLAGS += -I/usr/local/include -I/opt/homebrew/include
     LDFLAGS = -shared -undefined dynamic_lookup -L/usr/local/lib -L/opt/homebrew/lib
 
-    # Core libraries
-    LIBS = -lportaudio -lsndfile -lsamplerate
+    # Core libraries - check for local macOS-specific portaudio first
+    CORE_LIBS =
+    ifneq (,$(wildcard ./libportaudio-macos.a))
+        CORE_LIBS += ./libportaudio-macos.a
+    else
+        CORE_LIBS += -lportaudio
+    endif
+
+    CORE_LIBS += -lsndfile -lsamplerate
 
     # macOS frameworks
-    LIBS += -framework CoreAudio -framework AudioToolbox -framework AudioUnit
+    LIBS = $(CORE_LIBS) -framework CoreAudio -framework AudioToolbox -framework AudioUnit
     LIBS += -framework CoreFoundation -framework CoreServices
     OBJ_EXT = .o
 
@@ -110,8 +117,15 @@ else ifeq ($(UNAME_S),Linux)
     # Check for pkg-config availability
     PKG_CONFIG := $(shell command -v pkg-config 2> /dev/null)
 
-    # Core audio libraries (required)
-    CORE_LIBS = -lportaudio -lsndfile
+    # Core audio libraries (required) - check for local Linux-specific portaudio first
+    CORE_LIBS =
+    ifneq (,$(wildcard ./libportaudio-linux.a))
+        CORE_LIBS += ./libportaudio-linux.a
+    else
+        CORE_LIBS += -lportaudio
+    endif
+
+    CORE_LIBS += -lsndfile
 
     # Check for libsamplerate
     ifeq ($(call check_lib,samplerate),yes)
@@ -194,9 +208,9 @@ all: check-deps $(LIBNAME)
 # Build targets
 ifneq (,$(findstring Windows,$(UNAME_S)))
 $(LIBNAME): $(OBJECTS)
-	# Check if we need C++ linking (if libportaudio.a contains C++ code)
-	@if nm ./libportaudio.a 2>/dev/null | grep -q "operator\|__gxx_personality"; then \
-		echo "Detected C++ code in libportaudio.a - using C++ linker"; \
+	# Check if we need C++ linking (if libportaudio-win.a contains C++ code)
+	@if [ -f "./libportaudio-win.a" ] && nm ./libportaudio-win.a 2>/dev/null | grep -q "operator\|__gxx_personality"; then \
+		echo "Detected C++ code in libportaudio-win.a - using C++ linker"; \
 		$(CXX) $(LDFLAGS) -o $@ $^ -Wl,--start-group $(LIBS) -Wl,--end-group; \
 	else \
 		echo "Using C linker"; \
@@ -233,8 +247,8 @@ check-deps:
 	@echo "Compiler: $(CC)"
 ifneq (,$(findstring MINGW,$(UNAME_S)))
 	@echo "=== MinGW Libraries ==="
-	@echo "Checking for local libportaudio.a:"
-	@ls -la ./libportaudio.a 2>/dev/null && echo "✓ Found local libportaudio.a" || echo "✗ No local libportaudio.a"
+	@echo "Checking for Windows-specific libportaudio:"
+	@ls -la ./libportaudio-win.a 2>/dev/null && echo "✓ Found local libportaudio-win.a" || echo "✗ No local libportaudio-win.a"
 	@echo "Available system static libraries:"
 	@ls /mingw64/lib/lib{portaudio,sndfile,samplerate,FLAC,vorbis*,ogg}.a 2>/dev/null || echo "None found"
 	@echo "Static pthread library:"
@@ -242,6 +256,8 @@ ifneq (,$(findstring MINGW,$(UNAME_S)))
 	@echo "Libraries to link: $(LIBS)"
 else ifeq ($(UNAME_S),Linux)
 	@echo "=== Linux Package Check ==="
+	@echo "Checking for Linux-specific libportaudio:"
+	@ls -la ./libportaudio-linux.a 2>/dev/null && echo "✓ Found local libportaudio-linux.a" || echo "✗ No local libportaudio-linux.a"
 ifdef PKG_CONFIG
 	@echo "pkg-config available: yes"
 	@echo -n "PortAudio: "; pkg-config --exists portaudio-2.0 && echo "✓" || echo "✗"
@@ -253,6 +269,11 @@ ifdef PKG_CONFIG
 else
 	@echo "pkg-config not available"
 endif
+	@echo "Libraries to link: $(LIBS)"
+else ifeq ($(UNAME_S),Darwin)
+	@echo "=== macOS Package Check ==="
+	@echo "Checking for macOS-specific libportaudio:"
+	@ls -la ./libportaudio-macos.a 2>/dev/null && echo "✓ Found local libportaudio-macos.a" || echo "✗ No local libportaudio-macos.a"
 	@echo "Libraries to link: $(LIBS)"
 else
 	@echo "Libraries to link: $(LIBS)"

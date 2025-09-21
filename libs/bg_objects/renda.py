@@ -26,7 +26,9 @@ class Renda0(BaseRenda):
         super().__init__(tex, index)
         self.vert_move = Animation.create_move(1500, total_distance=800)
         self.vert_move.start()
-        self.frame = random.randint(0, 5)
+        tex_list = tex.textures['renda'][self.name].texture
+        num_of_rendas = len(tex_list) if isinstance(tex_list, list) else 0
+        self.frame = random.randint(0, num_of_rendas - 1)
         self.x = random.randint(0, 500)
         self.y = random.randint(0, 20)
 

@@ -171,8 +171,17 @@ jobs:
           make verify
         shell: bash
 
-      - name: Install static audio library (Unix)
-        if: runner.os != 'Windows'
+      - name: Create lib directory and install (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Create the directory if it doesn't exist
+          sudo mkdir -p /usr/local/lib
+          cd libs/audio
+          sudo make install
+        shell: bash
+
+      - name: Install static audio library (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd libs/audio
           sudo make install

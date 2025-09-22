@@ -31,8 +31,9 @@ jobs:
       - name: Build and install PortAudio
         run: |
           cd portaudio
-          ./configure --enable-shared --enable-static CFLAGS='-fPIC -Wno-error'
-          make clean && make
+          export CFLAGS='-fPIC -Wno-error -Wno-unused-but-set-variable'
+          export CXXFLAGS='-fPIC -Wno-error -Wno-unused-but-set-variable'
+          make clean && make CFLAGS='-fPIC -Wno-error -Wno-unused-but-set-variable' CXXFLAGS='-fPIC -Wno-error -Wno-unused-but-set-variable'
 
       - name: Upload PortAudio static library
         uses: actions/upload-artifact@v4

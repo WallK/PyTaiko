@@ -178,7 +178,7 @@ class GameScreen:
         self.result_transition.update(current_time)
         if self.result_transition.is_finished:
             return self.on_screen_end('RESULT')
-        elif len(self.player_1.play_notes) == 0:
+        elif len(self.player_1.don_notes) == 0 and len(self.player_1.kat_notes) == 0 and len(self.player_1.other_notes) == 0:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
             if self.end_ms != 0:
@@ -235,6 +235,10 @@ class Player:
             self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(self.play_notes, self.draw_note_list, self.draw_bar_list)
         else:
             self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
+
+        self.don_notes = deque([note for note in self.play_notes if note.type in {1, 3}])
+        self.kat_notes = deque([note for note in self.play_notes if note.type in {2, 4}])
+        self.other_notes = deque([note for note in self.play_notes if note.type not in {1, 2, 3, 4}])
         self.total_notes = len([note for note in self.play_notes if 0 < note.type < 5])
         self.base_score = calculate_base_score(self.play_notes)
 
@@ -332,27 +336,42 @@ class Player:
         self.current_bars = bars_to_keep
 
     def play_note_manager(self, current_ms: float, background: Optional[Background]):
-        if not self.play_notes:
+        if self.don_notes and self.don_notes[0].hit_ms + Player.TIMING_BAD < current_ms:
+            self.combo = 0
+            if background is not None:
+                background.add_chibi(True)
+            self.bad_count += 1
+            self.gauge.add_bad()
+            self.don_notes.popleft()
+            self.play_notes.popleft()
+
+        if self.kat_notes and self.kat_notes[0].hit_ms + Player.TIMING_BAD < current_ms:
+            self.combo = 0
+            if background is not None:
+                background.add_chibi(True)
+            self.bad_count += 1
+            self.gauge.add_bad()
+            self.kat_notes.popleft()
+            self.play_notes.popleft()
+
+        if not self.other_notes:
             return
 
-        note = self.play_notes[0]
+        note = self.other_notes[0]
         if note.hit_ms + Player.TIMING_BAD < current_ms:
-            if 0 < note.type <= 4:
-                self.combo = 0
-                if background is not None:
-                    background.add_chibi(True)
-                self.bad_count += 1
-                self.gauge.add_bad()
-                self.play_notes.popleft()
-            elif note.type != 8:
-                tail = self.play_notes[1]
-                if tail.hit_ms <= current_ms:
-                    self.play_notes.popleft()
-                    self.play_notes.popleft()
-                    self.is_drumroll = False
-                    self.is_balloon = False
+            if note.type != 8:
+                if len(self.other_notes) > 1:
+                    tail = self.other_notes[1]
+                    if tail.hit_ms <= current_ms:
+                        self.other_notes.popleft()
+                        self.other_notes.popleft()
+                        self.play_notes.popleft()
+                        self.play_notes.popleft()
+                        self.is_drumroll = False
+                        self.is_balloon = False
             else:
-                if len(self.play_notes) == 1:
+                if len(self.other_notes) == 1:
+                    self.other_notes.popleft()
                     self.play_notes.popleft()
         elif (note.hit_ms <= current_ms):
             if note.type == 5 or note.type == 6:
@@ -393,10 +412,22 @@ class Player:
         self.draw_note_manager(current_ms)
 
     def note_correct(self, note: Note, current_time: float):
+        # Remove from the main play_notes list
         self.play_notes.popleft()
+
+        # Remove from the appropriate separated list
+        if note.type in {1, 3} and self.don_notes and self.don_notes[0] == note:
+            self.don_notes.popleft()
+        elif note.type in {2, 4} and self.kat_notes and self.kat_notes[0] == note:
+            self.kat_notes.popleft()
+        elif note.type not in {1, 2, 3, 4} and self.other_notes and self.other_notes[0] == note:
+            self.other_notes.popleft()
+
         index = note.index
         if note.type == 7:
             self.play_notes.popleft()
+            if self.other_notes:
+                self.other_notes.popleft()
 
         if note.type < 7:
             self.combo += 1
@@ -443,7 +474,7 @@ class Player:
             note.popped = True
             self.balloon_anim.update(current_time, self.curr_balloon_count, note.popped)
             audio.play_sound(game_screen.sound_balloon_pop)
-            self.note_correct(self.play_notes[0], current_time)
+            self.note_correct(note, current_time)
 
     def check_kusudama(self, game_screen: GameScreen, note: Balloon):
         if self.kusudama_anim is None:
@@ -458,7 +489,7 @@ class Player:
             note.popped = True
 
     def check_note(self, game_screen: GameScreen, drum_type: int, current_time: float):
-        if len(self.play_notes) == 0:
+        if len(self.don_notes) == 0 and len(self.kat_notes) == 0 and len(self.other_notes) == 0:
             return
 
         if self.difficulty < 2:
@@ -469,7 +500,9 @@ class Player:
             good_window_ms = Player.TIMING_GOOD
             ok_window_ms = Player.TIMING_OK
             bad_window_ms = Player.TIMING_BAD
-        curr_note = self.play_notes[0]
+
+        # Get the current note from other_notes for drumroll/balloon handling
+        curr_note = self.other_notes[0] if self.other_notes else None
         if self.is_drumroll:
             self.check_drumroll(drum_type, game_screen.background, current_time)
         elif self.is_balloon:
@@ -479,20 +512,23 @@ class Player:
         else:
             self.curr_drumroll_count = 0
             self.curr_balloon_count = 0
-            curr_note = next(
-                (note for note in self.play_notes if note.type not in {5, 6, 7, 8}),
-                None  # Default if no matching note is found
-            )
-            if curr_note is None:
+
+            # Check appropriate note list based on drum type
+            if drum_type == 1:  # DON hit
+                if not self.don_notes:
+                    return
+                curr_note = self.don_notes[0]
+            elif drum_type == 2:  # KAT hit
+                if not self.kat_notes:
+                    return
+                curr_note = self.kat_notes[0]
+            else:
                 return
-            #If the wrong key was hit, stop checking
-            if drum_type == 1 and curr_note.type not in {1, 3}:
-                return
-            if drum_type == 2 and curr_note.type not in {2, 4}:
-                return
+
             #If the note is too far away, stop checking
             if game_screen.current_ms > (curr_note.hit_ms + bad_window_ms):
                 return
+
             big = curr_note.type == 3 or curr_note.type == 4
             if (curr_note.hit_ms - good_window_ms) <= game_screen.current_ms <= (curr_note.hit_ms + good_window_ms):
                 self.draw_judge_list.append(Judgement('GOOD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
@@ -519,6 +555,11 @@ class Player:
                 self.draw_judge_list.append(Judgement('BAD', big, ms_display=game_screen.current_ms - curr_note.hit_ms))
                 self.bad_count += 1
                 self.combo = 0
+                # Remove from both the specific note list and the main play_notes list
+                if drum_type == 1:
+                    self.don_notes.popleft()
+                else:
+                    self.kat_notes.popleft()
                 self.play_notes.popleft()
                 self.gauge.add_bad()
                 if game_screen.background is not None:
@@ -568,10 +609,12 @@ class Player:
     def autoplay_manager(self, game_screen: GameScreen, current_time: float):
         if not global_data.modifiers.auto:
             return
-        if not self.play_notes:
-            return
-        note = self.play_notes[0]
+
+        # Handle drumroll and balloon hits
         if self.is_drumroll or self.is_balloon:
+            if not self.other_notes:
+                return
+            note = self.other_notes[0]
             bpm = note.bpm
             if bpm == 0:
                 subdivision_in_ms = 0
@@ -587,24 +630,25 @@ class Player:
                 note_type = 3 if note.type == 6 else 1
                 self.check_note(game_screen, note_type, current_time)
         else:
-            while game_screen.current_ms >= note.hit_ms and note.type <= 4:
-                hit_type = 'KAT' if note.type in {2, 4} else 'DON'
+            # Handle DON notes
+            while self.don_notes and game_screen.current_ms >= self.don_notes[0].hit_ms:
+                note = self.don_notes[0]
+                hit_type = 'DON'
                 self.lane_hit_effect = LaneHitEffect(hit_type)
                 self.autoplay_hit_side = 'R' if self.autoplay_hit_side == 'L' else 'L'
                 self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
-                sound = game_screen.sound_don if hit_type == "DON" else game_screen.sound_kat
-                audio.play_sound(sound)
-                if note.type in {6, 9}:
-                    note_type = 3
-                elif note.type in {5, 7}:
-                    note_type = 1
-                else:
-                    note_type = note.type
-                self.check_note(game_screen, note_type, current_time)
-                if self.play_notes:
-                    note = self.play_notes[0]
-                else:
-                    break
+                audio.play_sound(game_screen.sound_don)
+                self.check_note(game_screen, 1, current_time)
+
+            # Handle KAT notes
+            while self.kat_notes and game_screen.current_ms >= self.kat_notes[0].hit_ms:
+                note = self.kat_notes[0]
+                hit_type = 'KAT'
+                self.lane_hit_effect = LaneHitEffect(hit_type)
+                self.autoplay_hit_side = 'R' if self.autoplay_hit_side == 'L' else 'L'
+                self.draw_drum_hit_list.append(DrumHitEffect(hit_type, self.autoplay_hit_side))
+                audio.play_sound(game_screen.sound_kat)
+                self.check_note(game_screen, 2, current_time)
 
 
     def update(self, game_screen: GameScreen, current_time: float):
@@ -637,13 +681,23 @@ class Player:
         self.handle_input(game_screen, current_time)
         self.nameplate.update(current_time)
         self.gauge.update(current_time)
-        if self.play_notes:
-            self.bpm = self.play_notes[0].bpm
-            if self.play_notes[0].gogo_time and not self.is_gogo_time:
+
+        # Get the next note from any of the three lists for BPM and gogo time updates
+        next_note = None
+        if self.don_notes:
+            next_note = self.don_notes[0]
+        elif self.kat_notes:
+            next_note = self.kat_notes[0]
+        elif self.other_notes:
+            next_note = self.other_notes[0]
+
+        if next_note:
+            self.bpm = next_note.bpm
+            if next_note.gogo_time and not self.is_gogo_time:
                 self.is_gogo_time = True
                 self.gogo_time = GogoTime()
                 self.chara.set_animation('gogo_start')
-            if not self.play_notes[0].gogo_time and self.is_gogo_time:
+            if not next_note.gogo_time and self.is_gogo_time:
                 self.is_gogo_time = False
                 self.gogo_time = None
                 self.chara.set_animation('gogo_stop')
@@ -711,11 +765,6 @@ class Player:
         if self.combo >= 50 and eighth_in_ms != 0:
             current_eighth = int((current_ms - start_ms) // eighth_in_ms)
 
-        # Separate notes by type for better batching
-        regular_notes = []
-        drumrolls = []
-        balloons = []
-
         for note in reversed(self.current_notes_draw):
             if self.is_balloon and note == self.current_notes_draw[0]:
                 continue
@@ -723,30 +772,19 @@ class Player:
                 continue
 
             if isinstance(note, Drumroll):
-                drumrolls.append(note)
+                self.draw_drumroll(current_ms, note, current_eighth)
             elif isinstance(note, Balloon) and not note.is_kusudama:
-                balloons.append(note)
+                x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
+                y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
+                self.draw_balloon(current_ms, note, current_eighth)
+                tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
             else:
-                regular_notes.append(note)
+                x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
+                y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
+                if note.display:
+                    tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
+                tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
 
-        # Draw drumrolls first
-        for note in drumrolls:
-            self.draw_drumroll(current_ms, note, current_eighth)
-
-        # Draw balloons
-        for note in balloons:
-            x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
-            y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
-            self.draw_balloon(current_ms, note, current_eighth)
-            tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
-
-        # Draw regular notes in batches
-        for note in regular_notes:
-            x_position = self.get_position_x(SCREEN_WIDTH, current_ms, note.load_ms, note.pixels_per_frame_x)
-            y_position = self.get_position_y(current_ms, note.load_ms, note.pixels_per_frame_y, note.pixels_per_frame_x)
-            if note.display:
-                tex.draw_texture('notes', str(note.type), frame=current_eighth % 2, x=x_position, y=y_position+192, center=True)
-            tex.draw_texture('notes', 'moji', frame=note.moji, x=x_position - (168//2) + 64, y=323 + y_position)
 
     def draw_modifiers(self):
         # Batch modifier texture draws to reduce state changes

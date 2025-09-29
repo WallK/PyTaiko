@@ -231,16 +231,16 @@ class Player:
         self.visual_offset = global_data.config["general"]["visual_offset"]
 
         if tja is not None:
-            self.play_notes, self.draw_note_list, self.draw_bar_list = tja.notes_to_position(self.difficulty)
-            self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(self.play_notes, self.draw_note_list, self.draw_bar_list)
+            play_notes, self.draw_note_list, self.draw_bar_list = tja.notes_to_position(self.difficulty)
+            play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(play_notes, self.draw_note_list, self.draw_bar_list)
         else:
-            self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
+            play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
 
-        self.don_notes = deque([note for note in self.play_notes if note.type in {1, 3}])
-        self.kat_notes = deque([note for note in self.play_notes if note.type in {2, 4}])
-        self.other_notes = deque([note for note in self.play_notes if note.type not in {1, 2, 3, 4}])
-        self.total_notes = len([note for note in self.play_notes if 0 < note.type < 5])
-        self.base_score = calculate_base_score(self.play_notes)
+        self.don_notes = deque([note for note in play_notes if note.type in {1, 3}])
+        self.kat_notes = deque([note for note in play_notes if note.type in {2, 4}])
+        self.other_notes = deque([note for note in play_notes if note.type not in {1, 2, 3, 4}])
+        self.total_notes = len([note for note in play_notes if 0 < note.type < 5])
+        self.base_score = calculate_base_score(play_notes)
 
         #Note management
         self.current_bars: list[Note] = []
@@ -250,7 +250,7 @@ class Player:
         self.is_balloon = False
         self.curr_balloon_count = 0
         self.balloon_index = 0
-        self.bpm = self.play_notes[0].bpm if self.play_notes else 120
+        self.bpm = play_notes[0].bpm if play_notes else 120
 
         #Score management
         self.good_count = 0
@@ -275,7 +275,7 @@ class Player:
         self.score_counter = ScoreCounter(self.score)
         self.gogo_time: Optional[GogoTime] = None
         self.combo_announce = ComboAnnounce(self.combo, 0)
-        self.is_gogo_time = self.play_notes[0].gogo_time if self.play_notes else False
+        self.is_gogo_time = play_notes[0].gogo_time if play_notes else False
         plate_info = global_data.config['nameplate']
         self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
         self.chara = Chara2D(player_number - 1, self.bpm)
@@ -343,7 +343,6 @@ class Player:
             self.bad_count += 1
             self.gauge.add_bad()
             self.don_notes.popleft()
-            self.play_notes.popleft()
 
         if self.kat_notes and self.kat_notes[0].hit_ms + Player.TIMING_BAD < current_ms:
             self.combo = 0
@@ -352,7 +351,6 @@ class Player:
             self.bad_count += 1
             self.gauge.add_bad()
             self.kat_notes.popleft()
-            self.play_notes.popleft()
 
         if not self.other_notes:
             return
@@ -365,14 +363,11 @@ class Player:
                     if tail.hit_ms <= current_ms:
                         self.other_notes.popleft()
                         self.other_notes.popleft()
-                        self.play_notes.popleft()
-                        self.play_notes.popleft()
                         self.is_drumroll = False
                         self.is_balloon = False
             else:
                 if len(self.other_notes) == 1:
                     self.other_notes.popleft()
-                    self.play_notes.popleft()
         elif (note.hit_ms <= current_ms):
             if note.type == 5 or note.type == 6:
                 self.is_drumroll = True
@@ -412,8 +407,6 @@ class Player:
         self.draw_note_manager(current_ms)
 
     def note_correct(self, note: Note, current_time: float):
-        # Remove from the main play_notes list
-        self.play_notes.popleft()
 
         # Remove from the appropriate separated list
         if note.type in {1, 3} and self.don_notes and self.don_notes[0] == note:
@@ -425,7 +418,6 @@ class Player:
 
         index = note.index
         if note.type == 7:
-            self.play_notes.popleft()
             if self.other_notes:
                 self.other_notes.popleft()
 
@@ -475,6 +467,7 @@ class Player:
             self.balloon_anim.update(current_time, self.curr_balloon_count, note.popped)
             audio.play_sound(game_screen.sound_balloon_pop)
             self.note_correct(note, current_time)
+            self.curr_balloon_count = 0
 
     def check_kusudama(self, game_screen: GameScreen, note: Balloon):
         if self.kusudama_anim is None:
@@ -487,6 +480,7 @@ class Player:
             audio.play_sound(game_screen.sound_kusudama_pop)
             self.is_balloon = False
             note.popped = True
+            self.curr_balloon_count = 0
 
     def check_note(self, game_screen: GameScreen, drum_type: int, current_time: float):
         if len(self.don_notes) == 0 and len(self.kat_notes) == 0 and len(self.other_notes) == 0:
@@ -501,7 +495,6 @@ class Player:
             ok_window_ms = Player.TIMING_OK
             bad_window_ms = Player.TIMING_BAD
 
-        # Get the current note from other_notes for drumroll/balloon handling
         curr_note = self.other_notes[0] if self.other_notes else None
         if self.is_drumroll:
             self.check_drumroll(drum_type, game_screen.background, current_time)
@@ -511,14 +504,12 @@ class Player:
             self.check_balloon(game_screen, drum_type, curr_note, current_time)
         else:
             self.curr_drumroll_count = 0
-            self.curr_balloon_count = 0
 
-            # Check appropriate note list based on drum type
-            if drum_type == 1:  # DON hit
+            if drum_type == 1:
                 if not self.don_notes:
                     return
                 curr_note = self.don_notes[0]
-            elif drum_type == 2:  # KAT hit
+            elif drum_type == 2:
                 if not self.kat_notes:
                     return
                 curr_note = self.kat_notes[0]
@@ -560,7 +551,6 @@ class Player:
                     self.don_notes.popleft()
                 else:
                     self.kat_notes.popleft()
-                self.play_notes.popleft()
                 self.gauge.add_bad()
                 if game_screen.background is not None:
                     game_screen.background.add_chibi(True)

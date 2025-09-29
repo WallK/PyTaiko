@@ -141,28 +141,27 @@ class TJAEXData:
     new: bool = False
 
 
-def calculate_base_score(play_note_list: deque[Note | Drumroll | Balloon]) -> int:
+def calculate_base_score(play_notes: deque[Note | Drumroll | Balloon]) -> int:
     total_notes = 0
-    balloon_num = 0
     balloon_count = 0
-    drumroll_sec = 0
-    for i in range(len(play_note_list)):
-        note = play_note_list[i]
-        if i < len(play_note_list)-1:
-            next_note = play_note_list[i+1]
+    drumroll_msec = 0
+    for i in range(len(play_notes)):
+        note = play_notes[i]
+        if i < len(play_notes)-1:
+            next_note = play_notes[i+1]
         else:
-            next_note = play_note_list[len(play_note_list)-1]
+            next_note = play_notes[len(play_notes)-1]
         if isinstance(note, Drumroll):
-            drumroll_sec += (next_note.hit_ms - note.hit_ms) / 1000
+            drumroll_msec += (next_note.hit_ms - note.hit_ms)
         elif isinstance(note, Balloon):
-            balloon_num += 1
             balloon_count += min(100, note.count)
+        elif note.type == 8:
+            continue
         else:
             total_notes += 1
     if total_notes == 0:
-        return 0
-    total_score = (1000000 - (balloon_count * 100) - (drumroll_sec * 1692.0079999994086)) / total_notes
-    return math.ceil(total_score / 10) * 10
+        return 1000000
+    return math.ceil((1000000 - (balloon_count * 100) - (16.920079999994086 * drumroll_msec / 1000 * 100)) / total_notes / 10) * 10
 
 def test_encodings(file_path):
     encodings = ['utf-8-sig', 'shift-jis', 'utf-8']

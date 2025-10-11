@@ -179,7 +179,7 @@ class GameScreen:
         self.result_transition.update(current_time)
         if self.result_transition.is_finished:
             return self.on_screen_end('RESULT')
-        elif len(self.player_1.don_notes) == 0 and len(self.player_1.kat_notes) == 0 and len(self.player_1.other_notes) == 0:
+        elif self.current_ms >= self.player_1.end_time:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
             if self.end_ms != 0:
@@ -234,8 +234,19 @@ class Player:
         if tja is not None:
             notes, self.branch_m, self.branch_e, self.branch_n = tja.notes_to_position(self.difficulty)
             self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(notes)
+            self.end_time = self.play_notes[-1].hit_ms
+            if self.branch_m:
+                for section in self.branch_m:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
+            if self.branch_e:
+                for section in self.branch_e:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
+            if self.branch_n:
+                for section in self.branch_n:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
         else:
             self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
+            self.end_time = 0
             notes = NoteList()
 
         self.don_notes = deque([note for note in self.play_notes if note.type in {1, 3}])
@@ -365,8 +376,8 @@ class Player:
         if self.current_bars and hasattr(self.current_bars[-1], 'branch_params'):
             self.branch_condition, e_req, m_req = self.current_bars[-1].branch_params.split(',')
             delattr(self.current_bars[-1], 'branch_params')
-            e_req = int(e_req)
-            m_req = int(m_req)
+            e_req = float(e_req)
+            m_req = float(m_req)
             if not self.is_branch:
                 self.is_branch = True
                 if self.branch_condition == 'r':
@@ -389,7 +400,7 @@ class Player:
                                 break
                         if end_roll != -1:
                             break
-                    self.curr_branch_reqs = [e_req, m_req, end_roll, 0]
+                    self.curr_branch_reqs = [e_req, m_req, end_roll, 1]
                 elif self.branch_condition == 'p':
                     start_time = self.current_bars[0].hit_ms if self.current_bars else self.current_bars[-1].hit_ms
                     branch_start_time = self.branch_m[0].bars[0].load_ms
@@ -408,7 +419,7 @@ class Player:
                             if note.type <= 4 and start_time <= note.hit_ms < branch_start_time:
                                 seen_notes.add(note)
 
-                    self.curr_branch_reqs = [e_req, m_req, branch_start_time, len(seen_notes)]
+                    self.curr_branch_reqs = [e_req, m_req, branch_start_time, max(len(seen_notes), 1)]
     def play_note_manager(self, current_ms: float, background: Optional[Background]):
         if self.don_notes and self.don_notes[0].hit_ms + Player.TIMING_BAD < current_ms:
             self.combo = 0
@@ -729,7 +740,7 @@ class Player:
         if current_ms >= end_time:
             self.is_branch = False
             if self.branch_condition == 'p':
-                self.branch_condition_count = min(int((self.branch_condition_count/total_notes)*100), 100)
+                self.branch_condition_count = min((self.branch_condition_count/total_notes)*100, 100)
             if self.branch_condition_count >= e_req and self.branch_condition_count < m_req:
                 self.merge_branch_section(self.branch_e.pop(0), current_ms)
                 if self.branch_indicator is not None and self.branch_indicator.difficulty != 'expert':

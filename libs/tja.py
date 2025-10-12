@@ -698,8 +698,6 @@ class TJAParser:
                     bisect.insort(curr_draw_list, note, key=lambda x: x.load_ms)
                     self.get_moji(curr_note_list, ms_per_measure)
                     index += 1
-                    if hasattr(curr_bar_list[-1], 'branch_params'):
-                        print(curr_note_list[-1])
         # https://stackoverflow.com/questions/72899/how-to-sort-a-list-of-dictionaries-by-a-value-of-the-dictionary-in-python
         # Sorting by load_ms is necessary for drawing, as some notes appear on the
         # screen slower regardless of when they reach the judge circle

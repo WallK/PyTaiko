@@ -223,17 +223,21 @@ class TextureChangeAnimation(BaseAnimation):
             self.is_finished = True
 
 class TextStretchAnimation(BaseAnimation):
-    def __init__(self, duration: float, loop: bool = False, lock_input: bool = False) -> None:
-        super().__init__(duration, loop=loop, lock_input=lock_input)
+    def __init__(self, duration: float, loop: bool = False, lock_input: bool = False, delay: float = 0.0) -> None:
+        super().__init__(duration, loop=loop, lock_input=lock_input, delay=delay)
     def update(self, current_time_ms: float) -> None:
         if not self.is_started:
             return
         super().update(current_time_ms)
         elapsed_time = current_time_ms - self.start_ms
-        if elapsed_time <= self.duration:
-            self.attribute = 2 + 5 * (elapsed_time // 25)
-        elif elapsed_time <= self.duration + 116:
-            frame_time = (elapsed_time - self.duration) // 16.57
+        if elapsed_time < self.delay:
+            return
+
+        animation_time = elapsed_time - self.delay
+        if animation_time <= self.duration:
+            self.attribute = 2 + 5 * (animation_time // 25)
+        elif animation_time <= self.duration + 116:
+            frame_time = (animation_time - self.duration) // 16.57
             self.attribute = 2 + 10 - (2 * (frame_time + 1))
         else:
             self.attribute = 0
@@ -346,13 +350,14 @@ class Animation:
         return TextureChangeAnimation(duration, **kwargs)
 
     @staticmethod
-    def create_text_stretch(duration: float) -> TextStretchAnimation:
+    def create_text_stretch(duration: float, **kwargs) -> TextStretchAnimation:
         """Create a text stretch animation.
 
         Args:
             duration: Length of the stretch in milliseconds
+            delay: Time to wait before starting the stretch
         """
-        return TextStretchAnimation(duration)
+        return TextStretchAnimation(duration, **kwargs)
 
     @staticmethod
     def create_texture_resize(duration: float, **kwargs) -> TextureResizeAnimation:

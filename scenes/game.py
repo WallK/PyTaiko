@@ -183,6 +183,14 @@ class GameScreen:
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
             if self.end_ms != 0:
+                if current_time >= self.end_ms + 500:
+                    if self.player_1.ending_anim is None:
+                        if session_data.result_bad == 0:
+                            self.player_1.ending_anim = FCAnimation()
+                        elif self.player_1.gauge.is_clear:
+                            self.player_1.ending_anim = ClearAnimation()
+                        elif not self.player_1.gauge.is_clear:
+                            self.player_1.ending_anim = FailAnimation()
                 if current_time >= self.end_ms + 8533.34:
                     if not self.result_transition.is_started:
                         self.result_transition.start()
@@ -298,6 +306,7 @@ class Player:
         self.gogo_time: Optional[GogoTime] = None
         self.combo_announce = ComboAnnounce(self.combo, 0)
         self.branch_indicator = BranchIndicator() if tja and tja.metadata.course_data[self.difficulty].is_branching else None
+        self.ending_anim: Optional[FailAnimation | ClearAnimation | FCAnimation] = None
         self.is_gogo_time = False
         plate_info = global_data.config['nameplate']
         self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
@@ -796,6 +805,8 @@ class Player:
         self.gauge.update(current_time)
         if self.branch_indicator is not None:
             self.branch_indicator.update(current_time)
+        if self.ending_anim is not None:
+            self.ending_anim.update(current_time)
 
         if self.is_branch:
             self.evaluate_branch(game_screen.current_ms)
@@ -961,6 +972,8 @@ class Player:
         tex.draw_texture('lane', 'drum')
         if global_data.modifiers.auto:
             tex.draw_texture('lane', 'auto_icon')
+        if self.ending_anim is not None:
+            self.ending_anim.draw()
 
         # Group 5: Hit effects and animations
         for anim in self.draw_drum_hit_list:
@@ -1755,6 +1768,171 @@ class BranchIndicator:
             tex.draw_texture('branch', 'level_up', scale=self.level_scale.attribute, fade=self.level_fade.attribute, center=True)
         tex.draw_texture('branch', self.diff_2, y=(self.diff_down.attribute - self.diff_up.attribute) * self.direction, fade=self.diff_fade.attribute)
         tex.draw_texture('branch', self.difficulty, y=(self.diff_up.attribute * (self.direction*-1)) - (70*self.direction*-1), fade=1 - self.diff_fade.attribute)
+
+class FailAnimation:
+    def __init__(self):
+        self.bachio_fade_in = Animation.create_fade(150, initial_opacity=0.0, final_opacity=1.0)
+        self.bachio_fade_in.start()
+        self.bachio_texture_change = Animation.create_texture_change(266.67, textures=[(0, 150, 0), (150, 266.67, 1)], delay=self.bachio_fade_in.duration)
+        self.bachio_fall = Animation.create_texture_change(500, textures=[[0, 495, 0], [495, 500, 1]], delay=self.bachio_texture_change.duration)
+        self.bachio_texture_change.start()
+        self.bachio_fall.start()
+        self.bachio_move_out = Animation.create_move(116.67, total_distance=150, delay=self.bachio_fade_in.duration, ease_out='quadratic')
+        self.bachio_move_out.start()
+        self.bachio_boom_fade_in = Animation.create_fade(66.67, initial_opacity=0.0, final_opacity=1.0, reverse_delay=0, delay=self.bachio_fade_in.duration + self.bachio_move_out.duration)
+        self.bachio_boom_scale = Animation.create_texture_resize(133.34, initial_size=0.5, final_size=1.0, delay=self.bachio_fade_in.duration + self.bachio_move_out.duration)
+        self.bachio_boom_fade_in.start()
+        self.bachio_boom_scale.start()
+        self.bachio_up = Animation.create_move(416.67, total_distance=60, delay=self.bachio_fade_in.duration + self.bachio_move_out.duration, ease_out='quadratic')
+        self.bachio_down = Animation.create_move(100, total_distance=60, delay=self.bachio_fade_in.duration + self.bachio_move_out.duration + self.bachio_up.duration, ease_out='quadratic')
+        self.bachio_up.start()
+        self.bachio_down.start()
+        self.text_fade_in = Animation.create_fade(283.33, initial_opacity=0.0, final_opacity=1.0, delay=self.bachio_fade_in.duration + self.bachio_move_out.duration + self.bachio_up.duration/2)
+        self.text_fade_in.start()
+        self.name = 'in'
+        self.frame = self.bachio_texture_change.attribute
+    def update(self, current_time_ms: float):
+        self.bachio_fade_in.update(current_time_ms)
+        self.bachio_texture_change.update(current_time_ms)
+        self.bachio_fall.update(current_time_ms)
+        self.bachio_move_out.update(current_time_ms)
+        self.bachio_boom_fade_in.update(current_time_ms)
+        self.bachio_boom_scale.update(current_time_ms)
+        self.bachio_up.update(current_time_ms)
+        self.bachio_down.update(current_time_ms)
+        self.text_fade_in.update(current_time_ms)
+        if self.bachio_texture_change.is_finished:
+            self.name = 'fall'
+            self.frame = self.bachio_fall.attribute
+        else:
+            self.frame = self.bachio_texture_change.attribute
+    def draw(self):
+        tex.draw_texture('ending_anim', 'fail', fade=self.text_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_l_' + self.name, x=-self.bachio_move_out.attribute - (self.bachio_up.attribute/2), y=self.bachio_down.attribute - self.bachio_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_r_' + self.name, x=self.bachio_move_out.attribute + (self.bachio_up.attribute/2), y=self.bachio_down.attribute - self.bachio_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_boom', index=0, fade=self.bachio_boom_fade_in.attribute, center=True, scale=self.bachio_boom_scale.attribute)
+        tex.draw_texture('ending_anim', 'bachio_boom', index=1, fade=self.bachio_boom_fade_in.attribute, center=True, scale=self.bachio_boom_scale.attribute)
+
+class ClearAnimation:
+    def __init__(self):
+        self.bachio_fade_in = Animation.create_fade(150, initial_opacity=0.0, final_opacity=1.0)
+        self.bachio_fade_in.start()
+        self.bachio_texture_change = Animation.create_texture_change(266.67, textures=[(0, 150, 0), (150, 266.67, 1)], delay=self.bachio_fade_in.duration)
+        self.bachio_texture_change.start()
+        self.bachio_out = Animation.create_texture_change(200, textures=[[0, 50, 0], [50, 100, 1], [100, 150, 2], [150, 200, 3]], delay=self.bachio_texture_change.duration+100)
+        self.bachio_out.start()
+        self.bachio_move_out = Animation.create_move(116.67, total_distance=200, delay=self.bachio_fade_in.duration, ease_out='quadratic')
+        self.bachio_move_out.start()
+        self.clear_separate_fade_in = [Animation.create_fade(100, initial_opacity=0.0, final_opacity=1.0, delay=i*50) for i in range(5)]
+        for fade in self.clear_separate_fade_in:
+            fade.start()
+        self.clear_separate_stretch = [Animation.create_text_stretch(200, delay=i*50) for i in range(5)]
+        for stretch in self.clear_separate_stretch:
+            stretch.start()
+        self.clear_highlight_fade_in = Animation.create_fade(183, initial_opacity=0.0, final_opacity=1.0, reverse_delay=0, delay=450)
+        self.clear_highlight_fade_in.start()
+        self.draw_clear_full = False
+        self.name = 'in'
+        self.frame = 0
+
+    def update(self, current_time_ms: float):
+        self.bachio_fade_in.update(current_time_ms)
+        self.bachio_texture_change.update(current_time_ms)
+        self.bachio_out.update(current_time_ms)
+        self.bachio_move_out.update(current_time_ms)
+        self.clear_highlight_fade_in.update(current_time_ms)
+        if self.clear_highlight_fade_in.attribute == 1.0:
+            self.draw_clear_full = True
+        for fade in self.clear_separate_fade_in:
+            fade.update(current_time_ms)
+        for stretch in self.clear_separate_stretch:
+            stretch.update(current_time_ms)
+        if self.bachio_texture_change.is_finished:
+            self.name = 'out'
+            self.frame = self.bachio_out.attribute
+        else:
+            self.frame = self.bachio_texture_change.attribute
+    def draw(self):
+        if self.draw_clear_full:
+            tex.draw_texture('ending_anim', 'clear')
+        else:
+            for i in range(4, -1, -1):
+                tex.draw_texture('ending_anim', 'clear_separated', frame=i, fade=self.clear_separate_fade_in[i].attribute, x=i*60, y=-self.clear_separate_stretch[i].attribute, y2=self.clear_separate_stretch[i].attribute)
+        tex.draw_texture('ending_anim', 'clear_highlight', fade=self.clear_highlight_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_l_' + self.name, x=-self.bachio_move_out.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_r_' + self.name, x=self.bachio_move_out.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+
+class FCAnimation:
+    def __init__(self):
+        self.bachio_fade_in = Animation.create_fade(150, initial_opacity=0.0, final_opacity=1.0)
+        self.bachio_fade_in.start()
+        self.bachio_texture_change = Animation.create_texture_change(266.67, textures=[(0, 150, 0), (150, 266.67, 1)], delay=self.bachio_fade_in.duration)
+        self.bachio_texture_change.start()
+        self.bachio_out = Animation.create_texture_change(200, textures=[[0, 50, 0], [50, 100, 1], [100, 150, 2], [150, 200, 3]], delay=self.bachio_texture_change.duration+100)
+        self.bachio_out.start()
+        self.bachio_move_out = Animation.create_move(116.67, total_distance=200, delay=self.bachio_fade_in.duration, ease_out='quadratic')
+        self.bachio_move_out.start()
+        self.clear_separate_fade_in = [Animation.create_fade(100, initial_opacity=0.0, final_opacity=1.0, delay=i*50) for i in range(5)]
+        for fade in self.clear_separate_fade_in:
+            fade.start()
+        self.clear_separate_stretch = [Animation.create_text_stretch(200, delay=i*50) for i in range(5)]
+        for stretch in self.clear_separate_stretch:
+            stretch.start()
+        self.clear_highlight_fade_in = Animation.create_fade(183, initial_opacity=0.0, final_opacity=1.0, reverse_delay=0, delay=450)
+        self.clear_highlight_fade_in.start()
+        self.fc_highlight_up = Animation.create_move(133, total_distance=20, reverse_delay=216.67, delay=450 + self.clear_highlight_fade_in.duration, ease_out='quadratic')
+        self.fc_highlight_up.start()
+        self.fc_highlight_fade_out = Animation.create_fade(133)
+        self.bachio_move_out_2 = Animation.create_move(700, total_distance=150, ease_in='quadratic', ease_out='quadratic')
+        self.bachio_move_up = Animation.create_move(350, total_distance=150, reverse_delay=0, ease_in='quadratic')
+        self.fan_fade_in = Animation.create_fade(183, initial_opacity=0.0, final_opacity=1.0)
+        self.fan_texture_change = Animation.create_texture_change(100, textures=[[0, 16.67, 0], [16.67, 33.33, 1], [33.33, 50, 2], [50, 66.67, 3], [66.67, 83.33, 4], [83.33, 100, 5]], delay=self.fan_fade_in.duration)
+        self.draw_clear_full = False
+        self.name = 'in'
+        self.frame = 0
+
+    def update(self, current_time_ms: float):
+        self.bachio_fade_in.update(current_time_ms)
+        self.bachio_texture_change.update(current_time_ms)
+        self.bachio_out.update(current_time_ms)
+        self.bachio_move_out.update(current_time_ms)
+        self.clear_highlight_fade_in.update(current_time_ms)
+        self.fc_highlight_up.update(current_time_ms)
+        self.fc_highlight_fade_out.update(current_time_ms)
+        self.bachio_move_out_2.update(current_time_ms)
+        self.bachio_move_up.update(current_time_ms)
+        self.fan_fade_in.update(current_time_ms)
+        self.fan_texture_change.update(current_time_ms)
+        if self.fc_highlight_up.is_finished and not self.fc_highlight_fade_out.is_started:
+            self.fc_highlight_fade_out.start()
+            self.bachio_move_out_2.start()
+            self.bachio_move_up.start()
+            self.fan_fade_in.start()
+            self.fan_texture_change.start()
+        if self.clear_highlight_fade_in.attribute == 1.0:
+            self.draw_clear_full = True
+        for fade in self.clear_separate_fade_in:
+            fade.update(current_time_ms)
+        for stretch in self.clear_separate_stretch:
+            stretch.update(current_time_ms)
+        if self.bachio_texture_change.is_finished:
+            self.name = 'out'
+            self.frame = self.bachio_out.attribute
+        else:
+            self.frame = self.bachio_texture_change.attribute
+    def draw(self):
+        if self.draw_clear_full:
+            tex.draw_texture('ending_anim', 'full_combo_overlay', y=-self.fc_highlight_up.attribute, fade=0.5)
+            tex.draw_texture('ending_anim', 'full_combo', y=-self.fc_highlight_up.attribute)
+            tex.draw_texture('ending_anim', 'full_combo_highlight', y=-self.fc_highlight_up.attribute, fade=self.fc_highlight_fade_out.attribute)
+            tex.draw_texture('ending_anim', 'fan_l', frame=self.fan_texture_change.attribute, fade=self.fan_fade_in.attribute)
+            tex.draw_texture('ending_anim', 'fan_r', frame=self.fan_texture_change.attribute, fade=self.fan_fade_in.attribute)
+        else:
+            for i in range(4, -1, -1):
+                tex.draw_texture('ending_anim', 'clear_separated', frame=i, fade=self.clear_separate_fade_in[i].attribute, x=i*60, y=-self.clear_separate_stretch[i].attribute, y2=self.clear_separate_stretch[i].attribute)
+        tex.draw_texture('ending_anim', 'clear_highlight', fade=self.clear_highlight_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_l_' + self.name, x=(-self.bachio_move_out.attribute - self.bachio_move_out_2.attribute)*1.15, y=-self.bachio_move_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+        tex.draw_texture('ending_anim', 'bachio_r_' + self.name, x=(self.bachio_move_out.attribute + self.bachio_move_out_2.attribute)*1.15, y=-self.bachio_move_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
 
 class Gauge:
     def __init__(self, player_num: str, difficulty: int, level: int, total_notes: int):

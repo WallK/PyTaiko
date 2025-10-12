@@ -8,7 +8,6 @@ class Nameplate:
     def __init__(self, name: str, title: str, player_num: int, dan: int, is_gold: bool):
         self.name = OutlinedText(name, 22, ray.WHITE, ray.BLACK, outline_thickness=3.0)
         self.title = OutlinedText(title, 20, ray.BLACK, ray.WHITE, outline_thickness=0)
-        print(self.name.texture.width)
         self.dan_index = dan
         self.player_num = player_num
         self.is_gold = is_gold

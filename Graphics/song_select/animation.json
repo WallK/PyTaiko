@@ -1,326 +1,372 @@
 [
-    {
-        "id": 0,
-        "type": "move",
-        "duration": 15000,
-        "total_distance": 1280,
-        "loop": true,
-        "comment": "move the background"
+  {
+    "id": 0,
+    "type": "move",
+    "duration": 15000,
+    "total_distance": 1280,
+    "loop": true,
+    "comment": "move the background"
+  },
+  {
+    "id": 1,
+    "type": "move",
+    "duration": 233,
+    "total_distance": 500,
+    "lock_input": true,
+    "comment": "move song select boxes out of view on select"
+  },
+  {
+    "id": 2,
+    "type": "fade",
+    "duration": 83,
+    "comment": "fade out difficulties from box on select"
+  },
+  {
+    "id": 3,
+    "type": "fade",
+    "duration": 33,
+    "delay": {
+      "reference_id": 1,
+      "property": "duration"
     },
-    {
-        "id": 1,
-        "type": "move",
-        "duration": 233,
-        "total_distance": 500,
-        "lock_input": true,
-        "comment": "move song select boxes out of view on select"
+    "comment": "fade out the top left text on select"
+  },
+  {
+    "id": 4,
+    "type": "fade",
+    "duration": 33,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "delay": {
+      "reference_id": 3,
+      "property": "duration"
     },
-    {
-        "id": 2,
-        "type": "fade",
-        "duration": 83,
-        "comment": "fade out difficulties from box on select"
+    "comment": "fade in the new text for diff select"
+  },
+  {
+    "id": 5,
+    "type": "fade",
+    "duration": 200,
+    "comment": "fade in/out the genre background when changed"
+  },
+  {
+    "id": 6,
+    "type": "texture_change",
+    "duration": 133,
+    "textures": [
+      [0, 32, 0],
+      [32, 80, 1],
+      [80, 112, 2],
+      [112, 133, 3]
+    ],
+    "comment": "ura switch forwards"
+  },
+  {
+    "id": 7,
+    "type": "texture_change",
+    "duration": 133,
+    "textures": [
+      [0, 32, 3],
+      [32, 80, 2],
+      [80, 112, 1],
+      [112, 133, 0]
+    ],
+    "comment": "ura switch backwards"
+  },
+  {
+    "id": 8,
+    "type": "fade",
+    "duration": 166,
+    "delay": {
+      "reference_id": 6,
+      "property": "duration"
     },
-    {
-        "id": 3,
-        "type": "fade",
-        "duration": 33,
-        "delay": {
-            "reference_id": 1,
-            "property": "duration"
+    "comment": "ura switch fade out"
+  },
+  {
+    "id": 9,
+    "type": "move",
+    "duration": 83.33,
+    "start_position": 595,
+    "total_distance": -152,
+    "delay": 83.33,
+    "comment": "yellow box left out"
+  },
+  {
+    "id": 10,
+    "type": "move",
+    "duration": 83.33,
+    "start_position": 658,
+    "total_distance": 145,
+    "delay": 83.33,
+    "comment": "yellow box right out"
+  },
+  {
+    "id": 11,
+    "type": "move",
+    "duration": 83.33,
+    "start_position": 32,
+    "total_distance": 300,
+    "delay": 83.33,
+    "comment": "yellow box center out"
+  },
+  {
+    "id": 12,
+    "type": "fade",
+    "duration": 83.33,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "delay": 83.33,
+    "comment": "yellow box fade in"
+  },
+  {
+    "id": 13,
+    "type": "move",
+    "duration": 116.67,
+    "start_position": 443,
+    "total_distance": -213,
+    "comment": "yellow box left out 2"
+  },
+  {
+    "id": 14,
+    "type": "move",
+    "duration": 116.67,
+    "start_position": 803,
+    "total_distance": 211,
+    "comment": "yellow box right out 2"
+  },
+  {
+    "id": 15,
+    "type": "move",
+    "duration": 116.67,
+    "start_position": 322,
+    "total_distance": 423,
+    "comment": "yellow box center out 2"
+  },
+  {
+    "id": 16,
+    "type": "move",
+    "duration": 133.33,
+    "start_position": 96,
+    "total_distance": -62,
+    "delay": {
+      "reference_id": 13,
+      "property": "duration"
+    },
+    "comment": "yellow box top out"
+  },
+  {
+    "id": 17,
+    "type": "move",
+    "duration": 133.33,
+    "start_position": 422,
+    "total_distance": 60,
+    "delay": {
+      "reference_id": 13,
+      "property": "duration"
+    },
+    "comment": "yellow box center h out"
+  },
+  {
+    "id": 18,
+    "type": "fade",
+    "duration": 116.67,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "delay": {
+      "init_val": {
+        "init_val": 16.67,
+        "reference_id": 16,
+        "property": "duration"
+      },
+      "reference_id": 13,
+      "property": "duration"
+    },
+    "comment": "yellow box fade in 2"
+  },
+  {
+    "id": 19,
+    "type": "texture_resize",
+    "duration": 283,
+    "initial_size": 0.2,
+    "final_size": 1.0,
+    "ease_out": "quadratic",
+    "comment": "diff sort scale up"
+  },
+  {
+    "id": 20,
+    "type": "fade",
+    "duration": {
+      "reference_id": 19,
+      "property": "duration"
+    },
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "ease_out": "quadratic",
+    "lock_input": true,
+    "comment": "diff sort diff select fade in"
+  },
+  {
+    "id": 21,
+    "type": "fade",
+    "duration": 133,
+    "reverse_delay": 0,
+    "loop": true,
+    "comment": "box outline fade in/out"
+  },
+  {
+    "id": 22,
+    "type": "move",
+    "total_distance": 30,
+    "duration": 116.67,
+    "ease_out": "quadratic",
+    "comment": "diff sort confirmation bounce up"
+  },
+  {
+    "id": 23,
+    "type": "move",
+    "total_distance": 30,
+    "duration": 116.67,
+    "delay": {
+      "reference_id": 22,
+      "property": "duration"
+    },
+    "ease_in": "quadratic",
+    "comment": "diff sort confirmation bounce down"
+  },
+  {
+    "id": 24,
+    "type": "move",
+    "total_distance": 10,
+    "duration": 83.33,
+    "delay": {
+      "init_val": {
+        "reference_id": 22,
+        "property": "duration"
+      },
+      "reference_id": 23,
+      "property": "duration"
+    },
+    "ease_out": "quadratic",
+    "comment": "diff sort confirmation bounce up 2"
+  },
+  {
+    "id": 25,
+    "type": "move",
+    "total_distance": 10,
+    "duration": 83.33,
+    "delay": {
+      "init_val": {
+        "init_val": {
+          "reference_id": 22,
+          "property": "duration"
         },
-        "comment": "fade out the top left text on select"
+        "reference_id": 23,
+        "property": "duration"
+      },
+      "reference_id": 24,
+      "property": "duration"
     },
-    {
-        "id": 4,
-        "type": "fade",
-        "duration": 33,
-        "initial_opacity": 0.0,
-        "final_opacity": 1.0,
-        "delay": {
-            "reference_id": 3,
-            "property": "duration"
-        },
-        "comment": "fade in the new text for diff select"
-    },
-    {
-        "id": 5,
-        "type": "fade",
-        "duration": 200,
-        "comment": "fade in/out the genre background when changed"
-    },
-    {
-        "id": 6,
-        "type": "texture_change",
-        "duration": 133,
-        "textures": [
-            [0, 32, 0],
-            [32, 80, 1],
-            [80, 112, 2],
-            [112, 133, 3]
-        ],
-        "comment": "ura switch forwards"
-    },
-    {
-        "id": 7,
-        "type": "texture_change",
-        "duration": 133,
-        "textures": [
-            [0, 32, 3],
-            [32, 80, 2],
-            [80, 112, 1],
-            [112, 133, 0]
-        ],
-        "comment": "ura switch backwards"
-    },
-    {
-        "id": 8,
-        "type": "fade",
-        "duration": 166,
-        "delay": {
-            "reference_id": 6,
-            "property": "duration"
-        },
-        "comment": "ura switch fade out"
-    },
-    {
-        "id": 9,
-        "type": "move",
-        "duration": 83.33,
-        "start_position": 595,
-        "total_distance": -152,
-        "delay": 83.33,
-        "comment": "yellow box left out"
-    },
-    {
-        "id": 10,
-        "type": "move",
-        "duration": 83.33,
-        "start_position": 658,
-        "total_distance": 145,
-        "delay": 83.33,
-        "comment": "yellow box right out"
-    },
-    {
-        "id": 11,
-        "type": "move",
-        "duration": 83.33,
-        "start_position": 32,
-        "total_distance": 300,
-        "delay": 83.33,
-        "comment": "yellow box center out"
-    },
-    {
-        "id": 12,
-        "type": "fade",
-        "duration": 83.33,
-        "initial_opacity": 0.0,
-        "final_opacity": 1.0,
-        "delay": 83.33,
-        "comment": "yellow box fade in"
-    },
-    {
-        "id": 13,
-        "type": "move",
-        "duration": 116.67,
-        "start_position": 443,
-        "total_distance": -213,
-        "comment": "yellow box left out 2"
-    },
-    {
-        "id": 14,
-        "type": "move",
-        "duration": 116.67,
-        "start_position": 803,
-        "total_distance": 211,
-        "comment": "yellow box right out 2"
-    },
-    {
-        "id": 15,
-        "type": "move",
-        "duration": 116.67,
-        "start_position": 322,
-        "total_distance": 423,
-        "comment": "yellow box center out 2"
-    },
-    {
-        "id": 16,
-        "type": "move",
-        "duration": 133.33,
-        "start_position": 96,
-        "total_distance": -62,
-        "delay": {
-            "reference_id": 13,
-            "property": "duration"
-        },
-        "comment": "yellow box top out"
-    },
-    {
-        "id": 17,
-        "type": "move",
-        "duration": 133.33,
-        "start_position": 422,
-        "total_distance": 60,
-        "delay": {
-            "reference_id": 13,
-            "property": "duration"
-        },
-        "comment": "yellow box center h out"
-    },
-    {
-        "id": 18,
-        "type": "fade",
-        "duration": 116.67,
-        "initial_opacity": 0.0,
-        "final_opacity": 1.0,
-        "delay": {
-            "init_val": {
-                "init_val": 16.67,
-                "reference_id": 16,
-                "property": "duration"
-            },
-            "reference_id": 13,
-            "property": "duration"
-        },
-        "comment": "yellow box fade in 2"
-    },
-    {
-        "id": 19,
-        "type": "texture_resize",
-        "duration": 283,
-        "initial_size": 0.2,
-        "final_size": 1.0,
-        "ease_out": "quadratic",
-        "comment": "diff sort scale up"
-    },
-    {
-        "id": 20,
-        "type": "fade",
-        "duration": {
-            "reference_id": 19,
-            "property": "duration"
-        },
-        "initial_opacity": 0.0,
-        "final_opacity": 1.0,
-        "ease_out": "quadratic",
-        "lock_input": true,
-        "comment": "diff sort diff select fade in"
-    },
-    {
-        "id": 21,
-        "type": "fade",
-        "duration": 133,
-        "reverse_delay": 0,
-        "loop": true,
-        "comment": "box outline fade in/out"
-    },
-    {
-        "id": 22,
-        "type": "move",
-        "total_distance": 30,
-        "duration": 116.67,
-        "ease_out": "quadratic",
-        "comment": "diff sort confirmation bounce up"
-    },
-    {
-        "id": 23,
-        "type": "move",
-        "total_distance": 30,
-        "duration": 116.67,
-        "delay": {
-            "reference_id": 22,
-            "property": "duration"
-        },
-        "ease_in": "quadratic",
-        "comment": "diff sort confirmation bounce down"
-    },
-    {
-        "id": 24,
-        "type": "move",
-        "total_distance": 10,
-        "duration": 83.33,
-        "delay": {
-            "init_val": {
-                "reference_id": 22,
-                "property": "duration"
-            },
-            "reference_id": 23,
-            "property": "duration"
-        },
-        "ease_out": "quadratic",
-        "comment": "diff sort confirmation bounce up 2"
-    },
-    {
-        "id": 25,
-        "type": "move",
-        "total_distance": 10,
-        "duration": 83.33,
-        "delay": {
-            "init_val": {
-                "init_val": {
-                    "reference_id": 22,
-                    "property": "duration"
-                },
-                "reference_id": 23,
-                "property": "duration"
-            },
-            "reference_id": 24,
-            "property": "duration"
-        },
-        "ease_in": "quadratic",
-        "comment": "diff sort confirmation bounce down 2"
-    },
-    {
-        "id": 26,
-        "type": "move",
-        "duration": 100,
-        "total_distance": 115,
-        "comment": "diff selector move between diffs"
-    },
-    {
-        "id": 27,
-        "type": "move",
-        "duration": 100,
-        "total_distance": 70,
-        "comment": "diff selector move between options"
-    },
-    {
-        "id": 28,
-        "type": "move",
-        "duration": 316.67,
-        "total_distance": 370,
-        "ease_out": "quadratic",
-        "lock_input": true,
-        "comment": "neiro move up"
-    },
-    {
-        "id": 29,
-        "type": "fade",
-        "duration": 1000,
-        "loop": true,
-        "comment": "neiro blue arrow fade out"
-    },
-    {
-        "id": 30,
-        "type": "move",
-        "duration": 1000,
-        "total_distance": 25,
-        "loop": true,
-        "comment": "neiro blue arrow move out"
-    },
-    {
-        "id": 31,
-        "type": "move",
-        "duration": 250,
-        "total_distance": 100,
-        "ease_out": "quadratic",
-        "comment": "neiro move sideways"
-    },
-    {
-        "id": 32,
-        "type": "fade",
-        "duration": 250,
-        "ease_out": "quadratic",
-        "comment": "neiro fade sideways"
-    }
+    "ease_in": "quadratic",
+    "comment": "diff sort confirmation bounce down 2"
+  },
+  {
+    "id": 26,
+    "type": "move",
+    "duration": 100,
+    "total_distance": 115,
+    "comment": "diff selector move between diffs"
+  },
+  {
+    "id": 27,
+    "type": "move",
+    "duration": 100,
+    "total_distance": 70,
+    "comment": "diff selector move between options"
+  },
+  {
+    "id": 28,
+    "type": "move",
+    "duration": 316.67,
+    "total_distance": 370,
+    "ease_out": "quadratic",
+    "lock_input": true,
+    "comment": "neiro move up"
+  },
+  {
+    "id": 29,
+    "type": "fade",
+    "duration": 1000,
+    "loop": true,
+    "comment": "neiro blue arrow fade out"
+  },
+  {
+    "id": 30,
+    "type": "move",
+    "duration": 1000,
+    "total_distance": 25,
+    "loop": true,
+    "comment": "neiro blue arrow move out"
+  },
+  {
+    "id": 31,
+    "type": "move",
+    "duration": 250,
+    "total_distance": 100,
+    "ease_out": "quadratic",
+    "comment": "neiro move sideways"
+  },
+  {
+    "id": 32,
+    "type": "fade",
+    "duration": 250,
+    "ease_out": "quadratic",
+    "comment": "neiro fade sideways"
+  },
+  {
+    "id": 33,
+    "type": "move",
+    "duration": 200,
+    "total_distance": 100,
+    "ease_out": "quadratic",
+    "reverse_delay": 0,
+    "comment": "selected diff bounce"
+  },
+  {
+    "id": 34,
+    "type": "fade",
+    "duration": 200,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "comment": "selected diff fade in"
+  },
+  {
+    "id": 35,
+    "type": "fade",
+    "duration": 466,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "reverse_delay": 0,
+    "comment": "selected diff highlight fade"
+  },
+  {
+    "id": 36,
+    "type": "texture_resize",
+    "duration": 466,
+    "initial_size": 3.0,
+    "final_size": 1.0,
+    "delay": 466,
+    "ease_in": "quadratic",
+    "comment": "selected diff text resize"
+  },
+  {
+    "id": 37,
+    "type": "fade",
+    "duration": 466,
+    "initial_opacity": 0.0,
+    "final_opacity": 1.0,
+    "delay": 466,
+    "ease_in": "quadratic",
+    "comment": "selected diff text fade in"
+  }
 ]

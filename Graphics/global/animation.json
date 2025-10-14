@@ -90,5 +90,29 @@
     "duration": 1000,
     "loop": true,
     "comment": "indicator blue arrow fade in/out"
+  },
+  {
+    "id": 9,
+    "type": "texture_resize",
+    "duration": 333,
+    "initial_size": 1.0,
+    "final_size": 1.5,
+    "reverse_delay": 0,
+    "ease_out": "quadratic",
+    "comment": "timer counter pop in/out"
+  },
+  {
+    "id": 10,
+    "type": "texture_resize",
+    "duration": 200,
+    "initial_size": 1.0,
+    "final_size": 1.5,
+    "comment": "timer highlight pop out"
+  },
+  {
+    "id": 11,
+    "type": "fade",
+    "duration": 200,
+    "comment": "timer highlight fade out"
   }
 ]

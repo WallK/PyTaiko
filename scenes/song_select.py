@@ -495,14 +495,14 @@ class SongSelectScreen:
         if (self.selected_song and self.state == State.SONG_SELECTED and self.selected_difficulty >= 0):
             if global_data.player_num == 2:
                 tex.draw_texture('global', 'background_diff', frame=self.selected_difficulty, fade=min(0.5, self.selected_diff_fadein.attribute), x=1025, y=-self.selected_diff_bounce.attribute, y2=self.selected_diff_bounce.attribute)
-                tex.draw_texture('global', 'background_diff_highlight', frame=max(3, self.selected_difficulty), fade=self.selected_diff_highlight_fade.attribute, x=1025)
+                tex.draw_texture('global', 'background_diff_highlight', frame=min(3, self.selected_difficulty), fade=self.selected_diff_highlight_fade.attribute, x=1025)
                 tex.draw_texture('global', 'bg_diff_text_bg', x=1025, fade=min(0.5, self.selected_diff_text_fadein.attribute), scale=self.selected_diff_text_resize.attribute, center=True)
-                tex.draw_texture('global', 'bg_diff_text', frame=self.selected_difficulty, x=1025, fade=self.selected_diff_text_fadein.attribute, scale=self.selected_diff_text_resize.attribute, center=True)
+                tex.draw_texture('global', 'bg_diff_text', frame=min(3, self.selected_difficulty), x=1025, fade=self.selected_diff_text_fadein.attribute, scale=self.selected_diff_text_resize.attribute, center=True)
             else:
                 tex.draw_texture('global', 'background_diff', frame=self.selected_difficulty, fade=min(0.5, self.selected_diff_fadein.attribute), y=-self.selected_diff_bounce.attribute, y2=self.selected_diff_bounce.attribute)
-                tex.draw_texture('global', 'background_diff_highlight', frame=max(3, self.selected_difficulty), fade=self.selected_diff_highlight_fade.attribute)
+                tex.draw_texture('global', 'background_diff_highlight', frame=min(3, self.selected_difficulty), fade=self.selected_diff_highlight_fade.attribute)
                 tex.draw_texture('global', 'bg_diff_text_bg', fade=min(0.5, self.selected_diff_text_fadein.attribute), scale=self.selected_diff_text_resize.attribute, center=True)
-                tex.draw_texture('global', 'bg_diff_text', frame=self.selected_difficulty, fade=self.selected_diff_text_fadein.attribute, scale=self.selected_diff_text_resize.attribute, center=True)
+                tex.draw_texture('global', 'bg_diff_text', frame=min(3, self.selected_difficulty), fade=self.selected_diff_text_fadein.attribute, scale=self.selected_diff_text_resize.attribute, center=True)
 
         for item in self.navigator.items:
             box = item.box

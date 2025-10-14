@@ -20,7 +20,7 @@ class GlobalData:
     total_songs: int = 0
     hit_sound: int = 0
     player_num: int = 1
-    input_locked: bool = False
+    input_locked: int = 0
     modifiers: Modifiers = field(default_factory=lambda: Modifiers())
 
 global_data = GlobalData()

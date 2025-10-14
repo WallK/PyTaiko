@@ -138,6 +138,7 @@ def main():
 
         if next_screen is not None:
             current_screen = next_screen
+            global_data.input_locked = 0
 
         if global_data.config["general"]["fps_counter"]:
             ray.draw_fps(20, 20)

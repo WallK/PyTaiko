@@ -816,12 +816,16 @@ class Player:
 
         # Get the next note from any of the three lists for BPM and gogo time updates
         next_note = None
+        candidates = []
         if self.don_notes:
-            next_note = self.don_notes[0]
-        elif self.kat_notes:
-            next_note = self.kat_notes[0]
-        elif self.other_notes:
-            next_note = self.other_notes[0]
+            candidates.append(self.don_notes[0])
+        if self.kat_notes:
+            candidates.append(self.kat_notes[0])
+        if self.other_notes:
+            candidates.append(self.other_notes[0])
+
+        if candidates:
+            next_note = min(candidates, key=lambda note: note.load_ms)
 
         if next_note:
             self.bpm = next_note.bpm

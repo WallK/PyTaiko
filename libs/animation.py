@@ -33,6 +33,7 @@ class BaseAnimation():
         self.is_finished = False
         self.attribute = 0
         self.is_started = False
+        self.unlocked = False
         self.loop = loop
         self.lock_input = lock_input
 
@@ -46,15 +47,17 @@ class BaseAnimation():
         """Update the animation based on the current time."""
         if self.loop and self.is_finished:
             self.restart()
-        if self.lock_input and self.is_finished:
-            global_data.input_locked = False
+        if self.lock_input and self.is_finished and not self.unlocked:
+            self.unlocked = True
+            global_data.input_locked -= 1
 
     def restart(self) -> None:
         self.start_ms = get_current_ms()
         self.is_finished = False
         self.delay = self.delay_saved
+        self.unlocked = False
         if self.lock_input:
-            global_data.input_locked = True
+            global_data.input_locked += 1
 
     def start(self) -> None:
         self.is_started = True
@@ -63,12 +66,12 @@ class BaseAnimation():
     def pause(self):
         self.is_started = False
         if self.lock_input:
-            global_data.input_locked = False
+            global_data.input_locked -= 1
 
     def unpause(self):
         self.is_started = True
         if self.lock_input:
-            global_data.input_locked = True
+            global_data.input_locked += 1
 
     def reset(self):
         self.restart()

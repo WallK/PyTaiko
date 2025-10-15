@@ -290,7 +290,6 @@
     "duration": 316.67,
     "total_distance": 370,
     "ease_out": "quadratic",
-    "lock_input": true,
     "comment": "neiro move up"
   },
   {

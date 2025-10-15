@@ -367,6 +367,7 @@
     "final_opacity": 1.0,
     "delay": 466,
     "ease_in": "quadratic",
+    "lock_input": true,
     "comment": "selected diff text fade in"
   }
 ]

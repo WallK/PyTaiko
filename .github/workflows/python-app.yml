@@ -145,6 +145,18 @@ jobs:
           ldd build/lib/libaudio.dll || echo "Could not check dependencies"
         shell: bash
 
+      - name: Copy runtime DLLs to root (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "=== Copying runtime DLLs to root directory ==="
+          cp libs/audio/libgcc_s_seh-1.dll . 2>/dev/null && echo "✓ Copied libgcc_s_seh-1.dll" || echo "⚠ libgcc_s_seh-1.dll not found"
+          cp libs/audio/libstdc++-6.dll . 2>/dev/null && echo "✓ Copied libstdc++-6.dll" || echo "⚠ libstdc++-6.dll not found"
+          cp libs/audio/libwinpthread-1.dll . 2>/dev/null && echo "✓ Copied libwinpthread-1.dll" || echo "⚠ libwinpthread-1.dll not found"
+
+          echo "=== Root directory contents ==="
+          ls -la *.dll 2>/dev/null || echo "No DLLs in root directory"
+        shell: bash
+
       # For Unix systems, also try static builds
       - name: Install static development libraries (Ubuntu)
         if: runner.os == 'Linux'
@@ -216,6 +228,10 @@ jobs:
             cp libs/audio/*.dll release/ 2>/dev/null || echo "No DLLs found in libs/audio/"
             # Also try from build/lib as backup
             cp build/lib/*.dll release/ 2>/dev/null || echo "No DLLs found in build/lib/"
+            # Copy the runtime DLLs from root directory
+            cp libgcc_s_seh-1.dll release/ 2>/dev/null || echo "libgcc_s_seh-1.dll not found in root"
+            cp libstdc++-6.dll release/ 2>/dev/null || echo "libstdc++-6.dll not found in root"
+            cp libwinpthread-1.dll release/ 2>/dev/null || echo "libwinpthread-1.dll not found in root"
             # List what we copied
             echo "DLLs in release directory:"
             ls -la release/*.dll 2>/dev/null || echo "No DLLs found in release/"

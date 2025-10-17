@@ -4,10 +4,8 @@ from pathlib import Path
 
 from libs.utils import get_config
 
-# Initialize CFFI
 ffi = cffi.FFI()
 
-# Define the C interface
 ffi.cdef("""
     typedef int PaHostApiIndex;
     // Forward declarations
@@ -101,8 +99,6 @@ ffi.cdef("""
     void free(void *ptr);
 """)
 
-# Load the compiled C library
-# gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread
 try:
     if platform.system() == "Windows":
         lib = ffi.dlopen("libaudio.dll")
@@ -112,17 +108,6 @@ try:
         lib = ffi.dlopen("./libaudio.so")
 except OSError as e:
     print(f"Failed to load shared library: {e}")
-    print("Make sure to compile your C code first.")
-    if platform.system() == "Linux":
-        print("Example:")
-        print("gcc -shared -fPIC -o libaudio.so audio.c -lportaudio -lsndfile -lpthread")
-    elif platform.system() == "Windows":
-        print("On Windows, make sure you've built a DLL with MinGW or MSVC:")
-        print("Example with MinGW:")
-        print("gcc -shared -o libaudio.dll audio.c -lportaudio -lsndfile -lpthread")
-    elif platform.system() == "Darwin":
-        print("On macOS:")
-        print("gcc -dynamiclib -o libaudio.dylib audio.c -lportaudio -lsndfile -lpthread")
     raise
 
 class AudioEngine:
@@ -140,6 +125,7 @@ class AudioEngine:
         self.sounds_path = Path("Sounds")
 
     def list_host_apis(self):
+        """Prints a list of available host APIs to the console"""
         lib.list_host_apis() # type: ignore
 
     def init_audio_device(self) -> bool:
@@ -268,6 +254,7 @@ class AudioEngine:
             print(f"Sound {name} not found")
 
     def is_sound_playing(self, name: str) -> bool:
+        """Check if a sound is playing"""
         if name == 'don':
             return lib.is_sound_playing(self.don) # type: ignore
         elif name == 'kat':
@@ -280,6 +267,7 @@ class AudioEngine:
             return False
 
     def set_sound_volume(self, name: str, volume: float) -> None:
+        """Set the volume of a specific sound"""
         if name == 'don':
             lib.set_sound_volume(self.don, volume) # type: ignore
         elif name == 'kat':

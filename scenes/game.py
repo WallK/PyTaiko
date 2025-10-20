@@ -234,32 +234,29 @@ class Player:
     TIMING_OK_EASY = 108.441665649414
     TIMING_BAD_EASY = 125.125
 
-    def __init__(self, tja: Optional[TJAParser], player_number: int, difficulty: int):
+    def __init__(self, tja: TJAParser, player_number: int, difficulty: int):
 
         self.player_number = str(player_number)
         self.difficulty = difficulty
         self.visual_offset = global_data.config["general"]["visual_offset"]
 
-        if tja is not None:
-            notes, self.branch_m, self.branch_e, self.branch_n = tja.notes_to_position(self.difficulty)
-            self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(notes)
+        notes, self.branch_m, self.branch_e, self.branch_n = tja.notes_to_position(self.difficulty)
+        self.play_notes, self.draw_note_list, self.draw_bar_list = apply_modifiers(notes)
+        self.end_time = 0
+        if self.play_notes:
             self.end_time = self.play_notes[-1].hit_ms
-            if self.branch_m:
-                for section in self.branch_m:
-                    if section.play_notes:
-                        self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
-            if self.branch_e:
-                for section in self.branch_e:
-                    if section.play_notes:
-                        self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
-            if self.branch_n:
-                for section in self.branch_n:
-                    if section.play_notes:
-                        self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
-        else:
-            self.play_notes, self.draw_note_list, self.draw_bar_list = deque(), deque(), deque()
-            self.end_time = 0
-            notes = NoteList()
+        if self.branch_m:
+            for section in self.branch_m:
+                if section.play_notes:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
+        if self.branch_e:
+            for section in self.branch_e:
+                if section.play_notes:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
+        if self.branch_n:
+            for section in self.branch_n:
+                if section.play_notes:
+                    self.end_time = max(self.end_time, section.play_notes[-1].hit_ms)
 
         self.don_notes = deque([note for note in self.play_notes if note.type in {1, 3}])
         self.kat_notes = deque([note for note in self.play_notes if note.type in {2, 4}])

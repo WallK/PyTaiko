@@ -1939,7 +1939,7 @@ class FileNavigator:
             # Create SongFile objects
             for tja_path in sorted(tja_files):
                 song_key = str(tja_path)
-                if song_key not in self.all_song_files:
+                if song_key not in self.all_song_files and tja_path in global_data.song_paths:
                     song_obj = SongFile(tja_path, tja_path.name, texture_index)
                     song_obj.box.get_scores()
                     for course in song_obj.tja.metadata.course_data:
@@ -1970,7 +1970,8 @@ class FileNavigator:
                         self.new_items.append(SongFile(tja_path, tja_path.name, SongBox.DEFAULT_INDEX, name_texture_index=texture_index))
                     self.all_song_files[song_key] = song_obj
 
-                content_items.append(self.all_song_files[song_key])
+                if song_key in self.all_song_files:
+                    content_items.append(self.all_song_files[song_key])
 
             self.directory_contents[dir_key] = content_items
             self.crown_cache_dirty.add(dir_key)

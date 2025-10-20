@@ -315,6 +315,10 @@ class Player:
         plate_info = global_data.config['nameplate']
         self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
         self.chara = Chara2D(player_number - 1, self.bpm)
+        if global_data.config['general']['judge_counter']:
+            self.judge_counter = JudgeCounter()
+        else:
+            self.judge_counter = None
 
         self.input_log: dict[float, tuple] = dict()
 
@@ -807,6 +811,8 @@ class Player:
         self.handle_input(game_screen, current_time)
         self.nameplate.update(current_time)
         self.gauge.update(current_time)
+        if self.judge_counter is not None:
+            self.judge_counter.update(self.good_count, self.ok_count, self.bad_count, self.total_drumroll)
         if self.branch_indicator is not None:
             self.branch_indicator.update(current_time)
         if self.ending_anim is not None:
@@ -997,6 +1003,8 @@ class Player:
         tex.draw_texture('lane', 'lane_score_cover')
         tex.draw_texture('lane', f'{self.player_number}p_icon')
         tex.draw_texture('lane', 'lane_difficulty', frame=self.difficulty)
+        if self.judge_counter is not None:
+            self.judge_counter.draw()
 
         # Group 7: Player-specific elements
         if not global_data.modifiers.auto:
@@ -1946,6 +1954,43 @@ class FCAnimation:
         tex.draw_texture('ending_anim', 'clear_highlight', fade=self.clear_highlight_fade_in.attribute)
         tex.draw_texture('ending_anim', 'bachio_l_' + self.name, x=(-self.bachio_move_out.attribute - self.bachio_move_out_2.attribute)*1.15, y=-self.bachio_move_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
         tex.draw_texture('ending_anim', 'bachio_r_' + self.name, x=(self.bachio_move_out.attribute + self.bachio_move_out_2.attribute)*1.15, y=-self.bachio_move_up.attribute, frame=self.frame, fade=self.bachio_fade_in.attribute)
+
+class JudgeCounter:
+    def __init__(self):
+        self.good = 0
+        self.ok = 0
+        self.bad = 0
+        self.drumrolls = 0
+    def update(self, good, ok, bad, drumrolls):
+        self.good = good
+        self.ok = ok
+        self.bad = bad
+        self.drumrolls = drumrolls
+    def draw_counter(self, counter: float, x: int, y: int, margin: int, color: ray.Color):
+        for i, digit in enumerate(str(int(counter))):
+            tex.draw_texture('judge_counter', 'counter', frame=int(digit), x=x-(len(str(int(counter))) - i) * margin, y=y, color=color)
+    def draw(self):
+        tex.draw_texture('judge_counter', 'bg')
+        tex.draw_texture('judge_counter', 'total_percent')
+        tex.draw_texture('judge_counter', 'judgments')
+        tex.draw_texture('judge_counter', 'drumrolls')
+
+        for i in range(4):
+            tex.draw_texture('judge_counter', 'percent', index=i, color=ray.Color(253, 161, 0, 255))
+
+        total_notes = self.good + self.ok + self.bad
+        if total_notes == 0:
+            total_notes = 1
+        self.draw_counter(self.good / total_notes * 100, 260, 440, 23, ray.Color(253, 161, 0, 255))
+        self.draw_counter(self.ok / total_notes * 100, 260, 477, 23, ray.Color(253, 161, 0, 255))
+        self.draw_counter(self.bad / total_notes * 100, 260, 515, 23, ray.Color(253, 161, 0, 255))
+        self.draw_counter((self.good + self.ok) / total_notes * 100, 270, 388, 23, ray.Color(253, 161, 0, 255))
+
+        self.draw_counter(self.good, 180, 440, 23, ray.WHITE)
+        self.draw_counter(self.ok, 180, 477, 23, ray.WHITE)
+        self.draw_counter(self.bad, 180, 515, 23, ray.WHITE)
+        self.draw_counter(self.drumrolls, 180, 577, 23, ray.WHITE)
+
 
 class Gauge:
     def __init__(self, player_num: str, difficulty: int, level: int, total_notes: int):

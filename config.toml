@@ -6,6 +6,7 @@ language = "ja"
 hard_judge = 108
 touch_enabled = false
 timer_frozen = true
+judge_counter = false
 
 [nameplate]
 name = 'どんちゃん'

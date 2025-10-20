@@ -360,7 +360,8 @@ void init_audio_device(PaHostApiIndex host_api, double sample_rate, unsigned lon
     TRACELOG(LOG_INFO, "    > Format:        %s", "Float32");
     TRACELOG(LOG_INFO, "    > Channels:      %d", AUDIO_DEVICE_CHANNELS);
     TRACELOG(LOG_INFO, "    > Sample rate:   %f", AUDIO.System.sampleRate);
-    TRACELOG(LOG_INFO, "    > Latency:       %f ms", AUDIO.System.outputParameters.suggestedLatency * 1000.0);
+    TRACELOG(LOG_INFO, "    > Buffer size:   %lu", buffer_size);
+    TRACELOG(LOG_INFO, "    > Latency:       %f ms", Pa_GetStreamInfo(AUDIO.System.stream)->outputLatency * 1000.0);
 }
 
 void close_audio_device(void)

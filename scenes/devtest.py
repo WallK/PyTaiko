@@ -2,7 +2,7 @@ import pyray as ray
 
 from libs.utils import get_current_ms
 from libs.texture import tex
-from scenes.game import FCAnimation
+from scenes.game import JudgeCounter
 
 
 class DevScreen:
@@ -16,7 +16,7 @@ class DevScreen:
         if not self.screen_init:
             self.screen_init = True
             tex.load_screen_textures('game')
-            self.obj = FCAnimation()
+            self.obj = JudgeCounter(10)
 
     def on_screen_end(self, next_screen: str):
         self.screen_init = False
@@ -24,11 +24,11 @@ class DevScreen:
 
     def update(self):
         self.on_screen_start()
-        self.obj.update(get_current_ms())
+        self.obj.update()
         if ray.is_key_pressed(ray.KeyboardKey.KEY_ENTER):
             return self.on_screen_end('GAME')
         if ray.is_key_pressed(ray.KeyboardKey.KEY_SPACE):
-            self.obj = FCAnimation()
+            self.obj = JudgeCounter(500)
 
     def draw(self):
         ray.draw_rectangle(0, 0, 1280, 720, ray.GREEN)

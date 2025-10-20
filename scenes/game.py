@@ -62,23 +62,18 @@ class GameScreen:
             self.sound_kat = audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "ka.ogg", 'hitsound_kat')
 
     def init_tja(self, song: Path, difficulty: int):
-        if song == Path(''):
-            self.start_ms = get_current_ms()
-            self.tja = None
+        self.tja = TJAParser(song, start_delay=self.start_delay, distance=SCREEN_WIDTH - GameScreen.JUDGE_X)
+        if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
+            self.movie = VideoPlayer(self.tja.metadata.bgmovie)
+            self.movie.set_volume(0.0)
         else:
-            self.tja = TJAParser(song, start_delay=self.start_delay, distance=SCREEN_WIDTH - GameScreen.JUDGE_X)
-            if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
-                self.movie = VideoPlayer(self.tja.metadata.bgmovie)
-                self.movie.set_volume(0.0)
-            else:
-                self.movie = None
-            session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
-            if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file() and self.song_music is None:
-                self.song_music = audio.load_music_stream(self.tja.metadata.wave, 'song')
+            self.movie = None
+        session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
+        if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file() and self.song_music is None:
+            self.song_music = audio.load_music_stream(self.tja.metadata.wave, 'song')
 
         self.player_1 = Player(self.tja, global_data.player_num, difficulty)
-        if self.tja is not None:
-            self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
+        self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
     def on_screen_start(self):
         if not self.screen_init:
@@ -93,14 +88,9 @@ class GameScreen:
             self.init_tja(global_data.selected_song, session_data.selected_difficulty)
             self.song_info = SongInfo(session_data.song_title, session_data.genre_index)
             self.result_transition = ResultTransition(global_data.player_num)
-            self.bpm = 120
-            if self.tja is not None:
-                subtitle = self.tja.metadata.subtitle.get(global_data.config['general']['language'].lower(), '')
-                self.bpm = self.tja.metadata.bpm
-                scene_preset = self.tja.metadata.scene_preset
-            else:
-                subtitle = ''
-                scene_preset = ''
+            subtitle = self.tja.metadata.subtitle.get(global_data.config['general']['language'].lower(), '')
+            self.bpm = self.tja.metadata.bpm
+            scene_preset = self.tja.metadata.scene_preset
             self.background = Background(global_data.player_num, self.bpm, scene_preset=scene_preset)
             self.transition = Transition(session_data.song_title, subtitle, is_second=True)
             self.allnet_indicator = AllNetIcon()
@@ -113,7 +103,8 @@ class GameScreen:
         audio.unload_all_music()
         self.song_started = False
         self.end_ms = 0
-        self.movie = None
+        if self.movie is not None:
+            self.movie.stop()
         if self.background is not None:
             self.background.unload()
         return next_screen
@@ -167,14 +158,14 @@ class GameScreen:
         current_time = get_current_ms()
         self.transition.update(current_time)
         self.current_ms = current_time - self.start_ms
-        if self.tja is not None:
-            if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
-                if self.song_music is not None:
-                    audio.play_music_stream(self.song_music)
-                    print(f"Song started at {self.current_ms}")
-                if self.movie is not None:
-                    self.movie.start(current_time)
-                self.song_started = True
+        if (self.current_ms >= self.tja.metadata.offset*1000 + self.start_delay - global_data.config["general"]["judge_offset"]) and not self.song_started:
+            if self.song_music is not None:
+                audio.play_music_stream(self.song_music)
+                print(f"Song started at {self.current_ms}")
+            if self.movie is not None:
+                self.movie.start(current_time)
+            self.song_started = True
+
         if self.movie is not None:
             self.movie.update()
         else:
@@ -233,9 +224,6 @@ class GameScreen:
         self.transition.draw()
         self.result_transition.draw()
         self.allnet_indicator.draw()
-
-    def draw_3d(self):
-        self.player_1.draw_3d()
 
 class Player:
     TIMING_GOOD = 25.0250015258789
@@ -1027,9 +1015,6 @@ class Player:
         for anim in self.base_score_list:
             anim.draw()
         #ray.draw_circle(game_screen.width//2, game_screen.height, 300, ray.ORANGE)
-
-    def draw_3d(self):
-        pass
 
 class Judgement:
     def __init__(self, type: str, big: bool, ms_display: Optional[float]=None):

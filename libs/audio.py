@@ -182,7 +182,6 @@ class AudioEngine:
 
             if lib.is_sound_valid(sound): # type: ignore
                 self.sounds[name] = sound
-                print(f"Loaded sound from {file_path} as {name}")
                 return name
             else:
                 print(f"Failed to load sound: {file_path}")
@@ -196,7 +195,6 @@ class AudioEngine:
         if name in self.sounds:
             lib.unload_sound(self.sounds[name]) # type: ignore
             del self.sounds[name]
-            print(f"Unloaded sound {name}")
         else:
             print(f"Sound {name} not found")
 

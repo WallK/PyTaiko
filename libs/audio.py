@@ -179,7 +179,10 @@ class AudioEngine:
     def load_sound(self, file_path: Path, name: str) -> str:
         """Load a sound file and return sound ID"""
         try:
-            file_path_str = str(file_path).encode('utf-8')
+            if platform.system() == 'Windows':
+                file_path_str = str(file_path).encode('utf-16')
+            else:
+                file_path_str = str(file_path).encode('utf-8')
             sound = lib.load_sound(file_path_str) # type: ignore
 
             if lib.is_sound_valid(sound): # type: ignore
@@ -293,7 +296,10 @@ class AudioEngine:
     # Music management
     def load_music_stream(self, file_path: Path, name: str) -> str:
         """Load a music stream and return music ID"""
-        file_path_str = str(file_path).encode('utf-8')
+        if platform.system() == 'Windows':
+            file_path_str = str(file_path).encode('utf-16')
+        else:
+            file_path_str = str(file_path).encode('utf-8')
         music = lib.load_music_stream(file_path_str) # type: ignore
 
         if lib.is_music_valid(music): # type: ignore

@@ -1,4 +1,5 @@
 import cffi
+import ctypes
 import platform
 from pathlib import Path
 
@@ -109,6 +110,20 @@ try:
 except OSError as e:
     print(f"Failed to load shared library: {e}")
     raise
+   
+def get_short_path_name(long_path: str) -> str:
+    """Convert long path to Windows short path (8.3 format)"""
+    if platform.system() != 'Windows':
+        return long_path
+    
+    # Get short path name
+    buffer = ctypes.create_unicode_buffer(512)
+    get_short_path = ctypes.windll.kernel32.GetShortPathNameW
+    ret = get_short_path(long_path, buffer, 512)
+    
+    if ret:
+        return buffer.value
+    return long_path
 
 class AudioEngine:
     """Initialize an audio engine for playing sounds and music."""
@@ -180,7 +195,8 @@ class AudioEngine:
         """Load a sound file and return sound ID"""
         try:
             if platform.system() == 'Windows':
-                file_path_str = str(file_path).encode('utf-16')
+                # Use Windows ANSI codepage (e.g., cp932 for Japanese, cp1252 for Western)
+                file_path_str = str(file_path).encode('cp932', errors='replace')
             else:
                 file_path_str = str(file_path).encode('utf-8')
             sound = lib.load_sound(file_path_str) # type: ignore
@@ -297,7 +313,8 @@ class AudioEngine:
     def load_music_stream(self, file_path: Path, name: str) -> str:
         """Load a music stream and return music ID"""
         if platform.system() == 'Windows':
-            file_path_str = str(file_path).encode('utf-16')
+            # Use Windows ANSI codepage (e.g., cp932 for Japanese, cp1252 for Western)
+            file_path_str = str(file_path).encode('cp932', errors='replace')
         else:
             file_path_str = str(file_path).encode('utf-8')
         music = lib.load_music_stream(file_path_str) # type: ignore

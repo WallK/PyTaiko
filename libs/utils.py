@@ -4,7 +4,6 @@ import math
 import sys
 import time
 import json
-from dataclasses import dataclass
 from libs.global_data import global_data
 from functools import lru_cache
 from pathlib import Path
@@ -92,11 +91,16 @@ def save_config(config: dict[str, Any]) -> None:
     with open(Path('config.toml'), "w", encoding="utf-8") as f:
         tomlkit.dump(config, f)
 
-def is_l_don_pressed() -> bool:
+def is_l_don_pressed(player_num: str = '0') -> bool:
     """Check if the left don button is pressed"""
     if global_data.input_locked:
         return False
-    keys = global_data.config["keys_1p"]["left_don"]
+    if player_num == '0':
+        keys = global_data.config["keys_1p"]["left_don"] + global_data.config["keys_2p"]["left_don"]
+    elif player_num == '1':
+        keys = global_data.config["keys_1p"]["left_don"]
+    elif player_num == '2':
+        keys = global_data.config["keys_2p"]["left_don"]
     gamepad_buttons = global_data.config["gamepad"]["left_don"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
@@ -117,11 +121,16 @@ def is_l_don_pressed() -> bool:
 
     return False
 
-def is_r_don_pressed() -> bool:
+def is_r_don_pressed(player_num: str = '0') -> bool:
     """Check if the right don button is pressed"""
     if global_data.input_locked:
         return False
-    keys = global_data.config["keys_1p"]["right_don"]
+    if player_num == '0':
+        keys = global_data.config["keys_1p"]["right_don"] + global_data.config["keys_2p"]["right_don"]
+    elif player_num == '1':
+        keys = global_data.config["keys_1p"]["right_don"]
+    elif player_num == '2':
+        keys = global_data.config["keys_2p"]["right_don"]
     gamepad_buttons = global_data.config["gamepad"]["right_don"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
@@ -144,11 +153,16 @@ def is_r_don_pressed() -> bool:
 
     return False
 
-def is_l_kat_pressed() -> bool:
+def is_l_kat_pressed(player_num: str = '0') -> bool:
     """Check if the left kat button is pressed"""
     if global_data.input_locked:
         return False
-    keys = global_data.config["keys_1p"]["left_kat"]
+    if player_num == '0':
+        keys = global_data.config["keys_1p"]["left_kat"] + global_data.config["keys_2p"]["left_kat"]
+    elif player_num == '1':
+        keys = global_data.config["keys_1p"]["left_kat"]
+    elif player_num == '2':
+        keys = global_data.config["keys_2p"]["left_kat"]
     gamepad_buttons = global_data.config["gamepad"]["left_kat"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
@@ -171,11 +185,16 @@ def is_l_kat_pressed() -> bool:
 
     return False
 
-def is_r_kat_pressed() -> bool:
+def is_r_kat_pressed(player_num: str = '0') -> bool:
     """Check if the right kat button is pressed"""
     if global_data.input_locked:
         return False
-    keys = global_data.config["keys_1p"]["right_kat"]
+    if player_num == '0':
+        keys = global_data.config["keys_1p"]["right_kat"] + global_data.config["keys_2p"]["right_kat"]
+    elif player_num == '1':
+        keys = global_data.config["keys_1p"]["right_kat"]
+    elif player_num == '2':
+        keys = global_data.config["keys_2p"]["right_kat"]
     gamepad_buttons = global_data.config["gamepad"]["right_kat"]
     for key in keys:
         if ray.is_key_pressed(ord(key)):
@@ -198,38 +217,7 @@ def is_r_kat_pressed() -> bool:
 
     return False
 
-@dataclass
-class SessionData:
-    """Data class for storing session data. Wiped after the result screen.
-    selected_difficulty: The difficulty level selected by the user.
-    song_title: The title of the song being played.
-    genre_index: The index of the genre being played.
-    result_score: The score achieved in the game.
-    result_good: The number of good notes achieved in the game.
-    result_ok: The number of ok notes achieved in the game.
-    result_bad: The number of bad notes achieved in the game.
-    result_max_combo: The maximum combo achieved in the game.
-    result_total_drumroll: The total drumroll achieved in the game.
-    result_gauge_length: The length of the gauge achieved in the game.
-    prev_score: The previous score pulled from the database."""
-    selected_difficulty: int = 0
-    song_title: str = ''
-    genre_index: int = 0
-    result_score: int = 0
-    result_good: int = 0
-    result_ok: int = 0
-    result_bad: int = 0
-    result_max_combo: int = 0
-    result_total_drumroll: int = 0
-    result_gauge_length: int = 0
-    prev_score: int = 0
-
-session_data = SessionData()
 global_tex = TextureWrapper()
-
-def reset_session():
-    """Reset the session data."""
-    return SessionData()
 
 text_cache = set()
 if not Path('cache/image').exists():

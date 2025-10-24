@@ -29,11 +29,14 @@ class EntryScreen:
             tex.load_screen_textures('entry')
             audio.load_screen_sounds('entry')
             self.side = 1
+            self.is_2p = False
             self.box_manager = BoxManager()
             self.state = State.SELECT_SIDE
-            plate_info = global_data.config['nameplate']
+
+            # Initial nameplate for side selection
+            plate_info = global_data.config['nameplate_1p']
             self.nameplate = Nameplate(plate_info['name'], plate_info['title'], -1, -1, False)
-            self.indicator = Indicator(Indicator.State.SELECT)
+
             self.coin_overlay = CoinOverlay()
             self.allnet_indicator = AllNetIcon()
             self.entry_overlay = EntryOverlay()
@@ -41,95 +44,97 @@ class EntryScreen:
             self.screen_init = True
             self.side_select_fade = tex.get_animation(0)
             self.bg_flicker = tex.get_animation(1)
-            self.drum_move_1 = tex.get_animation(2)
-            self.drum_move_2 = tex.get_animation(3)
-            self.drum_move_3 = tex.get_animation(4)
-            self.cloud_resize = tex.get_animation(5)
-            self.cloud_resize_loop = tex.get_animation(6)
-            self.cloud_texture_change = tex.get_animation(7)
-            self.cloud_fade = tex.get_animation(8)
-            self.nameplate_fadein = tex.get_animation(12)
             self.side_select_fade.start()
             self.chara = Chara2D(0, 100)
             self.announce_played = False
+            self.players = [None, None]
             audio.play_sound('bgm', 'music')
 
     def on_screen_end(self, next_screen: str):
         self.screen_init = False
         audio.stop_sound('bgm')
         self.nameplate.unload()
+        for player in self.players:
+            if player:
+                player.unload()
         tex.unload_textures()
         audio.unload_all_sounds()
         audio.unload_all_music()
         return next_screen
 
     def handle_input(self):
-        if self.box_manager.is_box_selected():
-            return
         if self.state == State.SELECT_SIDE:
             if is_l_don_pressed() or is_r_don_pressed():
                 if self.side == 1:
                     return self.on_screen_end("TITLE")
                 global_data.player_num = round((self.side/3) + 1)
-                self.drum_move_1.start()
-                self.drum_move_2.start()
-                self.drum_move_3.start()
-                self.cloud_resize.start()
-                self.cloud_resize_loop.start()
-                self.cloud_texture_change.start()
-                self.cloud_fade.start()
+
+                if self.players[0]:
+                    self.players[1] = EntryPlayer(global_data.player_num, self.side, self.box_manager)
+                    self.players[1].start_animations()
+                    global_data.player_num = 1
+                    self.is_2p = True
+                else:
+                    self.players[0] = EntryPlayer(global_data.player_num, self.side, self.box_manager)
+                    self.players[0].start_animations()
+                    self.is_2p = False
+
                 audio.play_sound('cloud', 'sound')
                 audio.play_sound(f'entry_start_{global_data.player_num}p', 'voice')
-                plate_info = global_data.config['nameplate']
-                self.nameplate.unload()
-                self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
-                self.nameplate_fadein.start()
                 self.state = State.SELECT_MODE
-                if self.side == 2:
-                    self.chara = Chara2D(1, 100)
+                audio.play_sound('don', 'sound')
+            if is_l_kat_pressed():
+                audio.play_sound('kat', 'sound')
+                if self.players[0] and self.players[0].player_num == 1:
+                    self.side = 1
+                elif self.players[0] and self.players[0].player_num == 2:
+                    self.side = 0
                 else:
-                    self.chara = Chara2D(0, 100)
-                audio.play_sound('don', 'sound')
-            if is_l_kat_pressed():
-                audio.play_sound('kat', 'sound')
-                self.side = max(0, self.side - 1)
+                    self.side = max(0, self.side - 1)
             if is_r_kat_pressed():
                 audio.play_sound('kat', 'sound')
-                self.side = min(2, self.side + 1)
+                if self.players[0] and self.players[0].player_num == 1:
+                    self.side = 2
+                elif self.players[0] and self.players[0].player_num == 2:
+                    self.side = 1
+                else:
+                    self.side = min(2, self.side + 1)
         elif self.state == State.SELECT_MODE:
-            if is_l_don_pressed() or is_r_don_pressed():
+            for player in self.players:
+                if player:
+                    player.handle_input()
+            if self.players[0] and self.players[0].player_num == 1 and is_l_don_pressed('2') or is_r_don_pressed('2'):
                 audio.play_sound('don', 'sound')
-                self.box_manager.select_box()
-            if is_l_kat_pressed():
-                audio.play_sound('kat', 'sound')
-                self.box_manager.move_left()
-            if is_r_kat_pressed():
-                audio.play_sound('kat', 'sound')
-                self.box_manager.move_right()
+                self.state = State.SELECT_SIDE
+                plate_info = global_data.config['nameplate_2p']
+                self.nameplate = Nameplate(plate_info['name'], plate_info['title'], -1, -1, False)
+                self.chara = Chara2D(1, 100)
+                self.side_select_fade.restart()
+                self.side = 1
+            elif self.players[0] and self.players[0].player_num == 2 and is_l_don_pressed('1') or is_r_don_pressed('1'):
+                audio.play_sound('don', 'sound')
+                self.state = State.SELECT_SIDE
+                self.side_select_fade.restart()
+                self.side = 1
 
     def update(self):
         self.on_screen_start()
         current_time = get_current_ms()
         self.side_select_fade.update(current_time)
         self.bg_flicker.update(current_time)
-        self.drum_move_1.update(current_time)
-        self.drum_move_2.update(current_time)
-        self.drum_move_3.update(current_time)
-        self.cloud_resize.update(current_time)
-        self.cloud_texture_change.update(current_time)
-        self.cloud_fade.update(current_time)
-        self.cloud_resize_loop.update(current_time)
-        self.box_manager.update(current_time)
-        self.nameplate_fadein.update(current_time)
-        self.nameplate.update(current_time)
-        self.indicator.update(current_time)
+        self.box_manager.update(current_time, self.is_2p)
         self.timer.update(current_time)
+        self.nameplate.update(current_time)
         self.chara.update(current_time, 100, False, False)
+        for player in self.players:
+            if player:
+                player.update(current_time)
         if self.box_manager.is_finished():
             return self.on_screen_end(self.box_manager.selected_box())
-        if self.cloud_fade.is_finished and not audio.is_sound_playing(f'entry_start_{global_data.player_num}p') and not self.announce_played:
-            audio.play_sound('select_mode', 'voice')
-            self.announce_played = True
+        for player in self.players:
+            if player and player.cloud_fade.is_finished and not audio.is_sound_playing(f'entry_start_{global_data.player_num}p') and not self.announce_played:
+                audio.play_sound('select_mode', 'voice')
+                self.announce_played = True
         return self.handle_input()
 
     def draw_background(self):
@@ -141,12 +146,6 @@ class EntryScreen:
         tex.draw_texture('background', 'shops_right')
         tex.draw_texture('background', 'lights', scale=2.0, fade=self.bg_flicker.attribute)
 
-    def draw_footer(self):
-        tex.draw_texture('side_select', 'footer')
-        if self.state == State.SELECT_SIDE or self.side != 0:
-            tex.draw_texture('side_select', 'footer_left')
-        if self.state == State.SELECT_SIDE or self.side != 2:
-            tex.draw_texture('side_select', 'footer_right')
 
     def draw_side_select(self, fade):
         tex.draw_texture('side_select', 'box_top_left', fade=fade)
@@ -180,46 +179,38 @@ class EntryScreen:
         self.nameplate.draw(500, 185)
 
     def draw_player_drum(self):
-        move_x = self.drum_move_3.attribute
-        move_y = self.drum_move_1.attribute + self.drum_move_2.attribute
-        if self.side == 0:
-            offset = 0
-            tex.draw_texture('side_select', 'red_drum', x=move_x, y=move_y)
-        else:
-            move_x *= -1
-            offset = 620
-            tex.draw_texture('side_select', 'blue_drum', x=move_x, y=move_y)
-
-        scale = self.cloud_resize.attribute
-        if self.cloud_resize.is_finished:
-            scale = max(1, self.cloud_resize_loop.attribute)
-        if self.side == 2:
-            self.chara.draw(move_x + offset + 130, 570 + move_y, mirror=True)
-        else:
-            self.chara.draw(move_x + offset + 170, 570 + move_y)
-        tex.draw_texture('side_select', 'cloud', x=move_x + offset, y=move_y, frame=self.cloud_texture_change.attribute, fade=self.cloud_fade.attribute, scale=scale, center=True)
+        for player in self.players:
+            if player:
+                player.draw_drum()
 
     def draw_mode_select(self):
-        self.draw_player_drum()
-        if not self.cloud_texture_change.is_finished:
-            return
+        for player in self.players:
+            if player and not player.is_cloud_animation_finished():
+                return
         self.box_manager.draw()
 
     def draw(self):
         self.draw_background()
+        self.draw_player_drum()
         if self.state == State.SELECT_SIDE:
             self.draw_side_select(self.side_select_fade.attribute)
         elif self.state == State.SELECT_MODE:
             self.draw_mode_select()
-        self.draw_footer()
+        tex.draw_texture('side_select', 'footer')
+        if self.players[0] and self.players[1]:
+            pass
+        elif not self.players[0]:
+            tex.draw_texture('side_select', 'footer_left')
+            tex.draw_texture('side_select', 'footer_right')
+        elif self.players[0] and self.players[0].player_num == 1:
+            tex.draw_texture('side_select', 'footer_right')
+        elif self.players[0] and self.players[0].player_num == 2:
+            tex.draw_texture('side_select', 'footer_left')
 
-        if self.state == State.SELECT_MODE:
-            if self.side == 0:
-                self.nameplate.draw(30, 640, fade=self.nameplate_fadein.attribute)
-                self.indicator.draw(50, 575, fade=self.nameplate_fadein.attribute)
-            else:
-                self.nameplate.draw(950, 640, fade=self.nameplate_fadein.attribute)
-                self.indicator.draw(770, 575, fade=self.nameplate_fadein.attribute)
+
+        for player in self.players:
+            if player:
+                player.draw_nameplate_and_indicator(fade=player.nameplate_fadein.attribute)
 
         tex.draw_texture('global', 'player_entry')
 
@@ -231,8 +222,136 @@ class EntryScreen:
         self.coin_overlay.draw()
         self.allnet_indicator.draw()
 
-    def draw_3d(self):
-        pass
+class EntryPlayer:
+    """Player-specific state and rendering for the entry screen"""
+    def __init__(self, player_num: int, side: int, box_manager: 'BoxManager'):
+        """
+        Initialize a player for the entry screen
+        Args:
+            player_num: 1 or 2 (player number)
+            side: 0 for left (1P), 2 for right (2P)
+            box_manager: Reference to the box manager for input handling
+        """
+        self.player_num = player_num
+        self.side = side
+        self.box_manager = box_manager
+
+        # Load player-specific resources
+        plate_info = global_data.config[f'nameplate_{self.player_num}p']
+        self.nameplate = Nameplate(
+            plate_info['name'],
+            plate_info['title'],
+            player_num,
+            plate_info['dan'],
+            plate_info['gold']
+        )
+        self.indicator = Indicator(Indicator.State.SELECT)
+
+        # Character (0 for red/1P, 1 for blue/2P)
+        chara_id = 0 if side == 0 else 1
+        self.chara = Chara2D(chara_id, 100)
+
+        # Animations
+        self.drum_move_1 = tex.get_animation(2)
+        self.drum_move_2 = tex.get_animation(3)
+        self.drum_move_3 = tex.get_animation(4)
+        self.cloud_resize = tex.get_animation(5)
+        self.cloud_resize_loop = tex.get_animation(6)
+        self.cloud_texture_change = tex.get_animation(7)
+        self.cloud_fade = tex.get_animation(8)
+        self.nameplate_fadein = tex.get_animation(12)
+
+    def start_animations(self):
+        """Start all player entry animations"""
+        self.drum_move_1.start()
+        self.drum_move_2.start()
+        self.drum_move_3.start()
+        self.cloud_resize.start()
+        self.cloud_resize_loop.start()
+        self.cloud_texture_change.start()
+        self.cloud_fade.start()
+        self.nameplate_fadein.start()
+
+    def update(self, current_time: float):
+        """Update player animations and state"""
+        self.drum_move_1.update(current_time)
+        self.drum_move_2.update(current_time)
+        self.drum_move_3.update(current_time)
+        self.cloud_resize.update(current_time)
+        self.cloud_texture_change.update(current_time)
+        self.cloud_fade.update(current_time)
+        self.cloud_resize_loop.update(current_time)
+        self.nameplate_fadein.update(current_time)
+        self.nameplate.update(current_time)
+        self.indicator.update(current_time)
+        self.chara.update(current_time, 100, False, False)
+
+    def draw_drum(self):
+        """Draw the player's drum with animations"""
+        move_x = self.drum_move_3.attribute
+        move_y = self.drum_move_1.attribute + self.drum_move_2.attribute
+
+        if self.side == 0:  # Left side (1P/red)
+            offset = 0
+            tex.draw_texture('side_select', 'red_drum', x=move_x, y=move_y)
+            chara_x = move_x + offset + 170
+            chara_mirror = False
+        else:  # Right side (2P/blue)
+            move_x *= -1
+            offset = 620
+            tex.draw_texture('side_select', 'blue_drum', x=move_x, y=move_y)
+            chara_x = move_x + offset + 130
+            chara_mirror = True
+
+        # Draw character
+        chara_y = 570 + move_y
+        self.chara.draw(chara_x, chara_y, mirror=chara_mirror)
+
+        # Draw cloud
+        scale = self.cloud_resize.attribute
+        if self.cloud_resize.is_finished:
+            scale = max(1, self.cloud_resize_loop.attribute)
+        tex.draw_texture(
+            'side_select', 'cloud',
+            x=move_x + offset,
+            y=move_y,
+            frame=self.cloud_texture_change.attribute,
+            fade=self.cloud_fade.attribute,
+            scale=scale,
+            center=True
+        )
+
+    def draw_nameplate_and_indicator(self, fade: float = 1.0):
+        """Draw nameplate and indicator at player-specific position"""
+        if self.side == 0:  # Left side
+            self.nameplate.draw(30, 640, fade=fade)
+            self.indicator.draw(50, 575, fade=fade)
+        else:  # Right side
+            self.nameplate.draw(950, 640, fade=fade)
+            self.indicator.draw(770, 575, fade=fade)
+
+    def is_cloud_animation_finished(self) -> bool:
+        """Check if cloud texture change animation is finished"""
+        return self.cloud_texture_change.is_finished
+
+    def unload(self):
+        """Unload player resources"""
+        self.nameplate.unload()
+
+    def handle_input(self):
+        """Handle player input for mode selection"""
+        if self.box_manager.is_box_selected():
+            return
+
+        if is_l_don_pressed(str(self.player_num)) or is_r_don_pressed(str(self.player_num)):
+            audio.play_sound('don', 'sound')
+            self.box_manager.select_box()
+        if is_l_kat_pressed(str(self.player_num)):
+            audio.play_sound('kat', 'sound')
+            self.box_manager.move_left()
+        if is_r_kat_pressed(str(self.player_num)):
+            audio.play_sound('kat', 'sound')
+            self.box_manager.move_right()
 
 class Box:
     """Box class for the entry screen"""
@@ -330,6 +449,7 @@ class BoxManager:
         self.boxes = [Box(self.box_titles[i], self.box_locations[i]) for i in range(len(self.box_titles))]
         self.selected_box_index = 0
         self.fade_out = tex.get_animation(9)
+        self.is_2p = False
 
         spacing = 80
         box_width = self.boxes[0].texture.width
@@ -380,7 +500,12 @@ class BoxManager:
             self.boxes[self.selected_box_index-1].move_left()
         self.boxes[self.selected_box_index].move_left()
 
-    def update(self, current_time_ms: float):
+    def update(self, current_time_ms: float, is_2p: bool):
+        self.is_2p = is_2p
+        if self.is_2p:
+            self.box_locations = ["SONG_SELECT_2P", "SETTINGS"]
+            for i, box in enumerate(self.boxes):
+                box.location = self.box_locations[i]
         self.fade_out.update(current_time_ms)
         for i, box in enumerate(self.boxes):
             is_selected = i == self.selected_box_index

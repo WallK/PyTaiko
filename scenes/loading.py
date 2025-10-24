@@ -7,18 +7,18 @@ from libs.global_objects import AllNetIcon
 from libs.song_hash import build_song_hashes
 from libs.texture import tex
 from libs.utils import get_current_ms, global_data
-from scenes.song_select import SongSelectScreen
+from libs.file_navigator import navigator
 
 
 class LoadScreen:
-    def __init__(self, song_select_screen: SongSelectScreen):
+    def __init__(self):
         self.width = 1280
         self.height = 720
         self.screen_init = False
         self.songs_loaded = False
         self.navigator_started = False
         self.loading_complete = False
-        self.song_select_screen = song_select_screen
+        self.navigator = navigator
 
         # Progress bar settings
         self.progress_bar_width = self.width * 0.43
@@ -40,7 +40,7 @@ class LoadScreen:
 
     def _load_navigator(self):
         """Background thread function to load navigator"""
-        self.song_select_screen.load_navigator()
+        self.navigator.initialize(global_data.config["paths"]["tja_path"])
         self.loading_complete = True
 
     def on_screen_start(self):

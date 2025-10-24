@@ -33,8 +33,7 @@ from libs.utils import (
     is_l_kat_pressed,
     is_r_don_pressed,
     is_r_kat_pressed,
-    rounded,
-    session_data,
+    rounded
 )
 from libs.video import VideoPlayer
 
@@ -57,20 +56,14 @@ class GameScreen:
         if global_data.hit_sound == -1:
             audio.load_sound(Path('none.wav'), 'hitsound_don_1p')
             audio.load_sound(Path('none.wav'), 'hitsound_kat_1p')
-            audio.load_sound(Path('none.wav'), 'hitsound_don_2p')
-            audio.load_sound(Path('none.wav'), 'hitsound_kat_2p')
         if global_data.hit_sound == 0:
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "don.wav", 'hitsound_don_1p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "ka.wav", 'hitsound_kat_1p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "don.wav", 'hitsound_don_2p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "ka.wav", 'hitsound_kat_2p')
+            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound[0]) / "don.wav", 'hitsound_don_1p')
+            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound[0]) / "ka.wav", 'hitsound_kat_1p')
         else:
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "don.ogg", 'hitsound_don_1p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "ka.ogg", 'hitsound_kat_1p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "don.ogg", 'hitsound_don_2p')
-            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound) / "ka.ogg", 'hitsound_kat_2p')
+            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound[0]) / "don.ogg", 'hitsound_don_1p')
+            audio.load_sound(sounds_dir / "hit_sounds" / str(global_data.hit_sound[0]) / "ka.ogg", 'hitsound_kat_1p')
 
-    def init_tja(self, song: Path, difficulty: int):
+    def init_tja(self, song: Path):
         """Initialize the TJA file"""
         self.tja = TJAParser(song, start_delay=self.start_delay, distance=SCREEN_WIDTH - GameScreen.JUDGE_X)
         if self.tja.metadata.bgmovie != Path() and self.tja.metadata.bgmovie.exists():
@@ -78,11 +71,11 @@ class GameScreen:
             self.movie.set_volume(0.0)
         else:
             self.movie = None
-        session_data.song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
+        global_data.session_data[0].song_title = self.tja.metadata.title.get(global_data.config['general']['language'].lower(), self.tja.metadata.title['en'])
         if self.tja.metadata.wave.exists() and self.tja.metadata.wave.is_file() and self.song_music is None:
             self.song_music = audio.load_music_stream(self.tja.metadata.wave, 'song')
 
-        self.player_1 = Player(self.tja, global_data.player_num, difficulty, False, global_data.modifiers)
+        self.player_1 = Player(self.tja, global_data.player_num, global_data.session_data[global_data.player_num-1].selected_difficulty, False, global_data.modifiers[0])
         self.start_ms = (get_current_ms() - self.tja.metadata.offset*1000)
 
     def on_screen_start(self):
@@ -94,7 +87,8 @@ class GameScreen:
             audio.load_screen_sounds('game')
             ray.set_shader_value_texture(self.mask_shader, ray.get_shader_location(self.mask_shader, "texture0"), tex.textures['balloon']['rainbow_mask'].texture)
             ray.set_shader_value_texture(self.mask_shader, ray.get_shader_location(self.mask_shader, "texture1"), tex.textures['balloon']['rainbow'].texture)
-            self.init_tja(global_data.selected_song, session_data.selected_difficulty)
+            session_data = global_data.session_data[global_data.player_num-1]
+            self.init_tja(global_data.selected_song)
             self.load_hitsounds()
             self.song_info = SongInfo(session_data.song_title, session_data.genre_index)
             self.result_transition = ResultTransition(global_data.player_num)
@@ -126,9 +120,10 @@ class GameScreen:
         """Write the score to the database"""
         if self.tja is None:
             return
-        if global_data.modifiers.auto:
+        if global_data.modifiers[global_data.player_num-1].auto:
             return
         with sqlite3.connect('scores.db') as con:
+            session_data = global_data.session_data[global_data.player_num-1]
             cursor = con.cursor()
             notes, _, _, _ = TJAParser.notes_to_position(TJAParser(self.tja.file_path), self.player_1.difficulty)
             hash = self.tja.hash_note_data(notes)
@@ -180,7 +175,7 @@ class GameScreen:
         if ray.is_key_pressed(ray.KeyboardKey.KEY_F1):
             if self.song_music is not None:
                 audio.stop_music_stream(self.song_music)
-            self.init_tja(global_data.selected_song, session_data.selected_difficulty)
+            self.init_tja(global_data.selected_song)
             audio.play_sound('restart', 'sound')
             self.song_started = False
 
@@ -190,7 +185,7 @@ class GameScreen:
             return self.on_screen_end('SONG_SELECT')
 
     def spawn_ending_anims(self):
-        if session_data.result_bad == 0:
+        if global_data.session_data[global_data.player_num-1].result_bad == 0:
             self.player_1.ending_anim = FCAnimation(self.player_1.is_2p)
         elif self.player_1.gauge.is_clear:
             self.player_1.ending_anim = ClearAnimation(self.player_1.is_2p)
@@ -223,6 +218,7 @@ class GameScreen:
         if self.result_transition.is_finished and not audio.is_sound_playing('result_transition'):
             return self.on_screen_end('RESULT')
         elif self.current_ms >= self.player_1.end_time:
+            session_data = global_data.session_data[global_data.player_num-1]
             session_data.result_score, session_data.result_good, session_data.result_ok, session_data.result_bad, session_data.result_max_combo, session_data.result_total_drumroll = self.player_1.get_result_score()
             session_data.result_gauge_length = self.player_1.gauge.gauge_length
             if self.end_ms != 0:
@@ -338,7 +334,7 @@ class Player:
         self.branch_indicator = BranchIndicator(self.is_2p) if tja and tja.metadata.course_data[self.difficulty].is_branching else None
         self.ending_anim: Optional[FailAnimation | ClearAnimation | FCAnimation] = None
         self.is_gogo_time = False
-        plate_info = global_data.config['nameplate']
+        plate_info = global_data.config[f'nameplate_{self.is_2p+1}p']
         self.nameplate = Nameplate(plate_info['name'], plate_info['title'], global_data.player_num, plate_info['dan'], plate_info['gold'])
         self.chara = Chara2D(player_number - 1, self.bpm)
         if global_data.config['general']['judge_counter']:
@@ -748,7 +744,7 @@ class Player:
             (is_r_kat_pressed, 'KAT', 'R', f'hitsound_kat_{self.player_number}p')
         ]
         for check_func, note_type, side, sound in input_checks:
-            if check_func():
+            if check_func(self.player_number):
                 self.lane_hit_effect = LaneHitEffect(note_type, self.is_2p)
                 self.draw_drum_hit_list.append(DrumHitEffect(note_type, side, self.is_2p))
 
@@ -994,21 +990,21 @@ class Player:
         modifiers_to_draw = ['mod_shinuchi']
 
         # Speed modifiers
-        if global_data.modifiers.speed >= 4:
+        if global_data.modifiers[int(self.player_number)-1].speed >= 4:
             modifiers_to_draw.append('mod_yonbai')
-        elif global_data.modifiers.speed >= 3:
+        elif global_data.modifiers[int(self.player_number)-1].speed >= 3:
             modifiers_to_draw.append('mod_sanbai')
-        elif global_data.modifiers.speed > 1:
+        elif global_data.modifiers[int(self.player_number)-1].speed > 1:
             modifiers_to_draw.append('mod_baisaku')
 
         # Other modifiers
-        if global_data.modifiers.display:
+        if global_data.modifiers[int(self.player_number)-1].display:
             modifiers_to_draw.append('mod_doron')
-        if global_data.modifiers.inverse:
+        if global_data.modifiers[int(self.player_number)-1].inverse:
             modifiers_to_draw.append('mod_abekobe')
-        if global_data.modifiers.random == 2:
+        if global_data.modifiers[int(self.player_number)-1].random == 2:
             modifiers_to_draw.append('mod_detarame')
-        elif global_data.modifiers.random == 1:
+        elif global_data.modifiers[int(self.player_number)-1].random == 1:
             modifiers_to_draw.append('mod_kimagure')
 
         # Draw all modifiers in one batch
@@ -1038,8 +1034,6 @@ class Player:
         # Group 4: Lane covers and UI elements (batch similar textures)
         tex.draw_texture('lane', f'{self.player_number}p_lane_cover', index=self.is_2p)
         tex.draw_texture('lane', 'drum', index=self.is_2p)
-        if global_data.modifiers.auto:
-            tex.draw_texture('lane', 'auto_icon', index=self.is_2p)
         if self.ending_anim is not None:
             self.ending_anim.draw()
 
@@ -1064,11 +1058,13 @@ class Player:
             self.judge_counter.draw()
 
         # Group 7: Player-specific elements
-        if not global_data.modifiers.auto:
+        if not self.modifiers.auto:
             if self.is_2p:
                 self.nameplate.draw(-62, 371)
             else:
                 self.nameplate.draw(-62, 285)
+        else:
+            tex.draw_texture('lane', 'auto_icon', index=self.is_2p)
         self.draw_modifiers()
         self.chara.draw(y=(self.is_2p*536))
 

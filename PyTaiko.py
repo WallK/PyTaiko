@@ -20,11 +20,13 @@ from scenes.devtest import DevScreen
 from scenes.entry import EntryScreen
 from scenes.game import GameScreen
 from scenes.two_player.game import TwoPlayerGameScreen
+from scenes.two_player.result import TwoPlayerResultScreen
 from scenes.loading import LoadScreen
 from scenes.result import ResultScreen
 from scenes.settings import SettingsScreen
 from scenes.song_select import SongSelectScreen
 from scenes.title import TitleScreen
+from scenes.two_player.song_select import TwoPlayerSongSelectScreen
 
 
 class Screens:
@@ -34,6 +36,8 @@ class Screens:
     GAME = "GAME"
     GAME_2P = "GAME_2P"
     RESULT = "RESULT"
+    RESULT_2P = "RESULT_2P"
+    SONG_SELECT_2P = "SONG_SELECT_2P"
     SETTINGS = "SETTINGS"
     DEV_MENU = "DEV_MENU"
     LOADING = "LOADING"
@@ -107,10 +111,12 @@ def main():
     title_screen = TitleScreen()
     entry_screen = EntryScreen()
     song_select_screen = SongSelectScreen()
-    load_screen = LoadScreen(song_select_screen)
+    song_select_screen_2p = TwoPlayerSongSelectScreen()
+    load_screen = LoadScreen()
     game_screen = GameScreen()
     game_screen_2p = TwoPlayerGameScreen()
     result_screen = ResultScreen()
+    result_screen_2p = TwoPlayerResultScreen()
     settings_screen = SettingsScreen()
     dev_screen = DevScreen()
 
@@ -118,9 +124,11 @@ def main():
         Screens.ENTRY: entry_screen,
         Screens.TITLE: title_screen,
         Screens.SONG_SELECT: song_select_screen,
+        Screens.SONG_SELECT_2P: song_select_screen_2p,
         Screens.GAME: game_screen,
         Screens.GAME_2P: game_screen_2p,
         Screens.RESULT: result_screen,
+        Screens.RESULT_2P: result_screen_2p,
         Screens.SETTINGS: settings_screen,
         Screens.DEV_MENU: dev_screen,
         Screens.LOADING: load_screen
